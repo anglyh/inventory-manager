@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS product (
     name varchar(50) not null,
     sale_price numeric (10, 2) not null check ( sale_price >= 0 ),
     unit_cost numeric (10, 2) not null check ( unit_cost >= 0 ),
-    stock integer default 0 not null check ( stock >= 0 ),
     min_stock integer not null default 10 check ( min_stock >= 0 ),
     category_id uuid references category(id),
     created_at timestamp default now() not null,

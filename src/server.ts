@@ -7,6 +7,7 @@ import productRouter from './routes/product.routes.js';
 import { requireAuth } from './middlewares/auth.middleware.js';
 import categoryRouter from './routes/category.routes.js';
 import saleRouter from './routes/sale.routes.js';
+import purchaseRouter from './routes/purchase.routes.js';
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use("/api/user", userRouter);
 app.use("/api/product", requireAuth, productRouter);
 app.use("/api/category", requireAuth, categoryRouter);
 app.use("/api/sale", requireAuth, saleRouter);
+app.use("/api/purchase", requireAuth, purchaseRouter)
 
 app.use(notFoundHandler)
 app.use(errorHandler);

@@ -6,7 +6,6 @@ export const saleItemSchema = z.object({
 })
 
 export const createSaleSchema = z.object({
-  userId: z.uuid(),
   items: z.array(saleItemSchema).min(1)
 })
 

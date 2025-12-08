@@ -1,8 +1,11 @@
-import "express";
 import type { TokenPayload } from "../lib/jwt.js";
 
-declare module "express-serve-static-core" {
-  interface Request {
-    user?: TokenPayload;
+declare global {
+  namespace Express {
+    interface Request {
+      user?: TokenPayload;
+    }
   }
 }
+
+export {};

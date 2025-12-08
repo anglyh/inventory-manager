@@ -10,14 +10,14 @@ export function validateProductStock(product: Product, requestedQuantity: number
   }
 }
 
-export function calculateItemTotals(
-  product: Product,
-  quantity: number
-): Pick<SaleTotals, "totalAmount" | "totalUnitCost"> {
-  return {
-    totalAmount: product.salePrice * quantity,
-    totalUnitCost: product.unitCost * quantity
-  }
-}
+// export function calculateItemTotals(
+//   product: Product,
+//   quantity: number
+// ): Pick<SaleTotals, "totalAmount" | "totalUnitCost"> {
+//   return {
+//     totalAmount: product.salePrice * quantity,
+//     totalUnitCost: product.unitCost * quantity
+//   }
+// }
 
-export const calculateProfit = (totalAmount: number,  totalUnitCost: number) => totalAmount - totalUnitCost
+// export const calculateProfit = (totalAmount: number,  totalUnitCost: number) => totalAmount - totalUnitCost

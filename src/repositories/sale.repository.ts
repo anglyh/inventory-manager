@@ -2,51 +2,60 @@ import type { PoolClient } from 'pg';
 import { query } from '../db/index.js';
 import { TABLES } from '../db/tables.js';
 import type { SaleItem, SaleItemInsert } from '../models/sale-item.model.js';
-import type { Sale } from '../models/sale.model.js';
+import type { Sale, SaleDetailResponse } from '../models/sale.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 
 export default class SaleRepository {
-  static async createSale(userId: string, saleData: Pick<Sale, "totalAmount" | "totalProfit">, client: PoolClient): Promise<Sale> {
-    const { totalAmount, totalProfit } = saleData;
+  static async createSale(userId: string, client: PoolClient): Promise<Sale> {
     const result = await client.query(`
-      INSERT INTO ${TABLES.SALE} (user_id, total_amount, total_profit)
-      VALUES ($1, $2, $3)
+      INSERT INTO ${TABLES.SALE} (user_id)
+      VALUES ($1)
       RETURNING *
-      `, [userId, totalAmount, totalProfit],
+      `, [userId]
     );
     return snakeToCamel(result.rows[0]);
   }
 
-  static async listAllSales(userId: string) {
+  static async listAllSales(userId: string): Promise<SaleDetailResponse[]> {
     const result = await query(`
-      SELECT 
+      SELECT
         s.id,
-        total_amount,
-        total_profit,
         s.created_at,
-        si.id,
-        product_name, 
-        quantity,
-        si.sale_price,
-        si.unit_cost
+        SUM(si.sale_price * si.quantity) AS total_amount,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'productId', si.id,
+              'productName', si.product_name,
+              'quantity', si.quantity,
+              'salePrice', si.sale_price,
+              'unitPrice', si.unit_cost
+            )
+          ) FILTER (WHERE si.id IS NOT NULL),
+           '[]'::json
+        ) AS items
       FROM ${TABLES.SALE} AS s
       LEFT JOIN ${TABLES.SALE_ITEM} AS si ON s.id = si.sale_id
-      WHERE s.id = $1
+      WHERE s.user_id = $1
+      GROUP BY s.id, s.created_at
+      ORDER BY s.created_at DESC
       `, [userId]
     );
+
+    console.log(result.rows)
     return snakeToCamel(result.rows)
   }
 
-  static async createSaleItem(saleItem: SaleItem, client: PoolClient): Promise<SaleItem> {
-    const { productId, productName, quantity, saleId, salePrice, unitCost } = saleItem
-    const result = await client.query(`
-        INSERT INTO ${TABLES.SALE_ITEM} (product_id, product_name, quantity, sale_id, sale_price, unit_cost)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING *
-      `, [productId, productName, quantity, saleId, salePrice, unitCost]
-    )
-    return snakeToCamel(result.rows[0])
-  }
+  // static async createSaleItem(saleItem: SaleItem, client: PoolClient): Promise<SaleItem> {
+  //   const { productId, productName, quantity, saleId, salePrice, unitCost } = saleItem
+  //   const result = await client.query(`
+  //       INSERT INTO ${TABLES.SALE_ITEM} (product_id, product_name, quantity, sale_id, sale_price, unit_cost)
+  //       VALUES ($1, $2, $3, $4, $5, $6, $7)
+  //       RETURNING *
+  //     `, [productId, productName, quantity, saleId, salePrice, unitCost]
+  //   )
+  //   return snakeToCamel(result.rows[0])
+  // }
 
   static async createSaleItems(
     saleId: string,
@@ -55,9 +64,10 @@ export default class SaleRepository {
   ): Promise<SaleItem[]> {
     const values: any[] = [];
     const valuePlaceholders: string[] = [];
+    const TOTAL_COLUMNS = 6
 
     saleItems.forEach((item, index) => {
-      const baseIndex = index * 6
+      const baseIndex = index * TOTAL_COLUMNS;
       valuePlaceholders.push(`
         ($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6})
       `);
@@ -79,6 +89,6 @@ export default class SaleRepository {
     `;
 
     const result = await client.query(queryText, values)
-    return snakeToCamel(result.rows[0])
+    return snakeToCamel(result.rows)
   }
 }

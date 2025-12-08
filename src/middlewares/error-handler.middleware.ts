@@ -11,7 +11,6 @@ export function errorHandler(
   next: NextFunction
 ) {
   console.error(err);
-
   if (err instanceof AppError) {
     console.log("error", err)
     const response: ApiError = { error: err.message }
@@ -24,12 +23,18 @@ export function errorHandler(
   }
 
   if (err instanceof PG.DatabaseError) {
+    console.error("DB error", err.code)
     if (err.code === "23505") {
       return res.status(409).json({ error: "El registro ya existe" });
     } 
     if (err.code === "P0001") {
       return res.status(400).json({ error: err.message })
     }
+
+    if (err.code === "23503" && err.constraint?.includes("user_id")) {
+      return res.status(401).json({ error: "No autorizado" })
+    }
+//    if (err.message)
     return res.status(500).json({ error: err.message })
   }
 

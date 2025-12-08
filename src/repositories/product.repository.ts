@@ -1,9 +1,9 @@
-import type { Pool, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import { query } from '../db/index.js';
 import { TABLES } from '../db/tables.js';
 import type { Product } from '../models/product.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
-import { BadRequest, NotFoundError } from '../errors/app.error.js';
+import { NotFoundError } from '../errors/app.error.js';
 
 export default class ProductRepository {
   static async findById(productId: string, client?: PoolClient): Promise<Product> {
@@ -28,7 +28,7 @@ export default class ProductRepository {
       WHERE p.user_id = $1
       ORDER BY p.created_at DESC
       `, [userId]
-    );
+  );
     return snakeToCamel(result.rows);
   }
 

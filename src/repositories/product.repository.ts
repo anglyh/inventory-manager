@@ -7,7 +7,7 @@ import { NotFoundError } from '../errors/app.error.js';
 
 export default class ProductRepository {
   static async findById(productId: string, client?: PoolClient): Promise<ProductWithStock> {
-    const text = `SELECT * FROM ${VIEWS.PRODUCT_DETAILS} WHERE id = $1`
+    const text = `SELECT * FROM ${VIEWS.PRODUCT_WITH_STOCK} WHERE id = $1`
     const params = [productId]
     const { rows } = client
       ? await client.query(text, params)
@@ -19,24 +19,29 @@ export default class ProductRepository {
     return snakeToCamel(rows[0])
   }
 
-  static async listAll(userId: string): Promise<ProductWithStock[]> {
-    const result = await query(`
-      SELECT 
-        p.id,
-        p.name,
-        p.sale_price,
-        p.unit_cost_avg,
-        p.stock,
-        p.min_stock,
-        p.category_id AS category_id,
-        p.created_at,
-        c.name AS category_name
-      FROM ${VIEWS.PRODUCT_DETAILS} AS p
-      LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
-      WHERE p.user_id = $1
-      ORDER BY p.created_at DESC
-      `, [userId]
-  );
+  static async listAll(userId: string, includeInactive = false): Promise<ProductWithStock[]> {
+    const activeFilter = includeInactive ? '' : 'AND p.is_active = true';
+
+    const text = `
+    SELECT 
+      p.id,
+      p.name,
+      p.barcode,
+      p.sale_price,
+      p.unit_cost_avg,
+      p.stock,
+      p.min_stock,
+      p.is_active,
+      p.category_id,
+      p.created_at,
+      c.name AS category_name
+    FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
+    LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
+    WHERE p.user_id = $1 ${activeFilter}
+    ORDER BY p.name
+  `;
+
+    const result = await query(text, [userId]);
     return snakeToCamel(result.rows);
   }
 
@@ -71,8 +76,8 @@ export default class ProductRepository {
     return snakeToCamel(rows[0])
   }
 
-  static async delete(id: string) {
-    const result = await query(`DELETE FROM ${TABLES.PRODUCT} WHERE id = $1 RETURNING *`, [id]);
+  static async deactivate(id: string) {
+    const result = await query(`UPDATE ${TABLES.PRODUCT} SET is_active = false  WHERE id = $1 RETURNING *`, [id])
     return snakeToCamel(result.rows[0]);
   }
 

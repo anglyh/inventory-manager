@@ -17,14 +17,19 @@ CREATE TABLE IF NOT EXISTS product (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references app_user(id) ON DELETE CASCADE,
     name varchar(50) not null,
+    barcode varchar(50),
     sale_price numeric (10, 2) not null check ( sale_price >= 0 ),
     unit_cost_avg numeric(10, 2) check ( unit_cost_avg IS NULL OR unit_cost_avg >= 0 ),
     min_stock integer not null default 10 check ( min_stock >= 0 ),
     category_id uuid references category(id),
+    is_active boolean not null default true,
     created_at timestamp default now() not null
 );
 CREATE UNIQUE INDEX product_user_name_unique
 ON product (user_id, lower(name));
+CREATE UNIQUE INDEX product_user_barcode_unique
+ON product (user_id, barcode)
+WHERE barcode IS NOT NULL;
 
 CREATE TYPE payment_method AS ENUM (
     'EFECTIVO',
@@ -44,7 +49,6 @@ CREATE TABLE IF NOT EXISTS sale_item (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     sale_id uuid NOT NULL REFERENCES sale(id) ON DELETE CASCADE,
     product_id uuid REFERENCES product(id) ON DELETE SET NULL,
-    product_name varchar(50) NOT NULL,
     quantity integer NOT NULL check ( quantity > 0 ),
     sale_price numeric(10, 2) NOT NULL CHECK ( sale_price >= 0 ),
     unit_cost numeric(10, 2) NOT NULL CHECK (unit_cost >= 0 )
@@ -122,10 +126,12 @@ SELECT
     p.id,
     p.user_id,
     p.name,
+    p.barcode,
     p.sale_price,
     p.unit_cost_avg,
     p.min_stock,
     p.category_id,
+    p.is_active,
     p.created_at,
     get_product_stock(p.id) AS stock
 FROM product AS p;

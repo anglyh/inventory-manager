@@ -11,5 +11,5 @@ export const TABLES = {
 } as const;
 
 export const VIEWS = {
-  PRODUCT_DETAILS: "product_with_stock"
+  PRODUCT_WITH_STOCK: "product_with_stock"
 } as const;

@@ -7,7 +7,7 @@ export interface SaleItem {
   productId: Product["id"]
   productName: string
   quantity: number;
-  salePrice: number;
+  salePrice: string;
   unitCost: number;
 }
 
@@ -15,6 +15,6 @@ export interface SaleItemInsert {
   productId: string;
   productName: string;
   quantity: number;
-  salePrice: number;
-  unitCost: number;
+  salePrice: string;
+  unitCost: string;
 }

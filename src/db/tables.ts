@@ -9,3 +9,7 @@ export const TABLES = {
   ADJUSTMENT_ITEM: "adjustment_item",
   CATEGORY: "category"
 } as const;
+
+export const VIEWS = {
+  PRODUCT_DETAILS: "product_with_stock"
+} as const;

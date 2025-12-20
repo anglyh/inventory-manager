@@ -5,9 +5,15 @@ export interface Product {
   id: string;
   userId: User["id"];
   name: string;
-  stock: number;
-  salePrice: number;
-  unitCost: number;
+  salePrice: string;
+  barcode?: string | null;
+  unitCostAvg: string;
+  minStock: number;
   categoryId: Category["id"];
   createdAt: Date;
+  isActive: boolean
+}
+
+export type ProductWithStock = Product & {
+  stock: number;
 }

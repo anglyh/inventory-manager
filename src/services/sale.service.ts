@@ -4,23 +4,17 @@ import type { SaleDetailResponse } from '../models/sale.model.js';
 import ProductRepository from '../repositories/product.repository.js';
 import SaleRepository from '../repositories/sale.repository.js';
 import type { CreateSaleDTO } from '../schemas/sale.schema.js';
-import { validateProductStock } from '../utils/sale.utils.js';
+// import { validateProductStock } from '../utils/sale.utils.js';
 
 export default class SaleService {
   static async registerSale(userId: string, saleData: CreateSaleDTO): Promise<SaleDetailResponse> {
     return withTransaction(async (client) => {
       let totalAmount = 0;
-
       const itemsToInsert: SaleItemInsert[] = [];
 
       for (const item of saleData.items) {
         const product = await ProductRepository.findById(item.productId, client)
-
-        validateProductStock(product, item.quantity)
-
-        totalAmount += product.salePrice * item.quantity
-        product.stock -= item.quantity
-        await ProductRepository.update(product, client);
+        totalAmount += Number(product.salePrice) * item.quantity
 
         itemsToInsert.push({
           productId: product.id,

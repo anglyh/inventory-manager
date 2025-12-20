@@ -1,7 +1,5 @@
-import { Pool, types } from "pg";
+import { Pool } from "pg";
 import { env } from '../config.js';
-
-types.setTypeParser(1700, val => parseFloat(val));
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,

@@ -7,12 +7,12 @@ export interface PurchaseItem {
   purchaseId: Purchase["id"]
   productName: string;
   quantity: number;
-  unitCost: number;
+  unitCost: string;
 }
 
 export interface PurchaseItemInsert {
   productId: string;
   productName: string;
   quantity: number;
-  unitCost: number
+  unitCost: string;
 }

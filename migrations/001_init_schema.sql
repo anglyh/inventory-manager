@@ -1,5 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
 CREATE TABLE IF NOT EXISTS app_user (
     id uuid primary key default gen_random_uuid(),
     name varchar(50) not null,
@@ -20,15 +18,25 @@ CREATE TABLE IF NOT EXISTS product (
     user_id uuid not null references app_user(id) ON DELETE CASCADE,
     name varchar(50) not null,
     sale_price numeric (10, 2) not null check ( sale_price >= 0 ),
-    unit_cost numeric (10, 2) not null check ( unit_cost >= 0 ),
+    unit_cost_avg numeric(10, 2) check ( unit_cost_avg IS NULL OR unit_cost_avg >= 0 ),
     min_stock integer not null default 10 check ( min_stock >= 0 ),
     category_id uuid references category(id),
-    created_at timestamp default now() not null,
-    unique (user_id, name)
+    created_at timestamp default now() not null
+);
+CREATE UNIQUE INDEX product_user_name_unique
+ON product (user_id, lower(name));
+
+CREATE TYPE payment_method AS ENUM (
+    'EFECTIVO',
+    'YAPE',
+    'PLIN',
+    'TRANSFERENCIA'
 );
 CREATE TABLE IF NOT EXISTS sale (
     id uuid primary key default gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+    payment_method payment_method NOT NULL,
+    paid BOOLEAN NOT NULL DEFAULT true,
     created_at timestamp default now() not null
 );
 
@@ -56,12 +64,12 @@ CREATE TABLE IF NOT EXISTS purchase_item (
     quantity integer NOT NULL CHECK ( quantity > 0 ),
     unit_cost numeric(10, 2) NOT NULL CHECK ( unit_cost >= 0 )
 );
-CREATE TYPE inventory_adjustment_reason AS ENUM('caducidad', 'error_conteo', 'otro');
+CREATE TYPE inventory_adjustment_reason AS ENUM('CADUCIDAD', 'ERROR_CONTEO', 'OTRO');
 CREATE TABLE IF NOT EXISTS adjustment (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
     notes text,
-    reason_type inventory_adjustment_reason NOT NULL DEFAULT 'error_conteo',
+    reason_type inventory_adjustment_reason NOT NULL DEFAULT 'ERROR_CONTEO',
     created_at timestamp DEFAULT now() NOT NULL
 );
 CREATE TABLE IF NOT EXISTS adjustment_item (
@@ -85,3 +93,39 @@ CREATE INDEX idx_purchase_item_purchase_id ON purchase_item(purchase_id);
 CREATE INDEX idx_adjustment_user_id ON adjustment(user_id);
 CREATE INDEX idx_adjustment_item_product_id ON adjustment_item(product_id);
 CREATE INDEX idx_adjustment_item_adjustment_id ON adjustment_item(adjustment_id);
+
+CREATE OR REPLACE FUNCTION get_product_stock(p_product_id uuid)
+RETURNS integer
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT
+        COALESCE((
+            SELECT SUM(pi.quantity)
+            FROM purchase_item pi
+            WHERE pi.product_id = p_product_id
+        ), 0)
+        - COALESCE((
+            SELECT SUM(si.quantity)
+            FROM sale_item si
+            WHERE si.product_id = p_product_id
+        ), 0)
+        + COALESCE((
+            SELECT SUM(ai.quantity)
+            FROM adjustment_item ai
+            WHERE ai.product_id = p_product_id
+        ), 0);
+$$;
+
+CREATE OR REPLACE VIEW product_with_stock AS
+SELECT
+    p.id,
+    p.user_id,
+    p.name,
+    p.sale_price,
+    p.unit_cost_avg,
+    p.min_stock,
+    p.category_id,
+    p.created_at,
+    get_product_stock(p.id) AS stock
+FROM product AS p;

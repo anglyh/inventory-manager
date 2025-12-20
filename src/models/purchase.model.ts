@@ -4,8 +4,8 @@ import type { User } from './user.model.js';
 export interface Purchase {
   id: string;
   userId: User["id"];
-  supplierName?: string | undefined;
-  notes?: string | undefined;
+  supplierName: string | undefined;
+  notes: string | undefined;
   createdAt: Date;
 }
 
@@ -16,6 +16,6 @@ export interface PurchaseDetailResponse {
   createdAt: Date;
   totalAmount: number;
   items: PurchaseItem[];
-  notes?: string | undefined;
-  supplierName?: string | undefined;
+  notes: string | undefined;
+  supplierName: string | undefined;
 }

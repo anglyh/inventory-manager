@@ -6,7 +6,7 @@ export type InventoryAdjustmentReason = "caducidad" | "error_conteo" | "otro"
 export interface Adjustment {
   id: string;
   userId: User["id"];
-  notes?: string | undefined;
+  notes: string | undefined;
   reasonType: InventoryAdjustmentReason | "error_conteo";
   createdAt: Date
 }

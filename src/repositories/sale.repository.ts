@@ -26,10 +26,9 @@ export default class SaleRepository {
           json_agg(
             json_build_object(
               'productId', si.id,
-              'productName', si.product_name,
-              'quantity', si.quantity,
-              'salePrice', si.sale_price,
-              'unitPrice', si.unit_cost
+              'salePrice', si.sale_price::text,
+              'unitPrice', si.unit_cost::text,
+              'quantity', si.quantity
             )
           ) FILTER (WHERE si.id IS NOT NULL),
            '[]'::json
@@ -46,17 +45,6 @@ export default class SaleRepository {
     return snakeToCamel(result.rows)
   }
 
-  // static async createSaleItem(saleItem: SaleItem, client: PoolClient): Promise<SaleItem> {
-  //   const { productId, productName, quantity, saleId, salePrice, unitCost } = saleItem
-  //   const result = await client.query(`
-  //       INSERT INTO ${TABLES.SALE_ITEM} (product_id, product_name, quantity, sale_id, sale_price, unit_cost)
-  //       VALUES ($1, $2, $3, $4, $5, $6, $7)
-  //       RETURNING *
-  //     `, [productId, productName, quantity, saleId, salePrice, unitCost]
-  //   )
-  //   return snakeToCamel(result.rows[0])
-  // }
-
   static async createSaleItems(
     saleId: string,
     saleItems: SaleItemInsert[],
@@ -64,28 +52,26 @@ export default class SaleRepository {
   ): Promise<SaleItem[]> {
     const values: any[] = [];
     const valuePlaceholders: string[] = [];
-    const TOTAL_COLUMNS = 6
+    const TOTAL_COLUMNS = 4
 
     saleItems.forEach((item, index) => {
       const baseIndex = index * TOTAL_COLUMNS;
       valuePlaceholders.push(`
-        ($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6})
+        ($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})
       `);
 
       values.push(
         saleId,
         item.productId,
-        item.productName,
         item.quantity,
         item.salePrice,
-        item.unitCost
       );
     });
 
     const queryText = `
-      INSERT INTO ${TABLES.SALE_ITEM} (sale_id, product_id, product_name, quantity, sale_price, unit_cost)
+      INSERT INTO ${TABLES.SALE_ITEM} (sale_id, product_id, quantity, sale_price, unit_cost)
       VALUES ${valuePlaceholders.join(", ")}
-      RETURNING product_id, product_name, quantity, sale_price, unit_cost
+      RETURNING product_id, quantity, sale_price, unit_cost
     `;
 
     const result = await client.query(queryText, values)

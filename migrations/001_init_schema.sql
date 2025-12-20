@@ -64,7 +64,6 @@ CREATE TABLE IF NOT EXISTS purchase_item (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id uuid REFERENCES product(id) ON DELETE SET NULL ,
     purchase_id uuid NOT NULL REFERENCES purchase(id) ON DELETE CASCADE,
-    product_name varchar(50) NOT NULL,
     quantity integer NOT NULL CHECK ( quantity > 0 ),
     unit_cost numeric(10, 2) NOT NULL CHECK ( unit_cost >= 0 )
 );

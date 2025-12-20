@@ -5,14 +5,17 @@ export interface PurchaseItem {
   id: string;
   productId: Product["id"];
   purchaseId: Purchase["id"]
-  productName: string;
   quantity: number;
   unitCost: string;
 }
 
+export type PurchaseItemDetail = PurchaseItem & {
+  productName: string
+}
+
 export interface PurchaseItemInsert {
   productId: string;
-  productName: string;
   quantity: number;
+  productName: string;
   unitCost: string;
 }

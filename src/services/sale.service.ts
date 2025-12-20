@@ -18,10 +18,8 @@ export default class SaleService {
 
         itemsToInsert.push({
           productId: product.id,
-          productName: product.name,
           quantity: item.quantity,
           salePrice: product.salePrice,
-          unitCost: product.unitCost
         })
       }
 

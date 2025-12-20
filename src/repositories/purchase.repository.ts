@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import type { PurchaseItem, PurchaseItemInsert } from '../models/purchase-item.model.js';
+import type { PurchaseItem, PurchaseItemDetail, PurchaseItemInsert } from '../models/purchase-item.model.js';
 import type { Purchase, PurchaseInsert } from '../models/purchase.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { TABLES } from '../db/tables.js';
@@ -30,15 +30,16 @@ export default class PurchaseRepository {
           json_agg(
             json_build_object(
               'productId', pi.product_id,
-              'productName', pi.product_name,
-              'quantity', pi.quantity,
-              'unitCost', pi.unit_cost
+              'productName', prod.name,
+              'unitCost', pi.unit_cost::text,
+              'quantity', pi.quantity
             ) 
           ) FILTER (WHERE pi.id IS NOT NULL),
             '[]'::json
         ) AS items
       FROM ${TABLES.PURCHASE} AS p
       LEFT JOIN ${TABLES.PURCHASE_ITEM} AS pi ON p.id = pi.purchase_id
+      LEFT JOIN ${TABLES.PRODUCT} AS prod ON pi.product_id = prod.id
       WHERE p.user_id = $1
       GROUP BY p.id, p.supplier_name, p.notes, p.created_at
       ORDER BY p.created_at DESC
@@ -55,26 +56,25 @@ export default class PurchaseRepository {
   ): Promise<PurchaseItem[]> {
     const values: any = [];
     const valuePlaceholders: string[] = [];
-    const TOTAL_COLUMNS = 5
+    const TOTAL_COLUMNS = 4
 
     purchaseItems.forEach((item, index) => {
       const baseIndex = index * TOTAL_COLUMNS
 
       valuePlaceholders.push(
-        `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5})`
+        `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`
       );
       values.push(
         purchaseId,
         item.productId,
-        item.productName,
         item.quantity,
         item.unitCost
       )
     })
     const queryText = `
-      INSERT INTO ${TABLES.PURCHASE_ITEM} (purchase_id, product_id, product_name, quantity, unit_cost)
+      INSERT INTO ${TABLES.PURCHASE_ITEM} (purchase_id, product_id, quantity, unit_cost)
       VALUES ${valuePlaceholders.join(", ")}
-      RETURNING product_id, product_name, quantity, unit_cost
+      RETURNING product_id, quantity, unit_cost
     `
     const result = await client.query(queryText, values)
     return snakeToCamel(result.rows)

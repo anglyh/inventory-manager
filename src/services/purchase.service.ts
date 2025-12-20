@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { withTransaction } from '../db/transactions.js';
-import type { PurchaseItemInsert } from '../models/purchase-item.model.js';
+import type { PurchaseItemInsert, PurchaseItemDetail } from '../models/purchase-item.model.js';
 import type { PurchaseDetailResponse } from '../models/purchase.model.js';
 import ProductRepository from '../repositories/product.repository.js';
 import PurchaseRepository from '../repositories/purchase.repository.js';
@@ -15,6 +15,10 @@ export default class PurchaseService {
 
       const purchase = await PurchaseRepository.create(userId, { supplierName, notes }, client)
       const purchaseItems = await PurchaseRepository.createPurchaseItems(purchase.id, itemsToInsert, client)
+      const itemsWithNames = purchaseItems.map((item, index) => ({
+        ...item,
+        productName: itemsToInsert[index]?.productName
+      }))
 
       const purchaseDetail: PurchaseDetailResponse = {
         id: purchase.id,
@@ -22,7 +26,7 @@ export default class PurchaseService {
         supplierName: purchase.supplierName,
         createdAt: purchase.createdAt,
         totalAmount,
-        items: purchaseItems,
+        items: itemsWithNames,
       }
 
       return purchaseDetail;

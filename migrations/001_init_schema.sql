@@ -40,15 +40,14 @@ CREATE TYPE payment_method AS ENUM (
 CREATE TABLE IF NOT EXISTS sale (
     id uuid primary key default gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
-    payment_method payment_method NOT NULL,
-    paid BOOLEAN NOT NULL DEFAULT true,
+    payment_method payment_method NOT NULL DEFAULT 'EFECTIVO',
     created_at timestamp default now() not null
 );
 
 CREATE TABLE IF NOT EXISTS sale_item (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     sale_id uuid NOT NULL REFERENCES sale(id) ON DELETE CASCADE,
-    product_id uuid REFERENCES product(id) ON DELETE SET NULL,
+    product_id uuid REFERENCES product(id),
     quantity integer NOT NULL check ( quantity > 0 ),
     sale_price numeric(10, 2) NOT NULL CHECK ( sale_price >= 0 ),
     unit_cost numeric(10, 2) NOT NULL CHECK (unit_cost >= 0 )
@@ -62,7 +61,7 @@ CREATE TABLE IF NOT EXISTS purchase (
 );
 CREATE TABLE IF NOT EXISTS purchase_item (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    product_id uuid REFERENCES product(id) ON DELETE SET NULL ,
+    product_id uuid REFERENCES product(id),
     purchase_id uuid NOT NULL REFERENCES purchase(id) ON DELETE CASCADE,
     quantity integer NOT NULL CHECK ( quantity > 0 ),
     unit_cost numeric(10, 2) NOT NULL CHECK ( unit_cost >= 0 )

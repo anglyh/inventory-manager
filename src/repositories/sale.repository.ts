@@ -25,10 +25,10 @@ export default class SaleRepository {
         COALESCE(
           json_agg(
             json_build_object(
-              'productId', si.id,
+              'productId', si.product_id,
               'productName', prod.name,
               'salePrice', si.sale_price::text,
-              'unitPrice', si.unit_cost::text,
+              'unitCost', si.unit_cost::text,
               'quantity', si.quantity
             )
           ) FILTER (WHERE si.id IS NOT NULL),
@@ -43,7 +43,6 @@ export default class SaleRepository {
       `, [userId]
     );
 
-    console.log(result.rows)
     return snakeToCamel(result.rows)
   }
 

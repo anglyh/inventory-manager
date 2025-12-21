@@ -19,5 +19,5 @@ export const env = {
   PORT: process.env.PORT || 3000,
   DATABASE_URL: requireEnv('DATABASE_URL'),
   DB_SSL: process.env.DB_SSL === 'true',
-  JWT_SECRET: process.env.JWT_SECRET
+  JWT_SECRET: requireEnv('JWT_SECRET')
 }

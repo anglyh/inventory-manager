@@ -46,25 +46,26 @@ export default class ProductRepository {
   }
 
   static async create(userId: string, productData: Product): Promise<Product> {
-    const { name, salePrice, minStock, categoryId } = productData;
+    const { name, salePrice, minStock, barcode, categoryId } = productData;
     const result = await query(`
-      INSERT INTO ${TABLES.PRODUCT} (user_id, name, sale_price, min_stock, category_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO ${TABLES.PRODUCT} (user_id, name, sale_price, barcode, min_stock, category_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-      `, [userId, name, salePrice, minStock, categoryId ?? null]
+      `, [userId, name, salePrice, barcode ?? null, minStock, categoryId ?? null]
     );
 
     return snakeToCamel(result.rows[0])
   }
 
   static async update(productData: Product, client?: PoolClient): Promise<Product> {
-    const { id, name, salePrice, categoryId } = productData;
-    const params = [name, salePrice, categoryId, id]
+    const { id, name, salePrice, barcode, categoryId  } = productData;
+    const params = [name, salePrice, barcode, categoryId, id]
     const text = `
       UPDATE ${TABLES.PRODUCT}
         SET name = $1,
         sale_price = $2,
-        category_id = $3
+        barcode = $3,
+        category_id = $4
       WHERE id = $5
       RETURNING *
     `;
@@ -115,4 +116,6 @@ export default class ProductRepository {
       `, [newAvg, productId]
     )
   }
+
+  // static async getByBarcode(barcode: string)
 }

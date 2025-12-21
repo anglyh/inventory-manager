@@ -2,16 +2,16 @@ import type { PoolClient } from 'pg';
 import { query } from '../db/index.js';
 import { TABLES } from '../db/tables.js';
 import type { SaleItem, SaleItemInsert } from '../models/sale-item.model.js';
-import type { Sale, SaleDetailResponse } from '../models/sale.model.js';
+import type { PaymentMethod, Sale, SaleDetailResponse } from '../models/sale.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 
 export default class SaleRepository {
-  static async createSale(userId: string, client: PoolClient): Promise<Sale> {
+  static async createSale(userId: string, method: PaymentMethod, client: PoolClient): Promise<Sale> {
     const result = await client.query(`
-      INSERT INTO ${TABLES.SALE} (user_id)
-      VALUES ($1)
+      INSERT INTO ${TABLES.SALE} (user_id, payment_method)
+      VALUES ($1, $2)
       RETURNING *
-      `, [userId]
+      `, [userId, method]
     );
     return snakeToCamel(result.rows[0]);
   }
@@ -26,6 +26,7 @@ export default class SaleRepository {
           json_agg(
             json_build_object(
               'productId', si.id,
+              'productName', prod.name,
               'salePrice', si.sale_price::text,
               'unitPrice', si.unit_cost::text,
               'quantity', si.quantity
@@ -35,6 +36,7 @@ export default class SaleRepository {
         ) AS items
       FROM ${TABLES.SALE} AS s
       LEFT JOIN ${TABLES.SALE_ITEM} AS si ON s.id = si.sale_id
+      LEFT JOIN ${TABLES.PRODUCT} AS prod ON si.product_id = prod.id
       WHERE s.user_id = $1
       GROUP BY s.id, s.created_at
       ORDER BY s.created_at DESC
@@ -52,12 +54,12 @@ export default class SaleRepository {
   ): Promise<SaleItem[]> {
     const values: any[] = [];
     const valuePlaceholders: string[] = [];
-    const TOTAL_COLUMNS = 4
+    const TOTAL_COLUMNS = 5
 
     saleItems.forEach((item, index) => {
       const baseIndex = index * TOTAL_COLUMNS;
       valuePlaceholders.push(`
-        ($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})
+        ($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5})
       `);
 
       values.push(
@@ -65,6 +67,7 @@ export default class SaleRepository {
         item.productId,
         item.quantity,
         item.salePrice,
+        item.unitCost
       );
     });
 

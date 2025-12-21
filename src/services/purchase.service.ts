@@ -15,18 +15,14 @@ export default class PurchaseService {
 
       const purchase = await PurchaseRepository.create(userId, { supplierName, notes }, client)
       const purchaseItems = await PurchaseRepository.createPurchaseItems(purchase.id, itemsToInsert, client)
-      const itemsWithNames = purchaseItems.map((item, index) => ({
-        ...item,
-        productName: itemsToInsert[index]?.productName
-      }))
 
       const purchaseDetail: PurchaseDetailResponse = {
         id: purchase.id,
         notes: purchase.notes,
         supplierName: purchase.supplierName,
         createdAt: purchase.createdAt,
-        totalAmount,
-        items: itemsWithNames,
+        totalCost: totalAmount,
+        items: purchaseItems
       }
 
       return purchaseDetail;

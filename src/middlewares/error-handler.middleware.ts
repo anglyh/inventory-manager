@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../errors/app.error.js';
-import z, { ZodError } from 'zod';
+import { ZodError } from 'zod';
 import type { ApiError } from '../types/api.types.js';
 import PG from 'pg';
 
@@ -11,15 +11,25 @@ export function errorHandler(
   next: NextFunction
 ) {
   console.error(err);
+
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ error: 'JSON inválido en el cuerpo de la solicitud' })
+  }
+
   if (err instanceof AppError) {
-    console.log("error", err)
     const response: ApiError = { error: err.message }
     return res.status(err.statusCode).json(response)
   }
 
   if (err instanceof ZodError) {
-    const response: ApiError = { error: err.message, fieldErrors: z.flattenError(err).fieldErrors }
-    return res.status(400).json(response)
+    const fieldErrors: Record<string, string[]> = {};
+    for (const issue of err.issues) {
+      const field = issue.path.join('.') || '_root';
+      if (!fieldErrors[field]) fieldErrors[field] = [];
+      fieldErrors[field].push(issue.message);
+    }
+
+    return res.status(400).json({ error: "Error de validación", fieldErrors })
   }
 
   if (err instanceof PG.DatabaseError) {
@@ -34,7 +44,6 @@ export function errorHandler(
     if (err.code === "23503" && err.constraint?.includes("user_id")) {
       return res.status(401).json({ error: "No autorizado" })
     }
-//    if (err.message)
     return res.status(500).json({ error: err.message })
   }
 

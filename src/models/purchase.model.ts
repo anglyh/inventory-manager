@@ -14,7 +14,7 @@ export type PurchaseInsert = Pick<Purchase, "supplierName" | "notes">
 export interface PurchaseDetailResponse {
   id: string;
   createdAt: Date;
-  totalAmount: number;
+  totalCost: number;
   items: PurchaseItem[];
   notes: string | undefined;
   supplierName: string | undefined;

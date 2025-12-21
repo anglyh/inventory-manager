@@ -13,5 +13,7 @@ export interface SaleItem {
 export interface SaleItemInsert {
   productId: string;
   quantity: number;
+  productName: string;
   salePrice: string;
+  unitCost: string;
 }

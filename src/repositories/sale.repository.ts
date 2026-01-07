@@ -4,9 +4,10 @@ import { TABLES } from '../db/tables.js';
 import type { SaleItem, SaleItemInsert } from '../models/sale-item.model.js';
 import type { PaymentMethod, Sale, SaleDetailResponse } from '../models/sale.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
+import type { ISaleRepository } from '../interfaces/repositories/sale.repository.interface.js';
 
-export default class SaleRepository {
-  static async createSale(userId: string, method: PaymentMethod, client: PoolClient): Promise<Sale> {
+export default class SaleRepository implements ISaleRepository {
+  async createSale(userId: string, method: PaymentMethod, client: PoolClient): Promise<Sale> {
     const result = await client.query(`
       INSERT INTO ${TABLES.SALE} (user_id, payment_method)
       VALUES ($1, $2)
@@ -16,7 +17,7 @@ export default class SaleRepository {
     return snakeToCamel(result.rows[0]);
   }
 
-  static async listAllSales(userId: string): Promise<SaleDetailResponse[]> {
+  async listAllSales(userId: string): Promise<SaleDetailResponse[]> {
     const result = await query(`
       SELECT
         s.id,
@@ -46,7 +47,7 @@ export default class SaleRepository {
     return snakeToCamel(result.rows)
   }
 
-  static async createSaleItems(
+  async createSaleItems(
     saleId: string,
     saleItems: SaleItemInsert[],
     client: PoolClient

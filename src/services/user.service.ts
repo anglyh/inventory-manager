@@ -7,18 +7,21 @@ import type {
 } from '../schemas/user.schema.js';
 import type { User } from '../models/user.model.js';
 import { ConflictError, NotFoundError, Unauthorized } from '../errors/app.error.js';
-import UserRepository from '../repositories/user.repository.js';
+import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 import JWT from '../lib/jwt.js';
+import type { IUserService } from '../interfaces/services/user.service.interface.js';
 
-export default class UserService {
+export default class UserService implements IUserService {
   private static readonly COST = 12;
 
-  static async register(input: CreateUserInput): Promise<AuthResponse> {
-    const exists = await UserRepository.findByEmail(input.email);
+  constructor(private userRepo: IUserRepository) {}
+
+  async register(input: CreateUserInput): Promise<AuthResponse> {
+    const exists = await this.userRepo.findByEmail(input.email);
     if (exists) throw new ConflictError("El email ya está registrado");
 
-    const passwordHashed = await hash(input.password, this.COST);
-    const user = await UserRepository.create(input.name, input.email, passwordHashed);
+    const passwordHashed = await hash(input.password, UserService.COST);
+    const user = await this.userRepo.create(input.name, input.email, passwordHashed);
 
     const token = JWT.signAccessToken({
       userId: user.id,
@@ -32,8 +35,8 @@ export default class UserService {
     };
   }
 
-  static async login(input: LoginInput): Promise<AuthResponse> {
-    const user = await UserRepository.findByEmail(input.email);
+  async login(input: LoginInput): Promise<AuthResponse> {
+    const user = await this.userRepo.findByEmail(input.email);
     if (!user) throw new NotFoundError("No hay una cuenta registrada con este correo");
 
     const validPassword = await compare(input.password, user.password);
@@ -51,7 +54,7 @@ export default class UserService {
     };
   }
 
-  private static toUserResponse(user: User): UserResponse {
+  private toUserResponse(user: User): UserResponse {
     return {
       id: user.id,
       name: user.name,

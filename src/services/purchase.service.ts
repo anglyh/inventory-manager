@@ -2,19 +2,25 @@ import type { PoolClient } from 'pg';
 import { withTransaction } from '../db/transactions.js';
 import type { PurchaseItemInsert, PurchaseItemDetail } from '../models/purchase-item.model.js';
 import type { PurchaseDetailResponse } from '../models/purchase.model.js';
-import ProductRepository from '../repositories/product.repository.js';
-import PurchaseRepository from '../repositories/purchase.repository.js';
+import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
+import type { IPurchaseRepository } from '../interfaces/repositories/purchase.repository.interface.js';
 import type { CreatePurchaseDTO } from '../schemas/purchase.schema.js';
 import type { Product } from '../models/product.model.js';
+import type { IPurchaseService } from '../interfaces/services/purchase.service.interface.js';
 
-export default class PurchaseService {
-  static async registerPurchase(userId: string, purchaseData: CreatePurchaseDTO): Promise<PurchaseDetailResponse> {
+export default class PurchaseService implements IPurchaseService {
+  constructor(
+    private purchaseRepo: IPurchaseRepository,
+    private productRepo: IProductRepository
+  ) {}
+
+  async registerPurchase(userId: string, purchaseData: CreatePurchaseDTO): Promise<PurchaseDetailResponse> {
     return withTransaction(async client => {
       const { items, notes, supplierName } = purchaseData;
       const { itemsToInsert, totalAmount } = await this.processItems(items, client)
 
-      const purchase = await PurchaseRepository.create(userId, { supplierName, notes }, client)
-      const purchaseItems = await PurchaseRepository.createPurchaseItems(purchase.id, itemsToInsert, client)
+      const purchase = await this.purchaseRepo.create(userId, { supplierName, notes }, client)
+      const purchaseItems = await this.purchaseRepo.createPurchaseItems(purchase.id, itemsToInsert, client)
 
       const purchaseDetail: PurchaseDetailResponse = {
         id: purchase.id,
@@ -29,12 +35,12 @@ export default class PurchaseService {
     })
   }
 
-  static async listAllPurchases(userId: string) {
-    const purchases = await PurchaseRepository.listAllPurchases(userId);
+  async listAllPurchases(userId: string) {
+    const purchases = await this.purchaseRepo.listAllPurchases(userId);
     return purchases
   }
 
-  private static async processItems(
+  private async processItems(
     items: CreatePurchaseDTO["items"],
     client: PoolClient
   ): Promise<{ itemsToInsert: PurchaseItemInsert[]; totalAmount: number }> {
@@ -42,10 +48,10 @@ export default class PurchaseService {
     let totalAmount = 0
 
     for (const item of items) {
-      const product = await ProductRepository.findByIdForUpdate(item.productId, client);
+      const product = await this.productRepo.findByIdForUpdate(item.productId, client);
 
       await this.updateProductCost(product, item, client)
-      totalAmount = item.unitCost * item.quantity;
+      totalAmount += item.unitCost * item.quantity;
       itemsToInsert.push({
         productId: product.id,
         productName: product.name,
@@ -57,18 +63,18 @@ export default class PurchaseService {
     return { itemsToInsert, totalAmount }
   }
 
-  private static async updateProductCost(
+  private async updateProductCost(
     product: Product,
     item: CreatePurchaseDTO["items"][0],
     client: PoolClient
   ): Promise<void> {
-    const currentStock = await ProductRepository.getStock(item.productId, client);
+    const currentStock = await this.productRepo.getStock(item.productId, client);
     const currentAvg = parseFloat(product.unitCostAvg) || 0;
     const newAvg = this.calculateUnitCostAverage(currentStock, currentAvg, item)
-    await ProductRepository.updateUnitCostAvg(item.productId, Math.round(newAvg * 100) / 100, client);
+    await this.productRepo.updateUnitCostAvg(item.productId, Math.round(newAvg * 100) / 100, client);
   }
 
-  private static calculateUnitCostAverage(
+  private calculateUnitCostAverage(
     currentStock: number,
     currentAvg: number,
     item: CreatePurchaseDTO["items"][0]

@@ -4,9 +4,10 @@ import { TABLES, VIEWS } from '../db/tables.js';
 import type { Product, ProductWithStock } from '../models/product.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { NotFoundError } from '../errors/app.error.js';
+import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
 
-export default class ProductRepository {
-  static async findById(productId: string, client?: PoolClient): Promise<ProductWithStock> {
+export default class ProductRepository implements IProductRepository {
+  async findById(productId: string, client?: PoolClient): Promise<ProductWithStock> {
     const text = `SELECT * FROM ${VIEWS.PRODUCT_WITH_STOCK} WHERE id = $1`
     const params = [productId]
     const { rows } = client
@@ -19,7 +20,7 @@ export default class ProductRepository {
     return snakeToCamel(rows[0])
   }
 
-  static async listAll(userId: string, includeInactive = false): Promise<ProductWithStock[]> {
+  async listAll(userId: string, includeInactive = false): Promise<ProductWithStock[]> {
     const activeFilter = includeInactive ? '' : 'AND p.is_active = true';
 
     const text = `
@@ -45,7 +46,7 @@ export default class ProductRepository {
     return snakeToCamel(result.rows);
   }
 
-  static async create(userId: string, productData: Product): Promise<Product> {
+  async create(userId: string, productData: Product): Promise<Product> {
     const { name, salePrice, minStock, barcode, categoryId } = productData;
     const result = await query(`
       INSERT INTO ${TABLES.PRODUCT} (user_id, name, sale_price, barcode, min_stock, category_id)
@@ -57,16 +58,17 @@ export default class ProductRepository {
     return snakeToCamel(result.rows[0])
   }
 
-  static async update(productData: Product, client?: PoolClient): Promise<Product> {
-    const { id, name, salePrice, barcode, categoryId  } = productData;
-    const params = [name, salePrice, barcode, categoryId, id]
+  async update(productData: Product, client?: PoolClient): Promise<Product> {
+    const { id, name, salePrice, barcode, minStock, categoryId } = productData;
+    const params = [name, salePrice, barcode, minStock, categoryId, id]
     const text = `
       UPDATE ${TABLES.PRODUCT}
         SET name = $1,
         sale_price = $2,
         barcode = $3,
-        category_id = $4
-      WHERE id = $5
+        min_stock = $4,
+        category_id = $5
+      WHERE id = $6
       RETURNING *
     `;
 
@@ -77,12 +79,12 @@ export default class ProductRepository {
     return snakeToCamel(rows[0])
   }
 
-  static async deactivate(id: string) {
+  async deactivate(id: string) {
     const result = await query(`UPDATE ${TABLES.PRODUCT} SET is_active = false  WHERE id = $1 RETURNING *`, [id])
     return snakeToCamel(result.rows[0]);
   }
 
-  static async getStock(productId: string, client?: PoolClient): Promise<number> {
+  async getStock(productId: string, client?: PoolClient): Promise<number> {
     const text = `SELECT get_product_stock($1) AS stock`
     const params = [productId]
 
@@ -93,7 +95,7 @@ export default class ProductRepository {
     return rows[0].stock ?? 0;
   }
 
-  static async findByIdForUpdate(productId: string, client: PoolClient): Promise<Product> {
+  async findByIdForUpdate(productId: string, client: PoolClient): Promise<Product> {
     const result = await client.query(`
       SELECT * FROM ${TABLES.PRODUCT}
       WHERE id = $1 
@@ -108,7 +110,7 @@ export default class ProductRepository {
     return snakeToCamel(result.rows[0])
   }
 
-  static async updateUnitCostAvg(productId: string, newAvg: number, client: PoolClient) {
+  async updateUnitCostAvg(productId: string, newAvg: number, client: PoolClient): Promise<void> {
     await client.query(`
       UPDATE ${TABLES.PRODUCT}
       SET unit_cost_avg = $1

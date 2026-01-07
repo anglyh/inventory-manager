@@ -4,9 +4,10 @@ import { TABLES } from '../db/tables.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import type { AdjustmentItem, AdjustmentItemInsert } from '../models/adjustment-item.model.js';
 import { query } from '../db/index.js';
+import type { IAdjustmentRepository } from '../interfaces/repositories/adjustment.repository.interface.js';
 
-export default class AdjustmentRepository {
-  static async createAdjustment(userId: string, adjustmentBasicData: AdjustmentInsert, client: PoolClient): Promise<Adjustment> {
+export default class AdjustmentRepository implements IAdjustmentRepository {
+  async createAdjustment(userId: string, adjustmentBasicData: AdjustmentInsert, client: PoolClient): Promise<Adjustment> {
     const { notes, reasonType } = adjustmentBasicData;
     const result = await client.query(`
       INSERT INTO ${TABLES.ADJUSTMENT} (user_id, ,reason_type, notes)
@@ -17,7 +18,7 @@ export default class AdjustmentRepository {
     return snakeToCamel(result.rows[0])
   }
 
-  static async listAll(userId: string): Promise<AdjustmentDetailResponse[]> {
+  async listAll(userId: string): Promise<AdjustmentDetailResponse[]> {
     const result = await query(`
       SELECT
         a.id,
@@ -44,7 +45,7 @@ export default class AdjustmentRepository {
     return snakeToCamel(result.rows)
   }
 
-  static async createAjustmentItems(
+  async createAjustmentItems(
     userId: string,
     adjustmentItems: AdjustmentItemInsert[],
     client: PoolClient

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { Unauthorized } from '../errors/app.error.js';
-import PurchaseService from '../services/purchase.service.js';
+import { purchaseService } from '../container.js';
 import type { ApiResponse } from '../types/api.types.js';
 import type { PurchaseDetailResponse } from '../models/purchase.model.js';
 
@@ -9,7 +9,7 @@ export default class PurchaseController {
     try {
       if (!req.user) throw new Unauthorized("Usuario no autenticado");
 
-      const purchases = await PurchaseService.listAllPurchases(req.user.userId);
+      const purchases = await purchaseService.listAllPurchases(req.user.userId);
       const response: ApiResponse<any> = {
         data: purchases
       }
@@ -23,7 +23,7 @@ export default class PurchaseController {
     try {
       if (!req.user) throw new Unauthorized("Usuario no autenticado");
       
-      const purchase = await PurchaseService.registerPurchase(req.user.userId, req.body);
+      const purchase = await purchaseService.registerPurchase(req.user.userId, req.body);
       const response: ApiResponse<PurchaseDetailResponse> = {
         data: purchase,
         message: "Compra registrada correctamente"

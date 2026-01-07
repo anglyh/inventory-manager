@@ -2,10 +2,10 @@ import { query } from '../db/index.js';
 import { TABLES } from '../db/tables.js';
 import type { User } from '../models/user.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
+import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 
-export default class UserRepository {
-
-  static async create(name: string, email: string, password: string): Promise<User> {
+export default class UserRepository implements IUserRepository {
+  async create(name: string, email: string, password: string): Promise<User> {
     const result = await query(
       `INSERT INTO ${TABLES.USER} (name, email, password)
        VALUES ($1, $2, $3)
@@ -16,7 +16,7 @@ export default class UserRepository {
     return snakeToCamel(result.rows[0]);
   }
 
-  static async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<User | null> {
     const result = await query(
       `SELECT * FROM ${TABLES.USER} WHERE email = $1`,
       [email]
@@ -27,7 +27,7 @@ export default class UserRepository {
     return snakeToCamel(result.rows[0]);
   }
 
-  static async findById(id: string): Promise<User | null> {
+  async findById(id: string): Promise<User | null> {
     const result = await query(`
       SELECT * FROM ${TABLES.USER}
       WHERE id = $1

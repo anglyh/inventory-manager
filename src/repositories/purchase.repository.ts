@@ -4,9 +4,10 @@ import type { Purchase, PurchaseInsert } from '../models/purchase.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { TABLES } from '../db/tables.js';
 import { query } from '../db/index.js';
+import type { IPurchaseRepository } from '../interfaces/repositories/purchase.repository.interface.js';
 
-export default class PurchaseRepository {
-  static async create(userId: string, purchaseBasicData: PurchaseInsert, client: PoolClient): Promise<Purchase> {
+export default class PurchaseRepository implements IPurchaseRepository {
+  async create(userId: string, purchaseBasicData: PurchaseInsert, client: PoolClient): Promise<Purchase> {
     const { supplierName, notes } = purchaseBasicData;
     const result = await client.query(
       `INSERT INTO ${TABLES.PURCHASE} (user_id, supplier_name, notes)
@@ -18,7 +19,7 @@ export default class PurchaseRepository {
     return snakeToCamel(result.rows[0])
   }
 
-  static async listAllPurchases(userId: string) {
+  async listAllPurchases(userId: string) {
     const result = await query(`
       SELECT 
         p.id,
@@ -49,7 +50,7 @@ export default class PurchaseRepository {
     return snakeToCamel(result.rows)
   }
 
-  static async createPurchaseItems(
+  async createPurchaseItems(
     purchaseId: string,
     purchaseItems: PurchaseItemInsert[],
     client: PoolClient

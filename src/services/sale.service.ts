@@ -2,20 +2,26 @@ import { withTransaction } from '../db/transactions.js';
 import { BadRequest } from '../errors/app.error.js';
 import type { SaleItemInsert } from '../models/sale-item.model.js';
 import type { SaleDetailResponse } from '../models/sale.model.js';
-import ProductRepository from '../repositories/product.repository.js';
-import SaleRepository from '../repositories/sale.repository.js';
+import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
+import type { ISaleRepository } from '../interfaces/repositories/sale.repository.interface.js';
 import type { CreateSaleDTO } from '../schemas/sale.schema.js';
+import type { ISaleService } from '../interfaces/services/sale.service.interface.js';
 
-export default class SaleService {
-  static async registerSale(userId: string, saleData: CreateSaleDTO): Promise<SaleDetailResponse> {
+export default class SaleService implements ISaleService {
+  constructor(
+    private saleRepo: ISaleRepository,
+    private productRepo: IProductRepository
+  ) {}
+
+  async registerSale(userId: string, saleData: CreateSaleDTO): Promise<SaleDetailResponse> {
     return withTransaction(async (client) => {
       const { items, paymentMethod } = saleData
       let totalAmount = 0;
       const itemsToInsert: SaleItemInsert[] = [];
 
       for (const item of items) {
-        const product = await ProductRepository.findById(item.productId, client)
-        const stock = await ProductRepository.getStock(item.productId, client)
+        const product = await this.productRepo.findById(item.productId, client)
+        const stock = await this.productRepo.getStock(item.productId, client)
 
         if (stock < item.quantity) {
           throw new BadRequest(`Stock insuficiente para "${product.name}"`)
@@ -32,8 +38,8 @@ export default class SaleService {
         })
       }
 
-      const sale = await SaleRepository.createSale(userId, paymentMethod, client)
-      const saleItems = await SaleRepository.createSaleItems(
+      const sale = await this.saleRepo.createSale(userId, paymentMethod, client)
+      const saleItems = await this.saleRepo.createSaleItems(
         sale.id,
         itemsToInsert,
         client
@@ -49,8 +55,8 @@ export default class SaleService {
     })
   }
 
-  static async listAllSales(userId: string): Promise<SaleDetailResponse[]> {
-    const sales = await SaleRepository.listAllSales(userId);
+  async listAllSales(userId: string): Promise<SaleDetailResponse[]> {
+    const sales = await this.saleRepo.listAllSales(userId);
     return sales;
   }
 }

@@ -1,29 +1,36 @@
 import type { Product } from '../models/product.model.js';
-import ProductRepository from '../repositories/product.repository.js';
+import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
+import type { IProductService } from '../interfaces/services/product.service.interface.js';
+import { NotFoundError } from '../errors/app.error.js';
 
-export default class ProductService {
-  static async create(userId: string, productData: Product): Promise<Product> {
-    const product = await ProductRepository.create(userId, productData);
+export default class ProductService implements IProductService {
+  constructor(private productRepo: IProductRepository) {}
+
+  async create(userId: string, productData: Product): Promise<Product> {
+    const product = await this.productRepo.create(userId, productData);
     return product;
   }
-  static async listAll(userId: string): Promise<Product[]> {
-    const products = await ProductRepository.listAll(userId)
+
+  async listAll(userId: string): Promise<Product[]> {
+    const products = await this.productRepo.listAll(userId)
     return products;
   }
-  static async update(newProductData: Product): Promise<Product> {
-    const product = await ProductRepository.findById(newProductData.id);
 
-    if (!product) throw new Error("No existe el producto");
+  async update(newProductData: Product): Promise<Product> {
+    const product = await this.productRepo.findById(newProductData.id);
 
-    const updatedProduct = await ProductRepository.update(newProductData);
+    if (!product) throw new NotFoundError("No existe el producto");
+
+    const updatedProduct = await this.productRepo.update(newProductData);
     return updatedProduct;
   }
-  static async delete(productId: string) {
-    const product = await ProductRepository.findById(productId);
 
-    if (!product) throw new Error("No existe el producto");
+  async delete(productId: string): Promise<Product> {
+    const product = await this.productRepo.findById(productId);
 
-    const deactivatedProduct = await ProductRepository.deactivate(productId)
+    if (!product) throw new NotFoundError("No existe el producto");
+
+    const deactivatedProduct = await this.productRepo.deactivate(productId)
     return deactivatedProduct;
   }
 }

@@ -23,8 +23,3 @@ export interface SaleDetailResponse {
   totalAmount: string;
   items: SaleItem[]
 }
-
-export interface SaleTotals {
-  totalAmount: number; // (precio * cantidad)
-  totalUnitCost: number; // Costo total de los productos vendidos
-}

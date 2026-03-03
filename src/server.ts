@@ -9,9 +9,15 @@ import categoryRouter from './routes/category.routes.js';
 import saleRouter from './routes/sale.routes.js';
 import purchaseRouter from './routes/purchase.routes.js';
 
+import { setupSwagger } from './config/swagger.js';
+
+
 const app = express();
 
 app.use(express.json())
+
+// Configurar Swagger
+setupSwagger(app);
 
 app.get('/health', (req, res) => {
   res.json({ message: "Server working" })

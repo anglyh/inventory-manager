@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { Product } from '../models/product.model.js';
 import { productService } from '../container.js';
-import type { ApiResponse } from '../types/api.types.js';
 import { BadRequest, Unauthorized } from '../errors/app.error.js';
 
 export default class ProductController {
@@ -10,11 +9,7 @@ export default class ProductController {
       if (!req.user) throw new Unauthorized("Usuario no autenticado");
 
       const product = await productService.create(req.user.userId, req.body);
-      const response: ApiResponse<Product> = {
-        data: product,
-        message: "Producto creado correctamente"
-      };
-      res.status(201).json(response)
+      res.status(201).json(product)
     } catch (err) {
       next(err)
     }
@@ -25,10 +20,7 @@ export default class ProductController {
       if (!req.user) throw new Unauthorized("Usuario no autenticado");
 
       const products = await productService.listAll(req.user.userId)
-      const response: ApiResponse<Product[]> = {
-        data: products,
-      }
-      res.status(200).json(response)
+      res.status(200).json(products)
     } catch (err) {
       next(err)
     }
@@ -38,12 +30,8 @@ export default class ProductController {
     try {
       if (!req.user) throw new Unauthorized("Usuario no autenticado");
 
-      const product = await productService.update({ id: req.params.id, ...req.body })
-      const response: ApiResponse<Product> = {
-        data: product,
-        message: "Producto editado correctamente"
-      }
-      res.status(200).json(response)
+      const product = await productService.update({ id: req.params.id as string, ...req.body })
+      res.status(200).json(product)
     } catch (err) {
       next(err)
     }
@@ -61,4 +49,3 @@ export default class ProductController {
     }
   }
 }
-

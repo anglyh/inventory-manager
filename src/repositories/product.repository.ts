@@ -20,8 +20,16 @@ export default class ProductRepository implements IProductRepository {
     return snakeToCamel(rows[0])
   }
 
-  async listAll(userId: string, includeInactive = false): Promise<ProductWithStock[]> {
-    const activeFilter = includeInactive ? '' : 'AND p.is_active = true';
+  async listAll(userId: string, page: number, limit: number):
+    Promise<{ products: ProductWithStock[], totalItems: number }> {
+    const offset = (page - 1) * limit;
+
+    const countText = `SELECT COUNT(*) FROM
+      ${VIEWS.PRODUCT_WITH_STOCK} WHERE user_id = $1 AND is_active = true
+    `;
+
+    const countResult = await query(countText, [userId]);
+    const totalItems = parseInt(countResult.rows[0].count, 10)
 
     const text = `
     SELECT 
@@ -38,12 +46,17 @@ export default class ProductRepository implements IProductRepository {
       c.name AS category_name
     FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
     LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
-    WHERE p.user_id = $1 ${activeFilter}
+    WHERE p.user_id = $1
+    AND p.is_active = true
     ORDER BY p.name
+    LIMIT $2 OFFSET $3
   `;
 
-    const result = await query(text, [userId]);
-    return snakeToCamel(result.rows);
+    const result = await query(text, [userId, limit, offset]);
+    return {
+      products: snakeToCamel(result.rows),
+      totalItems
+    }
   }
 
   async create(userId: string, productData: Product): Promise<Product> {

@@ -3,7 +3,7 @@ import type { Product, ProductWithStock } from '../../models/product.model.js';
 
 export interface IProductRepository {
   findById(productId: string, client?: PoolClient): Promise<ProductWithStock>;
-  listAll(userId: string, includeInactive?: boolean): Promise<ProductWithStock[]>;
+  listAll(userId: string, page: number, limit: number): Promise<{ products: ProductWithStock[], totalItems: number }>;
   create(userId: string, productData: Product): Promise<Product>;
   update(productData: Product, client?: PoolClient): Promise<Product>;
   deactivate(id: string): Promise<Product>;

@@ -2,18 +2,26 @@ import type { Product } from '../models/product.model.js';
 import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
 import type { IProductService } from '../interfaces/services/product.service.interface.js';
 import { NotFoundError } from '../errors/app.error.js';
+import type { PaginatedResult } from '../types/api.types.js';
 
 export default class ProductService implements IProductService {
-  constructor(private productRepo: IProductRepository) {}
+  constructor(private productRepo: IProductRepository) { }
 
   async create(userId: string, productData: Product): Promise<Product> {
     const product = await this.productRepo.create(userId, productData);
     return product;
   }
 
-  async listAll(userId: string): Promise<Product[]> {
-    const products = await this.productRepo.listAll(userId)
-    return products;
+  async listAll(userId: string, page: number, limit: number): Promise<PaginatedResult<Product>> {
+    const { products, totalItems } = await this.productRepo.listAll(userId, page, limit)
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      data: products,
+      totalItems,
+      totalPages,
+      currentPage: page
+    }
   }
 
   async update(newProductData: Product): Promise<Product> {

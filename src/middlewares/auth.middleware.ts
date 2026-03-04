@@ -23,7 +23,8 @@ export async function requireAuth(
       throw new BadRequest("Token inválido o expirado");
     }
 
-    const userExists = await UserRepository.findById(payload.userId)
+    const userRepo = new UserRepository();
+    const userExists = await userRepo.findById(payload.userId)
     if (!userExists) throw new Unauthorized("No autorizado");
     req.user = payload
     next()

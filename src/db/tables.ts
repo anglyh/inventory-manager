@@ -7,6 +7,8 @@ export const TABLES = {
   PURCHASE_ITEM: "purchase_item",
   ADJUSTMENT: "adjustment",
   ADJUSTMENT_ITEM: "adjustment_item",
+  INVENTORY_MOVEMENT: "inventory_movement",
+  INVENTORY_MOVEMENT_ITEM: "inventory_movement_item",
   CATEGORY: "category"
 } as const;
 

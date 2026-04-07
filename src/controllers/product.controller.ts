@@ -19,9 +19,12 @@ export default class ProductController {
       if (!req.user) throw new Unauthorized("Usuario no autenticado");
 
       const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 10;
+      const limit = Number(req.query.limit) || 12;
+      const searchTerm = typeof req.query.searchTerm === 'string'
+        ? req.query.searchTerm.trim()
+        : ''
 
-      const result = await productService.listAll(req.user.userId, page, limit)
+      const result = await productService.listAll(req.user.userId, page, limit, searchTerm)
       res.status(200).json(result)
     } catch (err) {
       next(err)
@@ -44,8 +47,29 @@ export default class ProductController {
       if (!req.user) throw new Unauthorized("Usuario no autenticado");
       if (!req.params.id) throw new BadRequest("No se ha enviado un id de producto")
 
-      await productService.delete(req.params.id as string);
+      await productService.deactivate(req.params.id as string);
       res.status(204).send()
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  static async listProductOptions(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw new Unauthorized("Usuario no autenticado");
+      const products = await productService.listProductOptions(req.user.userId);
+      res.status(200).json(products);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getByName(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw new Unauthorized("Usuario no autenticado");
+      const searchTerm = req.query.searchTerm?.toString() ?? ''
+      const products = await productService.getByName(req.user.userId, searchTerm)
+      res.status(200).json(products)
     } catch (err) {
       next(err)
     }

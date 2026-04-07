@@ -1,60 +1,75 @@
 import type { PoolClient } from 'pg';
 import { query } from '../db/index.js';
 import { TABLES, VIEWS } from '../db/tables.js';
-import type { Product, ProductWithStock } from '../models/product.model.js';
+import type { Product, ProductWithStock, ProductListItem, ProductSearchItem } from '../models/product.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { NotFoundError } from '../errors/app.error.js';
 import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
+import type { PaginatedData } from '../types/api.types.js';
 
 export default class ProductRepository implements IProductRepository {
-  async findById(productId: string, client?: PoolClient): Promise<ProductWithStock> {
-    const text = `SELECT * FROM ${VIEWS.PRODUCT_WITH_STOCK} WHERE id = $1`
+  async findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null> {
+    const text = `SELECT *, COALESCE(unit_cost_avg, 0) AS unit_cost_avg FROM ${VIEWS.PRODUCT_WITH_STOCK} WHERE id = $1`
     const params = [productId]
     const { rows } = client
       ? await client.query(text, params)
       : await query(text, params);
-
-    if (rows.length === 0) {
-      throw new NotFoundError("No existe el producto")
-    }
+    
     return snakeToCamel(rows[0])
   }
 
-  async listAll(userId: string, page: number, limit: number):
-    Promise<{ products: ProductWithStock[], totalItems: number }> {
+  async listAll(
+    userId: string,
+    page: number,
+    limit: number,
+    searchTerm?: string,
+  ): Promise<PaginatedData<ProductListItem>> {
     const offset = (page - 1) * limit;
 
-    const countText = `SELECT COUNT(*) FROM
-      ${VIEWS.PRODUCT_WITH_STOCK} WHERE user_id = $1 AND is_active = true
+    const params: any[] = [userId];
+    let whereClause = `WHERE p.user_id = $1 AND p.is_active = true`;
+
+    if (searchTerm) {
+      whereClause += ` AND unaccent(p.name) ILIKE unaccent($2)`;
+      params.push(`%${searchTerm}%`)
+    }
+
+    const countText = `
+      SELECT COUNT(*) FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p 
+      ${whereClause}
     `;
 
-    const countResult = await query(countText, [userId]);
+    const countResult = await query(countText, params);
     const totalItems = parseInt(countResult.rows[0].count, 10)
 
-    const text = `
-    SELECT 
-      p.id,
-      p.name,
-      p.barcode,
-      p.sale_price,
-      p.unit_cost_avg,
-      p.stock,
-      p.min_stock,
-      p.is_active,
-      p.category_id,
-      p.created_at,
-      c.name AS category_name
-    FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
-    LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
-    WHERE p.user_id = $1
-    AND p.is_active = true
-    ORDER BY p.name
-    LIMIT $2 OFFSET $3
-  `;
+    const limitParamIndex = params.length + 1;
+    const offsetParamIndex = limitParamIndex + 1;
 
-    const result = await query(text, [userId, limit, offset]);
+    const queryParams = [...params, limit, offset]
+
+    const text = `
+      SELECT 
+        p.id,
+        p.name,
+        p.barcode,
+        p.sale_price,
+        COALESCE(p.unit_cost_avg, 0) AS unit_cost_avg,
+        p.stock,
+        p.min_stock,
+        p.is_active,
+        p.category_id,
+        p.created_at,
+        c.name AS category_name
+      FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
+      LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
+      ${whereClause}
+      ORDER BY p.created_at DESC
+      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
+    `;
+
+    const result = await query(text, queryParams);
     return {
-      products: snakeToCamel(result.rows),
+      data: snakeToCamel(result.rows),
       totalItems
     }
   }
@@ -132,5 +147,33 @@ export default class ProductRepository implements IProductRepository {
     )
   }
 
-  // static async getByBarcode(barcode: string)
+  async listProductOptions(userId: string): Promise<ProductSearchItem[]> {
+    const params = [userId]
+    const text = `
+    SELECT
+      p.id,
+      p.name,
+      p.sale_price
+    FROM ${TABLES.PRODUCT} AS p
+    WHERE p.user_id = $1 AND p.is_active = true
+    ORDER BY p.name ASC
+    `
+    const result = await query(text, params)
+    return snakeToCamel(result.rows)
+  }
+
+  async getByName(userId: string, searchTerm: string): Promise<ProductSearchItem[]> {
+    const params = [userId, `%${searchTerm}%`]
+    const text =`
+    SELECT 
+      p.id,
+      p.name,
+      p.sale_price
+    FROM ${TABLES.PRODUCT} AS p
+    WHERE p.user_id = $1 AND p.is_active = true AND unaccent(p.name) ILIKE unaccent($2)
+    `
+
+    const result = await query(text, params)
+    return snakeToCamel(result.rows)
+  }
 }

@@ -7,7 +7,17 @@ export default class PurchaseController {
     try {
       if (!req.user) throw new Unauthorized("Usuario no autenticado");
 
-      const purchases = await purchaseService.listAllPurchases(req.user.userId);
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 12;
+      const startDate = req.query.startDate ? (req.query.startDate as string) : undefined
+      const endDate = req.query.endDate ? (req.query.endDate as string) : undefined;
+
+      const purchases = await purchaseService.listAllPurchases({
+        userId: req.user.userId,
+        page,
+        limit,
+        ...(startDate && endDate ? { startDate, endDate }: {}),
+      });
       res.status(200).json(purchases)
     } catch (err) {
       next(err)

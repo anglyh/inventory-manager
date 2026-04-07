@@ -9,7 +9,7 @@ export interface Purchase {
   createdAt: Date;
 }
 
-export type PurchaseInsert = Pick<Purchase, "supplierName" | "notes">
+export type PurchaseInsert = Omit<Purchase, "id" | "userId" | "createdAt">
 
 export interface PurchaseDetailResponse {
   id: string;

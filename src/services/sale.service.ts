@@ -1,5 +1,5 @@
 import { withTransaction } from '../db/transactions.js';
-import { BadRequest } from '../errors/app.error.js';
+import { BadRequest, NotFoundError } from '../errors/app.error.js';
 import type { SaleItemInsert } from '../models/sale-item.model.js';
 import type { SaleDetailResponse } from '../models/sale.model.js';
 import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
@@ -7,6 +7,7 @@ import type { ISaleRepository } from '../interfaces/repositories/sale.repository
 import type { CreateSaleDTO } from '../schemas/sale.schema.js';
 import type { ISaleService } from '../interfaces/services/sale.service.interface.js';
 import type { PoolClient } from 'pg';
+import type { PaginatedResult } from '../types/api.types.js';
 
 export default class SaleService implements ISaleService {
   constructor(
@@ -36,9 +37,16 @@ export default class SaleService implements ISaleService {
     })
   }
 
-  async listAllSales(userId: string): Promise<SaleDetailResponse[]> {
-    const sales = await this.saleRepo.listAllSales(userId);
-    return sales;
+  async listAllSales(userId: string, page: number, limit: number): Promise<PaginatedResult<SaleDetailResponse>> {
+    const { data, totalItems } = await this.saleRepo.listAllSales(userId, page, limit);
+    const totalPages = Math.ceil(totalItems / limit)
+
+    return {
+      data,
+      totalItems,
+      totalPages,
+      currentPage: page
+    }
   }
 
   async processItems(
@@ -51,6 +59,10 @@ export default class SaleService implements ISaleService {
     for (const item of items) {
       const product = await this.productRepo.findById(item.productId, client);
       const stock = await this.productRepo.getStock(item.productId, client);
+
+      if (!product) {
+        throw new NotFoundError(`No existe el producto con id ${item.productId}`)
+      }
 
       if (stock < 1) {
         throw new BadRequest(`Stock insuficiente para "${product.name}"`)

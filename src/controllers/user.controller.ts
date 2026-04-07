@@ -20,4 +20,15 @@ export default class UserController {
       next(err);
     }
   }
+
+  static async checkStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      return res.status(200).json({
+        token: req.headers.authorization?.split(" ")[1],
+        user: req.user
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

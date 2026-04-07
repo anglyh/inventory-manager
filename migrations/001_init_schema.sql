@@ -1,16 +1,18 @@
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 CREATE TABLE IF NOT EXISTS app_user (
     id uuid primary key default gen_random_uuid(),
     name varchar(50) not null,
     email varchar(100) not null unique,
     password varchar(255) not null,
-    created_at timestamp not null default now()
+    created_at timestamptz not null default now()
 );
 CREATE TABLE IF NOT EXISTS category (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references app_user(id) ON DELETE CASCADE,
     name varchar(100) not null,
     icon varchar(100),
-    created_at timestamp default now() not null,
+    created_at timestamptz default now() not null,
     UNIQUE(user_id, name)
 );
 CREATE TABLE IF NOT EXISTS product (
@@ -23,7 +25,7 @@ CREATE TABLE IF NOT EXISTS product (
     min_stock integer not null default 10 check ( min_stock >= 0 ),
     category_id uuid references category(id),
     is_active boolean not null default true,
-    created_at timestamp default now() not null
+    created_at timestamptz default now() not null
 );
 CREATE UNIQUE INDEX product_user_name_unique
 ON product (user_id, lower(name));
@@ -41,7 +43,7 @@ CREATE TABLE IF NOT EXISTS sale (
     id uuid primary key default gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
     payment_method payment_method NOT NULL DEFAULT 'EFECTIVO',
-    created_at timestamp default now() not null
+    created_at timestamptz default now() not null
 );
 
 CREATE TABLE IF NOT EXISTS sale_item (
@@ -57,7 +59,7 @@ CREATE TABLE IF NOT EXISTS purchase (
     user_id uuid NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
     supplier_name varchar(100),
     notes text,
-    created_at timestamp DEFAULT now() NOT NULL
+    created_at timestamptz DEFAULT now() NOT NULL
 );
 CREATE TABLE IF NOT EXISTS purchase_item (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -72,7 +74,7 @@ CREATE TABLE IF NOT EXISTS adjustment (
     user_id uuid NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
     notes text,
     reason_type inventory_adjustment_reason NOT NULL DEFAULT 'ERROR_CONTEO',
-    created_at timestamp DEFAULT now() NOT NULL
+    created_at timestamptz DEFAULT now() NOT NULL
 );
 CREATE TABLE IF NOT EXISTS adjustment_item (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "cross-env NODE_ENV=production node dist/server.js",
-    "dev": "cross-env NODE_ENV=development tsx watch src/server.ts",
+    "dev": "cross-env NODE_ENV=development bun --watch src/server.ts",
     "migrate": "cross-env NODE_ENV=development tsx migrate.ts"
   },
   "keywords": [],
@@ -19,13 +19,16 @@
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "cross-env": "^10.1.0",
-    "tsx": "^4.20.6"
+    "tsx": "^4.20.6",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.15.6",
     "bcrypt-ts": "^7.1.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",

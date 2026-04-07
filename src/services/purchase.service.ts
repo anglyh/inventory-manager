@@ -1,12 +1,15 @@
 import type { PoolClient } from 'pg';
 import { withTransaction } from '../db/transactions.js';
-import type { PurchaseItemInsert, PurchaseItemDetail } from '../models/purchase-item.model.js';
+import type { PurchaseItemInsert } from '../models/purchase-item.model.js';
 import type { PurchaseDetailResponse } from '../models/purchase.model.js';
 import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
 import type { IPurchaseRepository } from '../interfaces/repositories/purchase.repository.interface.js';
 import type { CreatePurchaseDTO } from '../schemas/purchase.schema.js';
 import type { Product } from '../models/product.model.js';
 import type { IPurchaseService } from '../interfaces/services/purchase.service.interface.js';
+import { calculateUnitCostAverage } from '../utils/calculations.js';
+import type { PaginatedResult } from '../types/api.types.js';
+import type { ListPurchaseFilters } from '../types/purchase.types.js';
 
 export default class PurchaseService implements IPurchaseService {
   constructor(
@@ -24,9 +27,9 @@ export default class PurchaseService implements IPurchaseService {
 
       const purchaseDetail: PurchaseDetailResponse = {
         id: purchase.id,
+        createdAt: purchase.createdAt,
         notes: purchase.notes,
         supplierName: purchase.supplierName,
-        createdAt: purchase.createdAt,
         totalCost: totalAmount,
         items: purchaseItems
       }
@@ -34,10 +37,17 @@ export default class PurchaseService implements IPurchaseService {
       return purchaseDetail;
     })
   }
+  
+  async listAllPurchases(filters: ListPurchaseFilters): Promise<PaginatedResult<PurchaseDetailResponse>> {
+    const { data, totalItems }= await this.purchaseRepo.listAllPurchases(filters);
+    const totalPages = Math.ceil(totalItems / filters.limit)
 
-  async listAllPurchases(userId: string) {
-    const purchases = await this.purchaseRepo.listAllPurchases(userId);
-    return purchases
+    return {
+      data,
+      totalItems,
+      totalPages,
+      currentPage: filters.page,
+    }
   }
 
   private async processItems(
@@ -70,18 +80,15 @@ export default class PurchaseService implements IPurchaseService {
   ): Promise<void> {
     const currentStock = await this.productRepo.getStock(item.productId, client);
     const currentAvg = parseFloat(product.unitCostAvg) || 0;
-    const newAvg = this.calculateUnitCostAverage(currentStock, currentAvg, item)
+    
+    const { quantity, unitCost } = item
+    const newAvg = calculateUnitCostAverage({
+      currentStock,
+      currentCostAvg: currentAvg,
+      newQuantity: quantity,
+      newUnitCost: unitCost
+    })
+    
     await this.productRepo.updateUnitCostAvg(item.productId, Math.round(newAvg * 100) / 100, client);
-  }
-
-  private calculateUnitCostAverage(
-    currentStock: number,
-    currentAvg: number,
-    item: CreatePurchaseDTO["items"][0]
-  ): number {
-    if (currentStock === 0 && currentAvg === 0) {
-      return item.unitCost;
-    }
-    return (currentStock * currentAvg + item.quantity * item.unitCost) / (currentStock + item.quantity);
   }
 }

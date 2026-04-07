@@ -5,6 +5,7 @@ import { snakeToCamel } from '../utils/mapper.js';
 import { TABLES } from '../db/tables.js';
 import { query } from '../db/index.js';
 import type { IPurchaseRepository } from '../interfaces/repositories/purchase.repository.interface.js';
+import type { ListPurchaseFilters } from '../types/purchase.types.js';
 
 export default class PurchaseRepository implements IPurchaseRepository {
   async create(userId: string, purchaseBasicData: PurchaseInsert, client: PoolClient): Promise<Purchase> {
@@ -14,13 +15,27 @@ export default class PurchaseRepository implements IPurchaseRepository {
        VALUES ($1, $2, $3)
        RETURNING *
       `, [userId, supplierName ?? null, notes ?? null]
-    )
-
-    return snakeToCamel(result.rows[0])
+    );
+    return snakeToCamel(result.rows[0]);
   }
 
-  async listAllPurchases(userId: string) {
-    const result = await query(`
+  async listAllPurchases(filters: ListPurchaseFilters) {
+    const { userId, page, limit, startDate, endDate } = filters;
+    const offset = (page - 1) * limit;
+
+    const countParams = [userId, startDate ?? null, endDate ?? null]
+    const countText = `
+      SELECT COUNT (*) FROM ${TABLES.PURCHASE}
+      WHERE user_id = $1
+      AND ($2::timestamptz IS NULL OR created_at >= $2)
+      AND ($3::timestamptz IS NULL OR created_at <= $3)
+    `;
+    const countResult = await query(countText, countParams)
+    const totalItems = parseInt(countResult.rows[0].count, 10)
+
+    const params = [userId, startDate ?? null, endDate ?? null, limit, offset]
+
+    const text = `
       SELECT 
         p.id,
         p.supplier_name,
@@ -42,12 +57,19 @@ export default class PurchaseRepository implements IPurchaseRepository {
       LEFT JOIN ${TABLES.PURCHASE_ITEM} AS pi ON p.id = pi.purchase_id
       LEFT JOIN ${TABLES.PRODUCT} AS prod ON pi.product_id = prod.id
       WHERE p.user_id = $1
+      AND ($2::timestamptz IS NULL OR p.created_at >= $2)
+      AND ($3::timestamptz IS NULL OR p.created_at <= $3)
       GROUP BY p.id, p.supplier_name, p.notes, p.created_at
       ORDER BY p.created_at DESC
-      `, [userId]
-    )
+      LIMIT $4 OFFSET $5
+    `;
 
-    return snakeToCamel(result.rows)
+    const result = await query(text, params)
+
+    return {
+      data: snakeToCamel(result.rows),
+      totalItems
+    }
   }
 
   async createPurchaseItems(
@@ -55,7 +77,7 @@ export default class PurchaseRepository implements IPurchaseRepository {
     purchaseItems: PurchaseItemInsert[],
     client: PoolClient
   ): Promise<PurchaseItem[]> {
-    const values: any = [];
+    const values: any[] = [];
     const valuePlaceholders: string[] = [];
     const TOTAL_COLUMNS = 4
 

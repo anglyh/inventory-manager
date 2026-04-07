@@ -5,6 +5,7 @@ import type { SaleItem, SaleItemInsert } from '../models/sale-item.model.js';
 import type { PaymentMethod, Sale, SaleDetailResponse } from '../models/sale.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import type { ISaleRepository } from '../interfaces/repositories/sale.repository.interface.js';
+import type { PaginatedData } from '../types/api.types.js';
 
 export default class SaleRepository implements ISaleRepository {
   async createSale(userId: string, method: PaymentMethod, client: PoolClient): Promise<Sale> {
@@ -17,8 +18,21 @@ export default class SaleRepository implements ISaleRepository {
     return snakeToCamel(result.rows[0]);
   }
 
-  async listAllSales(userId: string): Promise<SaleDetailResponse[]> {
-    const result = await query(`
+  async listAllSales(
+    userId: string,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedData<SaleDetailResponse>> {
+    const offset = (page - 1) * limit;
+    const params = [userId, limit, offset]
+
+    const countText = `
+      SELECT COUNT(*) FROM ${TABLES.SALE} WHERE user_id = $1
+    `
+    const countResult = await query(countText, [userId])
+    const totalItems = parseInt(countResult.rows[0].count, 10)
+
+    const text = `
       SELECT
         s.id,
         s.created_at,
@@ -41,10 +55,15 @@ export default class SaleRepository implements ISaleRepository {
       WHERE s.user_id = $1
       GROUP BY s.id, s.created_at
       ORDER BY s.created_at DESC
-      `, [userId]
-    );
+      LIMIT $2 OFFSET $3
+    `;
 
-    return snakeToCamel(result.rows)
+    const result = await query(text, params)
+
+    return {
+      data: snakeToCamel(result.rows),
+      totalItems
+    }
   }
 
   async createSaleItems(

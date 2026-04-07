@@ -32,6 +32,7 @@ export function errorHandler(
     return res.status(400).json({ error: "Error de validación", fieldErrors })
   }
 
+
   if (err instanceof PG.DatabaseError) {
     console.error("DB error", err.code)
     if (err.code === "23505") {

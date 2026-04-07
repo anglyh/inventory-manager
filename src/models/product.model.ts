@@ -17,3 +17,9 @@ export interface Product {
 export type ProductWithStock = Product & {
   stock: number;
 }
+
+export type ProductListItem = ProductWithStock & {
+  categoryName: string | null;
+}
+
+export type ProductSearchItem = Pick<Product, 'id' | 'name' | 'salePrice'>;

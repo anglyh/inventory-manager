@@ -10,3 +10,9 @@ export interface InventoryMovementItem {
 }
 
 export type InventoryMovementItemInsert = Omit<InventoryMovementItem, 'id' | 'movementId'>;
+
+/** Filas devueltas al insertar ítems (sin id ni movementId). */
+export type CreatedInventoryMovementItem = Pick<
+  InventoryMovementItem,
+  'productId' | 'quantity' | 'unitPrice'
+>;

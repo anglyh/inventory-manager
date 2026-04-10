@@ -22,3 +22,19 @@ export interface InventoryMovementWithItems extends InventoryMovement {
     quantity: number;
   }>;
 }
+
+/** Fila agregada en listado (repo JSON + sum). */
+export interface InventoryMovementListItem {
+  id: string;
+  movementType: MovementType;
+  entityName: string | null;
+  notes: string | null;
+  createdAt: Date;
+  totalAmount: number | null;
+  items: Array<{
+    productId: string;
+    productName: string;
+    unitPrice: string;
+    quantity: number;
+  }>;
+}

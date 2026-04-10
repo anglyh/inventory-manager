@@ -7,8 +7,7 @@ import userRouter from './routes/user.routes.js';
 import productRouter from './routes/product.routes.js';
 import { requireAuth } from './middlewares/auth.middleware.js';
 import categoryRouter from './routes/category.routes.js';
-import saleRouter from './routes/sale.routes.js';
-import purchaseRouter from './routes/purchase.routes.js';
+import inventoryMovementRouter from './routes/inventory-movement.routes.js';
 
 import { setupSwagger } from './config/swagger.js';
 
@@ -30,8 +29,7 @@ import seedRouter from './routes/seed.routes.js';
 app.use("/api/auth", userRouter);
 app.use("/api/product", requireAuth, productRouter);
 app.use("/api/category", requireAuth, categoryRouter);
-app.use("/api/sale", requireAuth, saleRouter);
-app.use("/api/purchase", requireAuth, purchaseRouter)
+app.use("/api/inventory-movement", requireAuth, inventoryMovementRouter);
 app.use("/api/seed", seedRouter)
 
 app.use(notFoundHandler)

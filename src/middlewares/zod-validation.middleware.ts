@@ -15,9 +15,13 @@ export function validateParams<T>(schema: ZodType<T>) {
   };
 }
 
+/**
+ * Valida `req.query` con Zod sin reasignar `req.query` (en Express 5 es de solo lectura).
+ * Lee el resultado en `req.validatedQuery` dentro del handler siguiente.
+ */
 export function validateQuery<T>(schema: ZodType<T>) {
   return (req: Request, res: Response, next: NextFunction) => {
-    req.query = schema.parse(req.query) as typeof req.query;
+    (req as Request & { validatedQuery: T }).validatedQuery = schema.parse(req.query);
     next();
   };
 }

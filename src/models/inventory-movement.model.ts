@@ -23,6 +23,15 @@ export interface InventoryMovementWithItems extends InventoryMovement {
   }>;
 }
 
+/** Parámetros para listar movimientos con paginación por cursor (created_at + id). */
+export interface InventoryMovementsByCursorParams {
+  userId: string;
+  movementType: MovementType;
+  cursorDate?: string | undefined;
+  cursorId?: string | undefined;
+  limit: number;
+}
+
 /** Fila agregada en listado (repo JSON + sum). */
 export interface InventoryMovementListItem {
   id: string;
@@ -37,4 +46,10 @@ export interface InventoryMovementListItem {
     unitPrice: string;
     quantity: number;
   }>;
+}
+
+/** Respuesta de una página al listar movimientos por cursor. */
+export interface InventoryMovementsCursorPageResult {
+  data: InventoryMovementListItem[];
+  nextCursor: { cursorDate: string; cursorId: string } | null;
 }

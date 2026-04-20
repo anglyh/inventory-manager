@@ -1,4 +1,4 @@
-import type { Product, ProductSearchItem } from '../models/product.model.js';
+import type { ListProductFilters, Product, ProductListItem, ProductSearchItem } from '../models/product.model.js';
 import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
 import type { IProductService } from '../interfaces/services/product.service.interface.js';
 import { NotFoundError } from '../errors/app.error.js';
@@ -12,20 +12,22 @@ export default class ProductService implements IProductService {
     return product;
   }
 
-  async listAll(
-    userId: string,
-    page: number,
-    limit: number,
-    searchTerm?: string
-  ): Promise<PaginatedResult<Product>> {
-    const { data, totalItems } = await this.productRepo.listAll(userId, page, limit, searchTerm)
-    const totalPages = Math.ceil(totalItems / limit);
+  async listAll(filters: ListProductFilters): Promise<PaginatedResult<ProductListItem>> {
+    const { userId, categoryId, search, limit, page } = filters
+
+    const offset = (page - 1) * limit;
+
+    const [products, totalProducts] = await Promise.all([
+      this.productRepo.listAll({ userId, categoryId, search, limit, offset }),
+      this.productRepo.count({ userId, categoryId, search })
+    ])
+
+    const totalPages = Math.ceil(totalProducts / limit)
 
     return {
-      data,
-      totalItems,
+      data: products,
+      totalItems: totalProducts,
       totalPages,
-      currentPage: page
     }
   }
 

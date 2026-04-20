@@ -1,11 +1,10 @@
 import type { PoolClient } from 'pg';
 import { query } from '../db/index.js';
 import { TABLES, VIEWS } from '../db/tables.js';
-import type { Product, ProductWithStock, ProductListItem, ProductSearchItem } from '../models/product.model.js';
+import type { Product, ProductWithStock, ProductListItem, ProductSearchItem, ListProductQuery } from '../models/product.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { NotFoundError } from '../errors/app.error.js';
 import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
-import type { PaginatedData } from '../types/api.types.js';
 
 export default class ProductRepository implements IProductRepository {
   async findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null> {
@@ -18,35 +17,14 @@ export default class ProductRepository implements IProductRepository {
     return snakeToCamel(rows[0])
   }
 
-  async listAll(
-    userId: string,
-    page: number,
-    limit: number,
-    searchTerm?: string,
-  ): Promise<PaginatedData<ProductListItem>> {
-    const offset = (page - 1) * limit;
+  async listAll(filters: ListProductQuery): Promise<ProductListItem[]> {
+    const { limit, offset, ...rest } = filters
+    const { conditions, params } = this.buildWhereClause(rest)
 
-    const params: any[] = [userId];
-    let whereClause = `WHERE p.user_id = $1 AND p.is_active = true`;
-
-    if (searchTerm) {
-      whereClause += ` AND unaccent(p.name) ILIKE unaccent($2)`;
-      params.push(`%${searchTerm}%`)
-    }
-
-    const countText = `
-      SELECT COUNT(*) FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p 
-      ${whereClause}
-    `;
-
-    const countResult = await query(countText, params);
-    const totalItems = parseInt(countResult.rows[0].count, 10)
-
-    const limitParamIndex = params.length + 1;
-    const offsetParamIndex = limitParamIndex + 1;
-
-    const queryParams = [...params, limit, offset]
-
+    const whereClause = conditions.length 
+      ? `WHERE ${conditions.join(' AND ')} AND p.is_active = true`
+      : '';
+    
     const text = `
       SELECT 
         p.id,
@@ -63,15 +41,12 @@ export default class ProductRepository implements IProductRepository {
       FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
       LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
       ${whereClause}
-      ORDER BY p.created_at DESC
-      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
+      ORDER BY p.name ASC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
 
-    const result = await query(text, queryParams);
-    return {
-      data: snakeToCamel(result.rows),
-      totalItems
-    }
+    const result = await query(text, [...params, limit, offset]);
+    return snakeToCamel(result.rows)
   }
 
   async create(userId: string, productData: Product): Promise<Product> {
@@ -175,5 +150,40 @@ export default class ProductRepository implements IProductRepository {
 
     const result = await query(text, params)
     return snakeToCamel(result.rows)
+  }
+
+  async count(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryId'>): Promise<number> {
+    const { conditions, params } = this.buildWhereClause(filters)
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(' AND ')}`
+      : ''
+
+    const result = await query(`
+      SELECT COUNT (*) FROM ${VIEWS.PRODUCT_WITH_STOCK} as p ${whereClause}`,
+      params
+    )
+
+    return parseInt(result.rows[0].count, 10)
+  }
+
+  private buildWhereClause(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryId'>) {
+    const { userId, search, categoryId } = filters;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    params.push(userId)
+    conditions.push(`p.user_id = $${params.length}`)
+
+    if (search) {
+      params.push(`%${search}%`)
+      conditions.push(`p.name ILIKE $${params.length}`)
+    }
+
+    if (categoryId) {
+      params.push(categoryId)
+      conditions.push(`p.category_id = $${params.length}`)
+    }
+
+    return { conditions, params }
   }
 }

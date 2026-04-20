@@ -15,19 +15,30 @@ export const createInventoryMovementPayloadSchema = z.object({
   items: z.array(movementItemSchema, 'Items requeridos').min(1, 'Debe incluir al menos un producto'),
 });
 
-export const listInventoryMovementsPaginationSchema = z.object({
-  page: z.coerce.number().int().positive().optional().default(1),
-  limit: z.coerce.number().int().positive().max(100).optional().default(12),
-});
-
-export const listInventoryMovementsQuerySchema = listInventoryMovementsPaginationSchema.extend({
-  movementType: movementTypeSchema.optional(),
-});
+/** Query para listar movimientos con paginación por cursor (misma página: enviar ambos cursores o ninguno). */
+export const inventoryMovementsCursorQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().positive().max(100).optional().default(12),
+    cursorId: z.string().optional(),
+    cursorDate: z.string().optional(),
+  })
+  .refine(
+    (q) =>
+      (q.cursorId !== undefined &&
+        q.cursorId !== '' &&
+        q.cursorDate !== undefined &&
+        q.cursorDate !== '') ||
+      ((q.cursorId === undefined || q.cursorId === '') &&
+        (q.cursorDate === undefined || q.cursorDate === '')),
+    {
+      message: 'cursorId y cursorDate deben enviarse juntos',
+      path: ['cursorId'],
+    }
+  );
 
 export type CreateInventoryMovementPayloadDTO = z.infer<
   typeof createInventoryMovementPayloadSchema
 >;
-export type ListInventoryMovementsPagination = z.infer<
-  typeof listInventoryMovementsPaginationSchema
+export type InventoryMovementsCursorQueryDTO = z.infer<
+  typeof inventoryMovementsCursorQuerySchema
 >;
-export type ListInventoryMovementsQuery = z.infer<typeof listInventoryMovementsQuerySchema>;

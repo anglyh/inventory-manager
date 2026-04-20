@@ -1,5 +1,10 @@
 import type { PoolClient } from 'pg';
-import type { InventoryMovement, InventoryMovementInsert, MovementType } from '../models/inventory-movement.model.js';
+import type {
+  InventoryMovement,
+  InventoryMovementInsert,
+  InventoryMovementListItem,
+  InventoryMovementsByCursorParams,
+} from '../models/inventory-movement.model.js';
 import { TABLES } from '../db/tables.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { query } from '../db/index.js';
@@ -7,16 +12,7 @@ import type {
   CreatedInventoryMovementItem,
   InventoryMovementItemInsert,
 } from '../models/inventory-movement-item.model.js';
-import type { IInventoryMovementRepository, ListMovementCursorFilters } from '../interfaces/repositories/inventory-movement.repository.interface.js';
-import { AppError } from '../errors/app.error.js';
-
-interface ListMovementFilters {
-  userId: string;
-  page: number;
-  limit: number;
-  movementType?: MovementType
-}
-
+import type { IInventoryMovementRepository } from '../interfaces/repositories/inventory-movement.repository.interface.js';
 
 export default class InventoryMovementRepository implements IInventoryMovementRepository {
   async create(
@@ -33,97 +29,41 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
     return snakeToCamel(result.rows[0])
   }
 
-  async listAll(filters: ListMovementFilters) {
-    const { userId, page, limit, movementType } = filters;
-    const offset = (page - 1) * limit;
-    
-    const conditions: string[] = [];
-    const values = [];
-
-    values.push(userId)
-    conditions.push(`m.user_id = $${values.length}`)
-   
-    if (movementType) {
-      values.push(movementType)
-      conditions.push(`m.movement_type = $${values.length}`)
-    }
-
-    const whereClause = `WHERE ${conditions.join(' AND ')}`
-    const countText = `SELECT COUNT (*) FROM ${TABLES.INVENTORY_MOVEMENT} m ${whereClause}`
-    const countResult = await query(countText, values);
-    const totalItems = parseInt(countResult.rows[0].count, 10);
-
-    const paginationValues = [...values, limit, offset];
-    const limitIndex = values.length + 1;
-    const offsetIndex = values.length + 2;
-
-    const text = `
-      SELECT
-        m.id,
-        m.movement_type,
-        m.entity_name,
-        m.notes,
-        m.created_at,
-        SUM(mi.unit_price * mi.quantity) as total_amount,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'productId', mi.product_id,
-              'productName', p.name,
-              'unitPrice', mi.unit_price::text,
-              'quantity', mi.quantity
-            )
-          ) FILTER (WHERE mi.id IS NOT NULL),
-          '[]'::json
-        ) AS items
-      FROM ${TABLES.INVENTORY_MOVEMENT} AS m
-      LEFT JOIN ${TABLES.INVENTORY_MOVEMENT_ITEM} AS mi ON m.id = mi.movement_id
-      LEFT JOIN ${TABLES.PRODUCT} AS p ON mi.product_id = p.id
-      ${whereClause}
-      GROUP BY m.id, m.movement_type, m.entity_name, m.notes, m.created_at
-      ORDER BY m.created_at DESC
-      LIMIT $${limitIndex} OFFSET $${offsetIndex}
-    `;
-
-    const result = await query(text, paginationValues)
-    return {
-      data: snakeToCamel(result.rows),
-      totalItems
-    }
-  }
-
-  async list(filters: ListMovementCursorFilters) {
-    const { userId, movementType, cursorDate, cursorId, limit } = filters
+  private buildMovementsCursorWhereClause(
+    filters: Omit<InventoryMovementsByCursorParams, 'limit'>
+  ) {
+    const { userId, cursorDate, cursorId, movementType } = filters
     const conditions: string[] = []
-    const values = []
+    const params: unknown[] = []
 
-    values.push(userId)
-    conditions.push(`m.user_id = $${values.length}`)
-
-    if (!movementType) {
-      throw new AppError('Falta indicar el tipo de movimiento', 500)
-    }
-
-    values.push(movementType)
-    conditions.push(`m.movement_type = $${values.length}`)
+    params.push(userId)
+    conditions.push(
+      `m.user_id = $${params.length}`,
+    )
 
     if (cursorDate && cursorId) {
-      values.push(cursorDate)
-      const dateIndex = values.length
-
-      values.push(cursorId)
-      const idIndex = values.length
-
-      conditions.push(`(m.created_at < $${dateIndex} OR (m.created_at = $${dateIndex} AND m.id < $${idIndex}))`);
-    } else if (cursorDate) {
-      values.push(cursorDate)
-      conditions.push(`m.created_at < $${values.length}`);
+      params.push(cursorDate, cursorId)
+      conditions.push(`
+        (m.created_at < $${params.length - 1}
+        OR (m.created_at = $${params.length - 1} AND m.id < $${params.length}))
+      `)
     }
 
-    const whereClause = `WHERE ${conditions.join(' AND ')}`
+    params.push(movementType)
+    conditions.push(`m.movement_type = $${params.length}`)
 
-    values.push(limit)
-    const limitIndex = values.length;
+    return { conditions, params }
+  }
+
+  async listMovementsByCursor(
+    filters: InventoryMovementsByCursorParams
+  ): Promise<InventoryMovementListItem[]> {
+    const { limit, ...rest } = filters
+    const { conditions, params } = this.buildMovementsCursorWhereClause(rest)
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(' AND ')}`
+      : ''
 
     const text = `
       SELECT
@@ -157,10 +97,9 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
         ORDER BY
           m.created_at DESC,
           m.id DESC
-        LIMIT $${limitIndex}
+        LIMIT $${params.length + 1}
     `
-
-    const result = await query(text, values)
+    const result = await query(text, [...params, limit + 1])
     return snakeToCamel(result.rows)
   }
 

@@ -9,7 +9,7 @@ export interface Product {
   barcode?: string | null;
   unitCostAvg: string;
   minStock: number;
-  categoryId: Category["id"];
+  categoryId: Category["id"] | null;
   createdAt: Date;
   isActive: boolean
 }
@@ -20,6 +20,22 @@ export type ProductWithStock = Product & {
 
 export type ProductListItem = ProductWithStock & {
   categoryName: string | null;
+}
+
+export type ListProductQuery = {
+  userId: string;
+  search?: string | undefined;
+  categoryId?: string | undefined;
+  limit: number;
+  offset: number
+}
+
+export type ListProductFilters = {
+  userId: string;
+  search?: string | undefined;
+  categoryId?: string | undefined;
+  page: number;
+  limit: number;
 }
 
 export type ProductSearchItem = Pick<Product, 'id' | 'name' | 'salePrice'>;

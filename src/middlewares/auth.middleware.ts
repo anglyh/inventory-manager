@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
-import { BadRequest, Unauthorized } from '../errors/app.error.js';
 import JWT from '../lib/jwt.js';
 import UserRepository from '../repositories/user.repository.js';
+import { BadRequestError, UnauthorizedError } from '../errors/app.error.js';
 
 export async function requireAuth(
   req: Request,
@@ -10,22 +10,22 @@ export async function requireAuth(
 ) {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader) throw new BadRequest("Token no proporcionado");
+    if (!authHeader) throw new BadRequestError("Token no proporcionado");
 
     const [scheme, token] = authHeader.split(" ");
-    if (scheme !== "Bearer" || !token) throw new BadRequest("Formato de autorización inválido");
+    if (scheme !== "Bearer" || !token) throw new BadRequestError("Formato de autorización inválido");
 
     let payload;
 
     try {
       payload = JWT.verifyAccessToken(token);
     } catch {
-      throw new BadRequest("Token inválido o expirado");
+      throw new BadRequestError("Token inválido o expirado");
     }
 
     const userRepo = new UserRepository();
     const userExists = await userRepo.findById(payload.userId)
-    if (!userExists) throw new Unauthorized("No autorizado");
+    if (!userExists) throw new UnauthorizedError("No autorizado");
     req.user = payload
     next()
   } catch (err) {

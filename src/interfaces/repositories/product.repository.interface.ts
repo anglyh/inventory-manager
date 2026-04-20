@@ -1,10 +1,10 @@
 import type { PoolClient } from 'pg';
-import type { Product, ProductWithStock, ProductListItem, ProductSearchItem } from '../../models/product.model.js';
-import type { PaginatedData } from '../../types/api.types.js';
+import type { Product, ProductWithStock, ProductListItem, ProductSearchItem, ListProductQuery } from '../../models/product.model.js';
 
 export interface IProductRepository {
   findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null>;
-  listAll(userId: string, page: number, limit: number, searchTerm?: string): Promise<PaginatedData<ProductListItem>>;
+  listAll(filters: ListProductQuery): Promise<ProductListItem[]>;
+  count(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryId'>): Promise<number>;
   create(userId: string, productData: Product): Promise<Product>;
   update(productData: Product, client?: PoolClient): Promise<Product>;
   deactivate(id: string): Promise<Product>;

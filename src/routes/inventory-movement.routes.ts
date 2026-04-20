@@ -75,28 +75,61 @@ inventoryMovementRouter.post(
  * @swagger
  * /api/inventory-movement/entries:
  *   get:
- *     summary: Historial de entradas (compras), paginado
+ *     summary: Historial de entradas (compras), paginación por cursor
+ *     description: |
+ *       Orden descendente por fecha de creación e id. La primera petición no envía cursor.
+ *       Si la respuesta incluye `nextCursor`, reenvía `cursorDate` y `cursorId` en la siguiente petición (ambos juntos).
  *     tags: [InventoryMovements]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 12
+ *           maximum: 100
+ *         description: Tamaño de página (el servidor puede pedir limit+1 para detectar si hay más)
+ *       - in: query
+ *         name: cursorDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Valor `nextCursor.cursorDate` de la página anterior (junto con cursorId)
+ *       - in: query
+ *         name: cursorId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Valor `nextCursor.cursorId` de la página anterior (junto con cursorDate)
  *     responses:
  *       200:
- *         description: Lista paginada de movimientos IN
+ *         description: Página de movimientos IN
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 nextCursor:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     cursorDate:
+ *                       type: string
+ *                       format: date-time
+ *                     cursorId:
+ *                       type: string
+ *                       format: uuid
+ *       400:
+ *         description: Query inválida (p. ej. solo uno de los dos cursores)
  *       401:
  *         description: No autorizado
  */
-inventoryMovementRouter.get('/entries', InventoryMovementController.listEntries);
+inventoryMovementRouter.get('/entries', InventoryMovementController.listEntriesByCursor);
 
 /**
  * @swagger
@@ -161,27 +194,56 @@ inventoryMovementRouter.post(
  * @swagger
  * /api/inventory-movement/exits:
  *   get:
- *     summary: Historial de salidas (ventas), paginado
+ *     summary: Historial de salidas (ventas), paginación por cursor
+ *     description: |
+ *       Misma semántica que GET /entries, filtrando movimientos OUT.
  *     tags: [InventoryMovements]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 12
+ *           maximum: 100
+ *       - in: query
+ *         name: cursorDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: cursorId
+ *         schema:
+ *           type: string
+ *           format: uuid
  *     responses:
  *       200:
- *         description: Lista paginada de movimientos OUT
+ *         description: Página de movimientos OUT
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 nextCursor:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     cursorDate:
+ *                       type: string
+ *                       format: date-time
+ *                     cursorId:
+ *                       type: string
+ *                       format: uuid
+ *       400:
+ *         description: Query inválida
  *       401:
  *         description: No autorizado
  */
-inventoryMovementRouter.get('/exits', InventoryMovementController.listExits);
+inventoryMovementRouter.get('/exits', InventoryMovementController.listExitsByCursor);
 
 export default inventoryMovementRouter;

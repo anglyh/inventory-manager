@@ -4,6 +4,7 @@ import type { IProductRepository } from '../../interfaces/repositories/product.r
 export const mockProductRepo: IProductRepository = {
   findById: vi.fn(),
   listAll: vi.fn(),
+  count: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
   deactivate: vi.fn(),

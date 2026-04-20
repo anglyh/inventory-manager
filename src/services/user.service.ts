@@ -6,7 +6,7 @@ import type {
   UserResponse 
 } from '../schemas/user.schema.js';
 import type { User } from '../models/user.model.js';
-import { ConflictError, NotFoundError, Unauthorized } from '../errors/app.error.js';
+import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/app.error.js';
 import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 import JWT from '../lib/jwt.js';
 import type { IUserService } from '../interfaces/services/user.service.interface.js';
@@ -40,7 +40,7 @@ export default class UserService implements IUserService {
     if (!user) throw new NotFoundError("No hay una cuenta registrada con este correo");
 
     const validPassword = await compare(input.password, user.password);
-    if (!validPassword) throw new Unauthorized("Credenciales incorrectas");
+    if (!validPassword) throw new UnauthorizedError("Credenciales incorrectas");
 
     const token = JWT.signAccessToken({
       userId: user.id,

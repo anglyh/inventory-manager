@@ -1,10 +1,9 @@
 import type {
-  InventoryMovementListItem,
   MovementType,
+  InventoryMovementsByCursorParams,
+  InventoryMovementsCursorPageResult,
 } from '../../models/inventory-movement.model.js';
 import type { CreateInventoryMovementPayloadDTO } from '../../schemas/inventory-movement.schema.js';
-import type { PaginatedResult } from '../../types/api.types.js';
-import type { ListMovementFilters } from '../repositories/inventory-movement.repository.interface.js';
 
 export interface RegisterInventoryMovementResult {
   id: string;
@@ -26,7 +25,7 @@ export interface IInventoryMovementService {
     data: CreateInventoryMovementPayloadDTO
   ): Promise<RegisterInventoryMovementResult>;
 
-  listAll(
-    filters: ListMovementFilters
-  ): Promise<PaginatedResult<InventoryMovementListItem>>;
+  listMovementsByCursor(
+    filters: InventoryMovementsByCursorParams
+  ): Promise<InventoryMovementsCursorPageResult>;
 }

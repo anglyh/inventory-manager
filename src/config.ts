@@ -2,11 +2,7 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 import { cwd } from 'process';
 
-const envFile = process.env.NODE_ENV === "production"
-  ? ".env.production"
-  : ".env.development";
-
-config({ path: resolve(cwd(), envFile) })
+config({ path: resolve(cwd(), '.env') })
 
 function requireEnv(name: string): string {
   const value = process.env[name];

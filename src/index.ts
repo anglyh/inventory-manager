@@ -16,7 +16,19 @@ import { setupSwagger } from './config/swagger.js';
 
 const app = express();
 
-app.use(cors());
+const corsOptions: cors.CorsOptions = {
+  origin: [
+    "https://inventory-manager-angular.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:4200",
+  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 setupSwagger(app);

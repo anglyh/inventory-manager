@@ -1,6 +1,9 @@
 /**
- * Igual que el template de Vercel: un solo módulo con `export default app`.
- * `await initDb()` aquí para que Vercel arranque la BD antes de servir.
+ * Entrada para Vercel: `export default app`.
+ *
+ * Importante: NO conectamos a la BD en el top-level (`await initDb()`),
+ * porque si Supabase no es resoluble (ENOTFOUND) la Function crashea y
+ * ni siquiera responde el preflight CORS (OPTIONS). Conexión lazy + cache.
  */
 import express from "express";
 import cors from "cors";
@@ -31,6 +34,24 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
+let dbInitPromise: Promise<void> | undefined;
+function ensureDb() {
+  if (!dbInitPromise) dbInitPromise = initDb();
+  return dbInitPromise;
+}
+
+// Evita que el preflight CORS dependa de la BD.
+app.use(async (req, res, next) => {
+  if (req.method === "OPTIONS") return next();
+  try {
+    await ensureDb();
+    return next();
+  } catch (err) {
+    // Respuesta JSON consistente (y con CORS, porque el middleware cors ya corrió)
+    return res.status(503).json({ message: "Database unavailable" });
+  }
+});
+
 setupSwagger(app);
 
 app.get('/health', (req, res) => {
@@ -46,5 +67,4 @@ app.use("/api/seed", seedRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-await initDb();
 export default app;

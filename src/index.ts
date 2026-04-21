@@ -31,7 +31,8 @@ const corsOptions: cors.CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+// Express 5 no acepta `*` como path en route matching.
+// El middleware `cors()` ya responde preflights por defecto.
 app.use(express.json());
 
 let dbInitPromise: Promise<void> | undefined;

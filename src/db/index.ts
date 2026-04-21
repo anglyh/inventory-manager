@@ -1,32 +1,19 @@
 import { Pool } from "pg";
 import { env } from '../config.js';
 
-/** Supabase / hosted Postgres suelen exigir TLS aunque `DB_SSL` no esté en Vercel. */
-function poolSsl():
-  | { rejectUnauthorized: boolean }
-  | undefined {
-  if (env.DB_SSL) return { rejectUnauthorized: false };
-  const u = env.DATABASE_URL.toLowerCase();
-  const needsSsl =
-    u.includes("sslmode=require") ||
-    u.includes("sslmode=verify") ||
-    u.includes(".supabase.co") ||
-    u.includes(".pooler.supabase.com");
-  return needsSsl ? { rejectUnauthorized: false } : undefined;
-}
-
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  ssl: poolSsl(),
-})
+  ssl: env.DB_SSL
+    ? { rejectUnauthorized: false }
+    : undefined,
+});
 
 export async function initDb() {
   try {
-    await query("SELECT 1")
-    console.log("Connected to database")
+    await query("SELECT 1");
   } catch (err) {
-    console.error("Error connecting to dabase", err)
-    throw err
+    console.error("Error connecting to database", err);
+    throw err;
   }
 }
 

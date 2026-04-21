@@ -2,12 +2,12 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/server.js",
+  "main": "dist/local-server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "cross-env NODE_ENV=production node dist/server.js",
-    "dev": "cross-env NODE_ENV=development bun --watch src/server.ts",
+    "start": "cross-env NODE_ENV=production node dist/local-server.js",
+    "dev": "cross-env NODE_ENV=development bun --watch src/local-server.ts",
     "migrate": "cross-env NODE_ENV=development tsx migrate.ts"
   },
   "keywords": [],

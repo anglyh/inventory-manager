@@ -107,49 +107,75 @@ export default class InventoryMovementService implements IInventoryMovementServi
     userId: string,
     client: PoolClient
   ): Promise<{ itemsToInsert: InventoryMovementItemInsert[]; totalAmount: number }> {
-    const itemsToInsert: InventoryMovementItemInsert[] = [];
-    let totalAmount = 0;
-
-    // Si hay productos repetidos en un mismo movimiento, sumamos sus cantidades
-    // para validar stock de forma correcta (especialmente en salidas).
-    const requiredQtyByProductId = new Map<string, number>();
+    // Consolidamos por productId: sumamos cantidades y acumulamos el costo total
+    // (quantity * unitPrice) para poder calcular un costo unitario ponderado
+    // correcto cuando el mismo producto aparece repetido en el payload.
+    const aggregatedByProductId = new Map<
+      string,
+      { quantity: number; totalCost: number }
+    >();
     for (const item of items) {
-      requiredQtyByProductId.set(
-        item.productId,
-        (requiredQtyByProductId.get(item.productId) ?? 0) + item.quantity
-      );
+      const current = aggregatedByProductId.get(item.productId) ?? {
+        quantity: 0,
+        totalCost: 0,
+      };
+      current.quantity += item.quantity;
+      current.totalCost += item.quantity * item.unitPrice;
+      aggregatedByProductId.set(item.productId, current);
     }
 
-    for (const item of items) {
-      // Lockeamos el producto dentro de la transacción para evitar carreras
-      // (dos salidas concurrentes podrían dejar stock negativo si no se bloquea).
-      const product = await this.productRepo.findByIdForUpdate(item.productId, client);
+    // Orden determinístico de los locks para evitar deadlocks entre transacciones
+    // concurrentes que tocan los mismos productos en distinto orden.
+    const orderedProductIds = [...aggregatedByProductId.keys()].sort();
 
-      if (!product || product.userId !== userId) {
+    let totalAmount = 0;
+
+    for (const productId of orderedProductIds) {
+      const aggregated = aggregatedByProductId.get(productId)!;
+      const { quantity: totalQuantity, totalCost } = aggregated;
+
+      // Lockeamos el producto dentro de la transacción para serializar salidas
+      // concurrentes del mismo producto y evitar stock negativo por carrera.
+      const product = await this.productRepo.findByIdForUpdate(productId, client);
+
+      if (product.userId !== userId) {
         throw new NotFoundError('El producto no existe');
       }
 
-      if (movementType === 'OUT') {
-        const requiredQty = requiredQtyByProductId.get(item.productId) ?? item.quantity;
-        const currentStock = await this.productRepo.getStock(item.productId, client);
-          if (currentStock < requiredQty) {
-            throw new ConflictError(
-              `Stock insuficiente para "${product.name}"`
-            );
-          }
-        }
-
-      if (movementType === 'IN') {
-        await this.updateProductCost(product, item, client);
+      if (!product.isActive) {
+        throw new ConflictError(
+          `El producto "${product.name}" está desactivado y no admite movimientos`
+        );
       }
 
-      totalAmount += item.unitPrice * item.quantity;
-      itemsToInsert.push({
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-      });
+      if (movementType === 'OUT') {
+        const currentStock = await this.productRepo.getStock(productId, client);
+        if (currentStock < totalQuantity) {
+          throw new ConflictError(`Stock insuficiente para "${product.name}"`);
+        }
+      }
+
+      if (movementType === 'IN') {
+        const weightedUnitCost = totalCost / totalQuantity;
+        await this.updateProductCost(
+          product,
+          { productId, quantity: totalQuantity, unitPrice: weightedUnitCost },
+          client
+        );
+      }
+
+      totalAmount += totalCost;
     }
+
+    // Persistimos los items tal como los envió el cliente (preservamos el detalle
+    // para el historial), aunque la validación y el costo promedio se hicieron
+    // sobre los totales agregados.
+    const itemsToInsert: InventoryMovementItemInsert[] = items.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    }));
+
     return { itemsToInsert, totalAmount };
   }
 

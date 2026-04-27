@@ -14,6 +14,7 @@ import productRouter from './routes/product.routes.js';
 import { requireAuth } from './middlewares/auth.middleware.js';
 import categoryRouter from './routes/category.routes.js';
 import inventoryMovementRouter from './routes/inventory-movement.routes.js';
+import reportRouter from './routes/report.routes.js';
 import seedRouter from './routes/seed.routes.js';
 import { setupSwagger } from './config/swagger.js';
 
@@ -63,6 +64,7 @@ app.use("/api/auth", userRouter);
 app.use("/api/product", requireAuth, productRouter);
 app.use("/api/category", requireAuth, categoryRouter);
 app.use("/api/inventory-movement", requireAuth, inventoryMovementRouter);
+app.use("/api/report", requireAuth, reportRouter);
 app.use("/api/seed", seedRouter);
 
 app.use(notFoundHandler);

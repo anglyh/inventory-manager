@@ -7,5 +7,6 @@ export const TABLES = {
 } as const;
 
 export const VIEWS = {
-  PRODUCT_WITH_STOCK: "vw_product_stock"
+  PRODUCT_WITH_STOCK: "vw_product_stock",
+  SALES_PROFIT: "vw_sales_profit",
 } as const;

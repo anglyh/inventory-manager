@@ -110,21 +110,27 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
   ): Promise<CreatedInventoryMovementItem[]> {
     const values: any[] = [];
     const valuePlaceholders: string[] = [];
-    const TOTAL_COLUMNS = 4;
+    const TOTAL_COLUMNS = 5;
 
     movementItems.forEach((item, index) => {
       const baseIndex = index * TOTAL_COLUMNS;
 
       valuePlaceholders.push(
-        `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`
+        `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5})`
       );
-      values.push(movementId, item.productId, item.quantity, item.unitPrice);
+      values.push(
+        movementId,
+        item.productId,
+        item.quantity,
+        item.unitPrice,
+        item.unitCost
+      );
     })
 
-    const text=  `
-      INSERT INTO ${TABLES.INVENTORY_MOVEMENT_ITEM} (movement_id, product_id, quantity, unit_price)
+    const text = `
+      INSERT INTO ${TABLES.INVENTORY_MOVEMENT_ITEM} (movement_id, product_id, quantity, unit_price, unit_cost)
       VALUES ${valuePlaceholders.join(", ")}
-      RETURNING product_id, quantity, unit_price
+      RETURNING product_id, quantity, unit_price, unit_cost
     `
 
     const result = await client.query(text, values)

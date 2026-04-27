@@ -17,6 +17,8 @@ import type { Product } from '../models/product.model.js';
 import type { CreateInventoryMovementPayloadDTO } from '../schemas/inventory-movement.schema.js';
 import { calculateUnitCostAverage } from '../utils/calculations.js';
 
+type IncomingItem = CreateInventoryMovementPayloadDTO['items'][number];
+
 export default class InventoryMovementService implements IInventoryMovementService {
   constructor(
     private inventoryMovementRepo: IInventoryMovementRepository,
@@ -102,7 +104,7 @@ export default class InventoryMovementService implements IInventoryMovementServi
   }
 
   private async processItems(
-    items: InventoryMovementItemInsert[],
+    items: IncomingItem[],
     movementType: MovementType,
     userId: string,
     client: PoolClient
@@ -130,6 +132,10 @@ export default class InventoryMovementService implements IInventoryMovementServi
 
     let totalAmount = 0;
 
+    // Guardamos el unitCostAvg vigente por producto para poder usarlo como
+    // snapshot en items OUT al final (sin reconsultar la BD).
+    const costAvgSnapshotByProductId = new Map<string, number>();
+
     for (const productId of orderedProductIds) {
       const aggregated = aggregatedByProductId.get(productId)!;
       const { quantity: totalQuantity, totalCost } = aggregated;
@@ -148,6 +154,8 @@ export default class InventoryMovementService implements IInventoryMovementServi
         );
       }
 
+      costAvgSnapshotByProductId.set(productId, parseFloat(product.unitCostAvg) || 0);
+
       if (movementType === 'OUT') {
         const currentStock = await this.productRepo.getStock(productId, client);
         if (currentStock < totalQuantity) {
@@ -157,46 +165,51 @@ export default class InventoryMovementService implements IInventoryMovementServi
 
       if (movementType === 'IN') {
         const weightedUnitCost = totalCost / totalQuantity;
-        await this.updateProductCost(
-          product,
-          { productId, quantity: totalQuantity, unitPrice: weightedUnitCost },
-          client
-        );
+        await this.updateProductCost(product, totalQuantity, weightedUnitCost, client);
       }
 
       totalAmount += totalCost;
     }
 
     // Persistimos los items tal como los envió el cliente (preservamos el detalle
-    // para el historial), aunque la validación y el costo promedio se hicieron
-    // sobre los totales agregados.
-    const itemsToInsert: InventoryMovementItemInsert[] = items.map(item => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-    }));
+    // para el historial) pero enriquecidos con el unitCost snapshot:
+    //  - IN  -> el unitCost es el mismo unitPrice de la línea (lo que se pagó).
+    //  - OUT -> el unitCost es el unitCostAvg vigente del producto al momento
+    //           de la venta (leído antes de cualquier update en esta transacción).
+    const itemsToInsert: InventoryMovementItemInsert[] = items.map(item => {
+      const unitCost =
+        movementType === 'IN'
+          ? item.unitPrice
+          : costAvgSnapshotByProductId.get(item.productId) ?? 0;
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        unitCost: Math.round(unitCost * 100) / 100,
+      };
+    });
 
     return { itemsToInsert, totalAmount };
   }
 
   private async updateProductCost(
     product: Product,
-    item: InventoryMovementItemInsert,
+    newQuantity: number,
+    newUnitCost: number,
     client: PoolClient
   ): Promise<void> {
-    const currentStock = await this.productRepo.getStock(item.productId, client);
+    const currentStock = await this.productRepo.getStock(product.id, client);
     const currentAvg = parseFloat(product.unitCostAvg) || 0;
-    const { quantity, unitPrice: unitCost } = item;
 
     const newAvg = calculateUnitCostAverage({
       currentStock,
       currentCostAvg: currentAvg,
-      newQuantity: quantity,
-      newUnitCost: unitCost,
+      newQuantity,
+      newUnitCost,
     });
 
     await this.productRepo.updateUnitCostAvg(
-      item.productId,
+      product.id,
       Math.round(newAvg * 100) / 100,
       client
     );

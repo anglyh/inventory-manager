@@ -26,7 +26,7 @@ async function runMigrations(): Promise<void> {
   const migrationsDir = path.resolve(process.cwd(), "migrations");
 
   const files = fs
-    .readdirSync(migrationsDir, { withFileTypes: true })
+  .readdirSync(migrationsDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".sql"))
     .map((entry) => entry.name)
     .sort();

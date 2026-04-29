@@ -17,8 +17,8 @@ export default class UserService implements IUserService {
   constructor(private userRepo: IUserRepository) {}
 
   async register(input: CreateUserInput): Promise<AuthResponse> {
-    const exists = await this.userRepo.findByEmail(input.email);
-    if (exists) throw new ConflictError("El email ya está registrado");
+    const existingUser = await this.userRepo.findByEmail(input.email);
+    if (existingUser) throw new ConflictError("El email ya está registrado");
 
     const passwordHashed = await hash(input.password, UserService.COST);
     const user = await this.userRepo.create(input.name, input.email, passwordHashed);
@@ -37,10 +37,10 @@ export default class UserService implements IUserService {
 
   async login(input: LoginInput): Promise<AuthResponse> {
     const user = await this.userRepo.findByEmail(input.email);
-    if (!user) throw new NotFoundError("No hay una cuenta registrada con este correo");
+    if (!user) throw new UnauthorizedError("Correo electrónico o contraseña incorrectos");
 
     const validPassword = await compare(input.password, user.password);
-    if (!validPassword) throw new UnauthorizedError("Credenciales incorrectas");
+    if (!validPassword) throw new UnauthorizedError("Correo electrónico o contraseña incorrectos");
 
     const token = JWT.signAccessToken({
       userId: user.id,

@@ -23,6 +23,7 @@ const app = express();
 const corsOptions: cors.CorsOptions = {
   origin: [
     "https://inventory-manager-angular.vercel.app",
+    "https://inventory-manager-angular.pages.dev",
     "http://localhost:3000",
     "http://localhost:4200",
   ],

@@ -38,4 +38,4 @@ export type ListProductFilters = {
   limit: number;
 }
 
-export type ProductSearchItem = Pick<Product, 'id' | 'name' | 'salePrice'>;
+export type ProductSearchItem = Pick<Product, 'id' | 'name' | 'salePrice' | 'barcode'>;

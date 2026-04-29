@@ -128,7 +128,8 @@ export default class ProductRepository implements IProductRepository {
     SELECT
       p.id,
       p.name,
-      p.sale_price
+      p.sale_price,
+      p.barcode
     FROM ${TABLES.PRODUCT} AS p
     WHERE p.user_id = $1 AND p.is_active = true
     ORDER BY p.name ASC

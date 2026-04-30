@@ -90,6 +90,11 @@ productRouter.post("/", validateBody(createProductSchema), ProductController.cre
  *         schema:
  *           type: string
  *         description: Término opcional para buscar productos por nombre
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filtra por nombre de categoría. Acepta uno o varios nombres separados por coma (ej. "Bebidas" o "Bebidas,Snacks"). Comparación insensible a mayúsculas/acentos. Si no se envía, retorna productos de todas las categorías.
  *     responses:
  *       200:
  *         description: Lista de productos

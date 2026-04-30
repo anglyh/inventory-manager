@@ -23,7 +23,17 @@ export const productIdParamSchema = z.object({
 export const listProductPaginationSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   searchTerm: z.coerce.string().optional(),
-  categoryId: z.uuid().optional(),
+  category: z.coerce
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined;
+      const parts = value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      return parts.length ? parts : undefined;
+    }),
   limit: z.coerce.number().int().positive().max(100).optional().default(12)
 })
 

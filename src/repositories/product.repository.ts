@@ -153,22 +153,25 @@ export default class ProductRepository implements IProductRepository {
     return snakeToCamel(result.rows)
   }
 
-  async count(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryId'>): Promise<number> {
+  async count(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryNames'>): Promise<number> {
     const { conditions, params } = this.buildWhereClause(filters)
     const whereClause = conditions.length
       ? `WHERE ${conditions.join(' AND ')}`
       : ''
 
     const result = await query(`
-      SELECT COUNT (*) FROM ${VIEWS.PRODUCT_WITH_STOCK} as p ${whereClause}`,
+      SELECT COUNT (*)
+      FROM ${VIEWS.PRODUCT_WITH_STOCK} as p
+      LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
+      ${whereClause}`,
       params
     )
 
     return parseInt(result.rows[0].count, 10)
   }
 
-  private buildWhereClause(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryId'>) {
-    const { userId, search, categoryId } = filters;
+  private buildWhereClause(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryNames'>) {
+    const { userId, search, categoryNames } = filters;
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -180,9 +183,13 @@ export default class ProductRepository implements IProductRepository {
       conditions.push(`p.name ILIKE $${params.length}`)
     }
 
-    if (categoryId) {
-      params.push(categoryId)
-      conditions.push(`p.category_id = $${params.length}`)
+    if (categoryNames?.length) {
+      const orParts: string[] = [];
+      for (const name of categoryNames) {
+        params.push(name);
+        orParts.push(`lower(unaccent(c.name)) = lower(unaccent($${params.length}))`);
+      }
+      conditions.push(`(${orParts.join(' OR ')})`);
     }
 
     return { conditions, params }

@@ -25,7 +25,7 @@ export type ProductListItem = ProductWithStock & {
 export type ListProductQuery = {
   userId: string;
   search?: string | undefined;
-  categoryId?: string | undefined;
+  categoryNames?: string[] | undefined;
   limit: number;
   offset: number
 }
@@ -33,7 +33,7 @@ export type ListProductQuery = {
 export type ListProductFilters = {
   userId: string;
   search?: string | undefined;
-  categoryId?: string | undefined;
+  categoryNames?: string[] | undefined;
   page: number;
   limit: number;
 }

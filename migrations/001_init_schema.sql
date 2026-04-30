@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS category (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references app_user(id) ON DELETE CASCADE,
     name varchar(100) not null,
-    icon varchar(100),
     created_at timestamptz default now() not null,
     UNIQUE(user_id, name)
 );
@@ -28,7 +27,7 @@ CREATE TABLE IF NOT EXISTS product (
     sale_price numeric (10, 2) not null check ( sale_price >= 0 ),
     unit_cost_avg numeric(10, 2) check ( unit_cost_avg IS NULL OR unit_cost_avg >= 0 ),
     min_stock integer not null default 10 check ( min_stock >= 0 ),
-    category_id uuid references category(id),
+    category_id uuid references category(id) ON DELETE SET NULL,
     is_active boolean not null default true,
     created_at timestamptz default now() not null
 );

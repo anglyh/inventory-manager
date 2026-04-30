@@ -4,7 +4,7 @@ import type { Product, ProductWithStock, ProductListItem, ProductSearchItem, Lis
 export interface IProductRepository {
   findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null>;
   listAll(filters: ListProductQuery): Promise<ProductListItem[]>;
-  count(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryId'>): Promise<number>;
+  count(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryNames'>): Promise<number>;
   create(userId: string, productData: Product): Promise<Product>;
   update(productData: Product, client?: PoolClient): Promise<Product>;
   deactivate(id: string): Promise<Product>;

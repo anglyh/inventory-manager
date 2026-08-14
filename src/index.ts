@@ -48,6 +48,7 @@ app.use(async (req, res, next) => {
     await ensureDb();
     return next();
   } catch (err) {
+    console.error("Error connecting to database", err);
     // Respuesta JSON consistente (y con CORS, porque el middleware cors ya corrió)
     return res.status(503).json({ message: "Database unavailable" });
   }

@@ -1,6 +1,4 @@
 /**
- * Entrada para Vercel: `export default app`.
- *
  * Importante: NO conectamos a la BD en el top-level (`await initDb()`),
  * porque si Supabase no es resoluble (ENOTFOUND) la Function crashea y
  * ni siquiera responde el preflight CORS (OPTIONS). Conexión lazy + cache.
@@ -71,4 +69,8 @@ app.use("/api/seed", seedRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-export default app;
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+})

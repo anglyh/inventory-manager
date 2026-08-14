@@ -15,6 +15,7 @@ import inventoryMovementRouter from './routes/inventory-movement.routes.js';
 import reportRouter from './routes/report.routes.js';
 import seedRouter from './routes/seed.routes.js';
 import { setupSwagger } from './config/swagger.js';
+import { env } from './config.js';
 
 const app = express();
 
@@ -37,7 +38,12 @@ app.use(express.json());
 
 let dbInitPromise: Promise<void> | undefined;
 function ensureDb() {
-  if (!dbInitPromise) dbInitPromise = initDb();
+  if (!dbInitPromise) {
+    dbInitPromise = initDb().catch(err => {
+      dbInitPromise = undefined;
+      throw err;
+    });
+  }
   return dbInitPromise;
 }
 
@@ -54,7 +60,9 @@ app.use(async (req, res, next) => {
   }
 });
 
-setupSwagger(app);
+if (env.NODE_ENV !== "production") {
+  setupSwagger(app);
+}
 
 app.get('/health', (req, res) => {
   res.json({ message: "Server working" });
@@ -70,7 +78,7 @@ app.use("/api/seed", seedRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

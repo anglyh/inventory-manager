@@ -2,6 +2,9 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
+  "engines": {
+    "node": "=>22.0.0"
+  },
   "main": "dist/local-server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

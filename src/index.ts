@@ -9,7 +9,7 @@ import { initDb } from './db/index.js';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.middleware.js';
 import userRouter from './routes/user.routes.js';
 import productRouter from './routes/product.routes.js';
-import { requireAuth } from './middlewares/auth.middleware.js';
+import { requireAdmin, requireAuth } from './middlewares/auth.middleware.js';
 import categoryRouter from './routes/category.routes.js';
 import inventoryMovementRouter from './routes/inventory-movement.routes.js';
 import reportRouter from './routes/report.routes.js';

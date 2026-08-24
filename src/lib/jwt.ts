@@ -5,6 +5,7 @@ export interface TokenPayload {
   userId: string;
   name: string;
   email: string;
+  role: 'ADMIN' | 'GUEST';
 }
 
 export default class JWT {

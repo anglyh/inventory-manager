@@ -23,6 +23,7 @@ export type ApiError =
 
 export type ErrorCode =
   | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'BAD_REQUEST'

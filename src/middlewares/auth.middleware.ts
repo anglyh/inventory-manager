@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import JWT from '../lib/jwt.js';
 import UserRepository from '../repositories/user.repository.js';
-import { BadRequestError, UnauthorizedError } from '../errors/app.error.js';
+import { BadRequestError, ForbiddenError, UnauthorizedError } from '../errors/app.error.js';
 
 export async function requireAuth(
   req: Request,
@@ -28,6 +28,22 @@ export async function requireAuth(
     if (!userExists) throw new UnauthorizedError("No autorizado");
     req.user = payload
     next()
+  } catch (err) {
+    next(err)
+  }
+}
+
+export function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (req.user?.role !== 'ADMIN') {
+      return next(new ForbiddenError('Acceso denegado. Se requiere ser Administrador'))
+    }
+    next();
+
   } catch (err) {
     next(err)
   }

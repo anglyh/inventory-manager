@@ -67,7 +67,7 @@ export function errorHandler(
       };
       return res.status(409).json(response);
     }
-    if (err.code === '23503' && err.constraint?.includes('user_id')) {
+    if (err.code === '23503' && err.constraint?.includes('store_id')) {
       const response: ApiErrorResponse = {
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'No autorizado' }

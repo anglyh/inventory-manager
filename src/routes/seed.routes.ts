@@ -14,34 +14,24 @@ const seedRouter: Router = express.Router();
  * @swagger
  * /api/seed:
  *   post:
+ *     security: []
  *     summary: Inicializar base de datos con usuario, categorías y productos por defecto
  *     tags: [Seed]
  *     responses:
  *       201:
- *         description: Base de datos poblada exitosamente
+ *         description: Datos de prueba creados; incluye conteos y si el usuario fue creado.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       type: object
- *                       properties:
- *                         email:
- *                           type: string
- *                         password:
- *                           type: string
- *                     categoriesCreated:
- *                       type: integer
- *                     productsCreated:
- *                       type: integer
- *       200:
- *         description: El seed ya ha sido aplicado previamente (el usuario ya existe)
+ *               $ref: '#/components/schemas/SeedResult'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 seedRouter.post("/", SeedController.runSeed)
 

@@ -1,30 +1,40 @@
 import type { PoolClient } from 'pg';
+import { movementGroupReasons } from '../models/inventory-movement.model.js';
 import type {
   InventoryMovement,
-  InventoryMovementInsert,
-  InventoryMovementListItem,
-  InventoryMovementsByCursorParams,
 } from '../models/inventory-movement.model.js';
 import { TABLES } from '../db/tables.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { query } from '../db/index.js';
 import type {
   CreatedInventoryMovementItem,
+  IInventoryMovementRepository,
   InventoryMovementItemInsert,
-} from '../models/inventory-movement-item.model.js';
-import type { IInventoryMovementRepository } from '../interfaces/repositories/inventory-movement.repository.interface.js';
+  InventoryMovementInsert,
+  InventoryMovementListItem,
+  InventoryMovementsByCursorParams,
+} from '../interfaces/repositories/inventory-movement.repository.interface.js';
 
 export default class InventoryMovementRepository implements IInventoryMovementRepository {
   async create(
     data: InventoryMovementInsert,
     client: PoolClient
   ): Promise<InventoryMovement> {
-    const { userId, movementType, entityName, notes } = data;
+    const { storeId, cashRegisterId, movementType, reason, paymentMethod, supplierId, notes } = data;
     const result = await client.query(`
-      INSERT INTO ${TABLES.INVENTORY_MOVEMENT} (user_id, movement_type, entity_name, notes)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO ${TABLES.INVENTORY_MOVEMENT} 
+      (store_id, cash_register_id, movement_type, reason, payment_method, supplier_id, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-      `, [userId, movementType, entityName ?? null, notes ?? null]
+      `, [
+        storeId, 
+        cashRegisterId ?? null, 
+        movementType, 
+        reason, 
+        paymentMethod ?? null, 
+        supplierId ?? null, 
+        notes ?? null
+      ]
     );
     return snakeToCamel(result.rows[0])
   }
@@ -32,13 +42,13 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
   private buildMovementsCursorWhereClause(
     filters: Omit<InventoryMovementsByCursorParams, 'limit'>
   ) {
-    const { userId, cursorDate, cursorId, movementType } = filters
+    const { storeId, cursorDate, cursorId, movementType, group } = filters
     const conditions: string[] = []
     const params: unknown[] = []
 
-    params.push(userId)
+    params.push(storeId)
     conditions.push(
-      `m.user_id = $${params.length}`,
+      `m.store_id = $${params.length}`,
     )
 
     if (cursorDate && cursorId) {
@@ -49,8 +59,16 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
       `)
     }
 
-    params.push(movementType)
-    conditions.push(`m.movement_type = $${params.length}`)
+    if (movementType) {
+      params.push(movementType)
+      conditions.push(`m.movement_type = $${params.length}`)
+    }
+    params.push(group === 'voids' ? 'VOIDED' : 'COMPLETED');
+    conditions.push(`m.status = $${params.length}`);
+    if (group && group !== 'voids') {
+      params.push(movementGroupReasons[group]);
+      conditions.push(`m.reason = ANY($${params.length}::movement_reason[])`);
+    }
 
     return { conditions, params }
   }
@@ -67,12 +85,8 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
 
     const text = `
       SELECT
-        m.id,
-        m.movement_type,
-        m.entity_name,
-        m.notes,
-        m.created_at,
-        SUM(mi.unit_price * mi.quantity) as total_amount,
+        m.*,
+        COALESCE(SUM(mi.unit_price * mi.quantity), 0.00)::text as total_amount,
         COALESCE(
           json_agg(
             json_build_object(
@@ -81,6 +95,7 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
               'unitPrice', mi.unit_price::text,
               'quantity', mi.quantity
             )
+            ORDER BY mi.id
           ) FILTER (WHERE mi.id IS NOT NULL),
           '[]'::json
         ) AS items
@@ -91,7 +106,6 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
         GROUP BY 
           m.id, 
           m.movement_type, 
-          m.entity_name, 
           m.notes, 
           m.created_at
         ORDER BY
@@ -108,7 +122,8 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
     movementItems: InventoryMovementItemInsert[],
     client: PoolClient
   ): Promise<CreatedInventoryMovementItem[]> {
-    const values: any[] = [];
+    if (movementItems.length === 0) return [];
+    const values: unknown[] = [];
     const valuePlaceholders: string[] = [];
     const TOTAL_COLUMNS = 5;
 
@@ -130,7 +145,7 @@ export default class InventoryMovementRepository implements IInventoryMovementRe
     const text = `
       INSERT INTO ${TABLES.INVENTORY_MOVEMENT_ITEM} (movement_id, product_id, quantity, unit_price, unit_cost)
       VALUES ${valuePlaceholders.join(", ")}
-      RETURNING product_id, quantity, unit_price, unit_cost
+      RETURNING product_id, quantity, unit_price::text AS unit_price, unit_cost::text AS unit_cost
     `
 
     const result = await client.query(text, values)

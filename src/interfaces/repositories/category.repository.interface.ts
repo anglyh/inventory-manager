@@ -1,10 +1,10 @@
 import type { Category } from '../../models/category.model.js';
 
 export interface ICategoryRepository {
-  create(userId: string, categoryData: Category): Promise<Category>;
-  listAll(userId: string): Promise<Category[]>;
-  findById(userId: string, categoryId: string): Promise<Category | null>;
-  update(userId: string, categoryId: string, categoryData: Pick<Category, 'name'>): Promise<Category>;
-  delete(userId: string, categoryId: string): Promise<void>;
+  create(storeId: string, categoryData: Category): Promise<Category>;
+  listAll(storeId: string): Promise<Category[]>;
+  findById(storeId: string, categoryId: string): Promise<Category | null>;
+  update(storeId: string, categoryId: string, categoryData: Pick<Category, 'name'>): Promise<Category>;
+  delete(storeId: string, categoryId: string): Promise<void>;
 }
 

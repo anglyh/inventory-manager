@@ -1,4 +1,5 @@
 export const TABLES = {
+  STORE: "store",
   USER: "app_user",
   PRODUCT: "product",
   INVENTORY_MOVEMENT: "inventory_movement",

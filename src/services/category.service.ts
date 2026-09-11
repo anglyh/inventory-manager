@@ -6,32 +6,32 @@ import { NotFoundError } from '../errors/app.error.js';
 export default class CategoryService implements ICategoryService {
   constructor(private categoryRepo: ICategoryRepository) {}
 
-  async create(userId: string, categoryData: Category): Promise<Category> {
-    const category = await this.categoryRepo.create(userId, categoryData);
+  async create(storeId: string, categoryData: Category): Promise<Category> {
+    const category = await this.categoryRepo.create(storeId, categoryData);
     return category;
   }
 
-  async listAll(userId: string): Promise<Category[]> {
-    const categories = await this.categoryRepo.listAll(userId);
+  async listAll(storeId: string): Promise<Category[]> {
+    const categories = await this.categoryRepo.listAll(storeId);
     return categories;
   }
 
   async update(
-    userId: string,
+    storeId: string,
     categoryId: string,
     categoryData: Pick<Category, 'name'>
   ): Promise<Category> {
-    const existing = await this.categoryRepo.findById(userId, categoryId);
+    const existing = await this.categoryRepo.findById(storeId, categoryId);
     if (!existing) throw new NotFoundError("No existe la categoría");
 
-    const updated = await this.categoryRepo.update(userId, categoryId, categoryData);
+    const updated = await this.categoryRepo.update(storeId, categoryId, categoryData);
     return updated;
   }
 
-  async delete(userId: string, categoryId: string): Promise<void> {
-    const existing = await this.categoryRepo.findById(userId, categoryId);
+  async delete(storeId: string, categoryId: string): Promise<void> {
+    const existing = await this.categoryRepo.findById(storeId, categoryId);
     if (!existing) throw new NotFoundError("No existe la categoría");
 
-    await this.categoryRepo.delete(userId, categoryId);
+    await this.categoryRepo.delete(storeId, categoryId);
   }
 }

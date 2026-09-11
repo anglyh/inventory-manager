@@ -5,7 +5,7 @@ import { BadRequestError } from '../errors/app.error.js';
 export default class CategoryController {
   static async createCategory(req: Request, res: Response, next: NextFunction) {
     try {
-      const category = await categoryService.create(req.user!.userId, req.body);
+      const category = await categoryService.create(req.user!.storeId, req.body);
       res.status(201).json(category)
     } catch (err) {
       next(err)
@@ -14,7 +14,7 @@ export default class CategoryController {
 
   static async listCategories(req: Request, res: Response, next: NextFunction) {
     try {
-      const categories = await categoryService.listAll(req.user!.userId);
+      const categories = await categoryService.listAll(req.user!.storeId);
       res.status(200).json(categories)
     } catch (err) {
       next(err)
@@ -26,7 +26,7 @@ export default class CategoryController {
       const categoryId = req.params.id as string | undefined;
       if (!categoryId) throw new BadRequestError("No se ha enviado un id de categoría");
 
-      const updated = await categoryService.update(req.user!.userId, categoryId, req.body);
+      const updated = await categoryService.update(req.user!.storeId, categoryId, req.body);
       res.status(200).json(updated);
     } catch (err) {
       next(err);
@@ -38,7 +38,7 @@ export default class CategoryController {
       const categoryId = req.params.id as string | undefined;
       if (!categoryId) throw new BadRequestError("No se ha enviado un id de categoría");
 
-      await categoryService.delete(req.user!.userId, categoryId);
+      await categoryService.delete(req.user!.storeId, categoryId);
       res.status(204).send();
     } catch (err) {
       next(err);

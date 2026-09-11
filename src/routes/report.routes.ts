@@ -30,11 +30,21 @@ const reportRouter: Router = express.Router();
  *         schema: { type: string, format: date-time }
  *     responses:
  *       200:
- *         description: Totales del periodo
+ *         description: Totales y rango efectivo del periodo.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProfitSummary'
  *       400:
- *         description: Query inválida (por ejemplo from >= to)
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 reportRouter.get('/profit/summary', ReportController.getProfitSummary);
 
@@ -58,11 +68,21 @@ reportRouter.get('/profit/summary', ReportController.getProfitSummary);
  *         schema: { type: integer, default: 10, maximum: 100 }
  *     responses:
  *       200:
- *         description: Ranking de productos
+ *         description: Ranking de productos y rango efectivo del periodo.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProfitByProduct'
  *       400:
- *         description: Query inválida
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 reportRouter.get('/profit/by-product', ReportController.getProfitByProduct);
 

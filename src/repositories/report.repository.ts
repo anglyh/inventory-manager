@@ -10,7 +10,7 @@ import { snakeToCamel } from '../utils/mapper.js';
 
 export default class ReportRepository implements IReportRepository {
   async getProfitSummary(filters: ReportDateRange): Promise<ProfitSummaryRow> {
-    const { userId, from, to } = filters;
+    const { storeId, from, to } = filters;
     const text = `
       SELECT
         COALESCE(SUM(revenue), 0)::text                            AS revenue,
@@ -26,18 +26,18 @@ export default class ReportRepository implements IReportRepository {
           0
         )::text                                                    AS avg_ticket
       FROM ${VIEWS.SALES_PROFIT}
-      WHERE user_id = $1
+      WHERE store_id = $1
         AND created_at >= $2
         AND created_at <  $3
     `;
-    const result = await query(text, [userId, from, to]);
+    const result = await query(text, [storeId, from, to]);
     return snakeToCamel(result.rows[0]);
   }
 
   async getProfitByProduct(
     filters: ReportDateRange & { limit: number }
   ): Promise<ProfitByProductRow[]> {
-    const { userId, from, to, limit } = filters;
+    const { storeId, from, to, limit } = filters;
     const text = `
       SELECT
         product_id,
@@ -51,14 +51,14 @@ export default class ReportRepository implements IReportRepository {
           0
         )::text                                                    AS margin_pct
       FROM ${VIEWS.SALES_PROFIT}
-      WHERE user_id = $1
+      WHERE store_id = $1
         AND created_at >= $2
         AND created_at <  $3
       GROUP BY product_id
       ORDER BY SUM(profit) DESC
       LIMIT $4
     `;
-    const result = await query(text, [userId, from, to, limit]);
+    const result = await query(text, [storeId, from, to, limit]);
     return snakeToCamel(result.rows);
   }
 }

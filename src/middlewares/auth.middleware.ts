@@ -43,7 +43,6 @@ export function requireAdmin(
       return next(new ForbiddenError('Acceso denegado. Se requiere ser Administrador'))
     }
     next();
-
   } catch (err) {
     next(err)
   }

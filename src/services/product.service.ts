@@ -1,25 +1,25 @@
-import type { ListProductFilters, Product, ProductListItem, ProductSearchItem } from '../models/product.model.js';
+import type { Product, ProductListItem, ProductSearchItem } from '../models/product.model.js';
 import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
-import type { IProductService } from '../interfaces/services/product.service.interface.js';
+import type { IProductService, ListProductFilters } from '../interfaces/services/product.service.interface.js';
 import { NotFoundError } from '../errors/app.error.js';
 import type { PaginatedResult } from '../types/api.types.js';
 
 export default class ProductService implements IProductService {
   constructor(private productRepo: IProductRepository) { }
 
-  async create(userId: string, productData: Product): Promise<Product> {
-    const product = await this.productRepo.create(userId, productData);
+  async create(storeId: string, productData: Product): Promise<Product> {
+    const product = await this.productRepo.create(storeId, productData);
     return product;
   }
 
   async listAll(filters: ListProductFilters): Promise<PaginatedResult<ProductListItem>> {
-    const { userId, categoryNames, search, limit, page } = filters
+    const { storeId, categoryNames, search, limit, page } = filters
 
     const offset = (page - 1) * limit;
 
     const [products, totalProducts] = await Promise.all([
-      this.productRepo.listAll({ userId, categoryNames, search, limit, offset }),
-      this.productRepo.count({ userId, categoryNames, search })
+      this.productRepo.listAll({ storeId, categoryNames, search, limit, offset }),
+      this.productRepo.count({ storeId, categoryNames, search })
     ])
 
     const totalPages = Math.ceil(totalProducts / limit)
@@ -50,12 +50,12 @@ export default class ProductService implements IProductService {
 
   async delete(productId: string): Promise<void> {}
 
-  async listProductOptions(userId: string): Promise<ProductSearchItem[]> {
-    return this.productRepo.listProductOptions(userId);
+  async listProductOptions(storeId: string): Promise<ProductSearchItem[]> {
+    return this.productRepo.listProductOptions(storeId);
   }
 
-  async getByName(userId: string, searchTerm: string): Promise<ProductSearchItem[]> {
-    const products = await this.productRepo.getByName(userId, searchTerm)
+  async getByName(storeId: string, searchTerm: string): Promise<ProductSearchItem[]> {
+    const products = await this.productRepo.getByName(storeId, searchTerm)
     return products
   }
 }

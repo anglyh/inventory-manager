@@ -1,24 +1,281 @@
 import express, { Router } from 'express';
 import InventoryMovementController from '../controllers/inventory-movement.controller.js';
-import { validateBody } from '../middlewares/zod-validation.middleware.js';
-import { createInventoryMovementPayloadSchema } from '../schemas/inventory-movement.schema.js';
+import { validateBody, validateQuery } from '../middlewares/zod-validation.middleware.js';
+import { initialLoadSchema, adjustmentSchema, inventoryMovementsCursorQuerySchema, saleSchema, purchaseSchema, lossSchema } from '../schemas/inventory-movement.schema.js';
 
 const inventoryMovementRouter: Router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     MovementItems:
+ *       type: array
+ *       minItems: 1
+ *       items:
+ *         type: object
+ *         required: [productId, unitPrice, quantity]
+ *         properties:
+ *           productId:
+ *             type: string
+ *             format: uuid
+ *           unitPrice:
+ *             type: number
+ *             minimum: 0
+ *             maximum: 99999999.99
+ *             multipleOf: 0.01
+ *           quantity:
+ *             type: integer
+ *             minimum: 1
+ *     SaleItems:
+ *       type: array
+ *       minItems: 1
+ *       items:
+ *         type: object
+ *         additionalProperties: false
+ *         required: [productId, salePrice, quantity]
+ *         properties:
+ *           productId:
+ *             type: string
+ *             format: uuid
+ *           salePrice:
+ *             type: number
+ *             description: Precio cobrado por unidad en esta venta.
+ *             minimum: 0
+ *             maximum: 99999999.99
+ *             multipleOf: 0.01
+ *             example: 3.5
+ *           quantity:
+ *             type: integer
+ *             minimum: 1
+ *     PurchaseItems:
+ *       type: array
+ *       minItems: 1
+ *       items:
+ *         type: object
+ *         additionalProperties: false
+ *         required: [productId, unitCost, quantity]
+ *         properties:
+ *           productId:
+ *             type: string
+ *             format: uuid
+ *           unitCost:
+ *             type: number
+ *             description: Costo pagado por unidad en esta compra.
+ *             minimum: 0
+ *             maximum: 99999999.99
+ *             multipleOf: 0.01
+ *             example: 2
+ *           quantity:
+ *             type: integer
+ *             minimum: 1
+ * /api/inventory-movement/sales:
+ *   post:
+ *     summary: Registrar venta (OUT)
+ *     description: El servicio asigna SALE y OUT. No enviar reason ni movementType.
+ *     tags: [InventoryMovements]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required: [paymentMethod, items]
+ *             properties:
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: [CASH, YAPE]
+ *               cashRegisterId:
+ *                 type: string
+ *                 format: uuid
+ *               notes:
+ *                 type: string
+ *               items:
+ *                 $ref: '#/components/schemas/SaleItems'
+ *     responses:
+ *       204:
+ *         description: Venta registrada. Sin cuerpo de respuesta; consultar el historial para obtener el detalle.
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         $ref: '#/components/responses/InventoryExitConflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
+ * /api/inventory-movement/purchases:
+ *   post:
+ *     summary: Registrar compra (IN)
+ *     description: El servicio asigna PURCHASE e IN. No enviar reason ni movementType.
+ *     tags: [InventoryMovements]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required: [items]
+ *             properties:
+ *               supplierId:
+ *                 type: string
+ *                 format: uuid
+ *               notes:
+ *                 type: string
+ *               items:
+ *                 $ref: '#/components/schemas/PurchaseItems'
+ *     responses:
+ *       204:
+ *         description: Compra registrada. Sin cuerpo de respuesta; consultar el historial para obtener el detalle.
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         $ref: '#/components/responses/InventoryEntryConflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
+ * /api/inventory-movement/losses:
+ *   post:
+ *     summary: Registrar merma o pérdida (OUT)
+ *     tags: [InventoryMovements]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required: [reason, items]
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 enum: [LOSS_EXPIRED, LOSS_DAMAGED]
+ *               notes:
+ *                 type: string
+ *               items:
+ *                 $ref: '#/components/schemas/MovementItems'
+ *     responses:
+ *       204:
+ *         description: Pérdida registrada. Sin cuerpo de respuesta.
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         $ref: '#/components/responses/InventoryExitConflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
+ */
+inventoryMovementRouter.post('/sales', validateBody(saleSchema), InventoryMovementController.registerSale);
+inventoryMovementRouter.post('/purchases', validateBody(purchaseSchema), InventoryMovementController.registerPurchase);
+inventoryMovementRouter.post('/losses', validateBody(lossSchema), InventoryMovementController.registerLoss);
+
+/**
+ * @swagger
+ * /api/inventory-movement:
+ *   get:
+ *     summary: Historial de movimientos con filtros por dirección y grupo
+ *     description: |
+ *       Sin filtros devuelve todos los movimientos completados. movementType filtra la dirección y group el grupo; si se envían ambos, se aplican juntos. Una combinación sin coincidencias devuelve data vacío.
+ *       group=voids consulta anulados; los demás grupos consultan completados.
+ *       Orden descendente por fecha de creación e id. La primera petición no envía cursor.
+ *       Para la siguiente página, envía cursorDate y cursorId de nextCursor juntos y conserva los filtros. Al cambiar filtros, reinicia la paginación sin cursor.
+ *     tags: [InventoryMovements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: movementType
+ *         schema:
+ *           type: string
+ *           enum: [IN, OUT]
+ *         description: IN incluye compras, cargas iniciales y ajustes de entrada. OUT incluye ventas, pérdidas y ajustes de salida. Sin este filtro incluye ambas direcciones.
+ *       - in: query
+ *         name: group
+ *         schema:
+ *           type: string
+ *           enum: [sales, purchase, loss, voids]
+ *         description: sales incluye SALE; purchase incluye PURCHASE; loss incluye LOSS_EXPIRED, LOSS_DAMAGED y COUNT_SHORTAGE. Sin grupo incluye todos los motivos completados. voids incluye anulados de cualquier motivo.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 12
+ *           minimum: 1
+ *           maximum: 100
+ *       - in: query
+ *         name: cursorDate
+ *         description: Valor nextCursor.cursorDate de la página anterior; enviar junto con cursorId.
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: cursorId
+ *         description: Valor nextCursor.cursorId de la página anterior; enviar junto con cursorDate.
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Historial de movimientos y cursor de la siguiente página (null si no hay más).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/InventoryMovementsPage'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
+ */
+inventoryMovementRouter.get('/', validateQuery(inventoryMovementsCursorQuerySchema), InventoryMovementController.listByCursor);
+
+/**
+ * @swagger
  * tags:
  *   name: InventoryMovements
- *   description: Movimientos de inventario — entradas (compras) y salidas (ventas)
+ *   description: Registro e historial de ventas, compras, pérdidas, cargas iniciales y ajustes de inventario
  */
 
 /**
  * @swagger
- * /api/inventory-movement/entries:
+ * /api/inventory-movement/initial-loads:
  *   post:
- *     summary: Registrar entrada de inventario (compra)
- *     description: Crea un movimiento tipo IN. Actualiza costo medio del producto cuando aplica. No envíes movementType; lo fija la ruta.
- *     tags: [InventoryMovements]
+ *     summary: Carga inicial (IN)
+ *     description: El servicio asigna INITIAL_LOAD e IN.
+ *     tags:
+ *       - InventoryMovements
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -27,117 +284,42 @@ const inventoryMovementRouter: Router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
+ *             additionalProperties: false
  *             required:
  *               - items
  *             properties:
- *               entityName:
- *                 type: string
- *                 nullable: true
- *                 description: Proveedor u otra referencia (opcional)
  *               notes:
  *                 type: string
- *                 nullable: true
  *               items:
- *                 type: array
- *                 minItems: 1
- *                 items:
- *                   type: object
- *                   required:
- *                     - productId
- *                     - unitPrice
- *                     - quantity
- *                   properties:
- *                     productId:
- *                       type: string
- *                       format: uuid
- *                     unitPrice:
- *                       type: number
- *                       minimum: 0
- *                       description: Costo unitario de compra
- *                     quantity:
- *                       type: integer
- *                       minimum: 1
+ *                 $ref: '#/components/schemas/MovementItems'
  *     responses:
- *       201:
- *         description: Entrada registrada (movementType IN)
+ *       204:
+ *         description: Carga inicial registrada. Sin cuerpo de respuesta.
  *       400:
- *         description: Datos inválidos
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         $ref: '#/components/responses/InventoryEntryConflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
-inventoryMovementRouter.post(
-  '/entries',
-  validateBody(createInventoryMovementPayloadSchema),
-  InventoryMovementController.registerEntry
-);
+inventoryMovementRouter.post('/initial-loads', validateBody(initialLoadSchema), InventoryMovementController.registerInitialLoad);
 
 /**
  * @swagger
- * /api/inventory-movement/entries:
- *   get:
- *     summary: Historial de entradas (compras), paginación por cursor
- *     description: |
- *       Orden descendente por fecha de creación e id. La primera petición no envía cursor.
- *       Si la respuesta incluye `nextCursor`, reenvía `cursorDate` y `cursorId` en la siguiente petición (ambos juntos).
- *     tags: [InventoryMovements]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 12
- *           maximum: 100
- *         description: Tamaño de página (el servidor puede pedir limit+1 para detectar si hay más)
- *       - in: query
- *         name: cursorDate
- *         schema:
- *           type: string
- *           format: date-time
- *         description: Valor `nextCursor.cursorDate` de la página anterior (junto con cursorId)
- *       - in: query
- *         name: cursorId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Valor `nextCursor.cursorId` de la página anterior (junto con cursorDate)
- *     responses:
- *       200:
- *         description: Página de movimientos IN
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                 nextCursor:
- *                   type: object
- *                   nullable: true
- *                   properties:
- *                     cursorDate:
- *                       type: string
- *                       format: date-time
- *                     cursorId:
- *                       type: string
- *                       format: uuid
- *       400:
- *         description: Query inválida (p. ej. solo uno de los dos cursores)
- *       401:
- *         description: No autorizado
- */
-inventoryMovementRouter.get('/entries', InventoryMovementController.listEntriesByCursor);
-
-/**
- * @swagger
- * /api/inventory-movement/exits:
+ * /api/inventory-movement/adjustments:
  *   post:
- *     summary: Registrar salida de inventario (venta)
- *     description: Crea un movimiento tipo OUT. No envíes movementType; lo fija la ruta.
- *     tags: [InventoryMovements]
+ *     summary: Ajuste de inventario
+ *     description: COUNT_SURPLUS agrega stock y COUNT_SHORTAGE descuenta stock. MANUAL_CORRECTION requiere movementType IN u OUT. Las cantidades son unidades a agregar o retirar, no el stock final.
+ *     tags:
+ *       - InventoryMovements
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -145,105 +327,60 @@ inventoryMovementRouter.get('/entries', InventoryMovementController.listEntriesB
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - items
- *             properties:
- *               entityName:
- *                 type: string
- *                 nullable: true
- *                 description: Cliente u otra referencia (opcional)
- *               notes:
- *                 type: string
- *                 nullable: true
- *               items:
- *                 type: array
- *                 minItems: 1
- *                 items:
- *                   type: object
- *                   required:
- *                     - productId
- *                     - unitPrice
- *                     - quantity
- *                   properties:
- *                     productId:
- *                       type: string
- *                       format: uuid
- *                     unitPrice:
- *                       type: number
- *                       minimum: 0
- *                       description: Precio unitario de venta
- *                     quantity:
- *                       type: integer
- *                       minimum: 1
- *     responses:
- *       201:
- *         description: Salida registrada (movementType OUT)
- *       400:
- *         description: Datos inválidos
- *       401:
- *         description: No autorizado
- */
-inventoryMovementRouter.post(
-  '/exits',
-  validateBody(createInventoryMovementPayloadSchema),
-  InventoryMovementController.registerExit
-);
-
-/**
- * @swagger
- * /api/inventory-movement/exits:
- *   get:
- *     summary: Historial de salidas (ventas), paginación por cursor
- *     description: |
- *       Misma semántica que GET /entries, filtrando movimientos OUT.
- *     tags: [InventoryMovements]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 12
- *           maximum: 100
- *       - in: query
- *         name: cursorDate
- *         schema:
- *           type: string
- *           format: date-time
- *       - in: query
- *         name: cursorId
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       200:
- *         description: Página de movimientos OUT
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
+ *             oneOf:
+ *               - type: object
+ *                 additionalProperties: false
+ *                 required:
+ *                   - items
+ *                   - reason
+ *                 properties:
+ *                   notes:
+ *                     type: string
  *                   items:
- *                     type: object
- *                 nextCursor:
- *                   type: object
- *                   nullable: true
- *                   properties:
- *                     cursorDate:
- *                       type: string
- *                       format: date-time
- *                     cursorId:
- *                       type: string
- *                       format: uuid
+ *                     $ref: '#/components/schemas/MovementItems'
+ *                   reason:
+ *                     type: string
+ *                     enum:
+ *                       - COUNT_SURPLUS
+ *                       - COUNT_SHORTAGE
+ *               - type: object
+ *                 additionalProperties: false
+ *                 required:
+ *                   - items
+ *                   - reason
+ *                   - movementType
+ *                 properties:
+ *                   notes:
+ *                     type: string
+ *                   items:
+ *                     $ref: '#/components/schemas/MovementItems'
+ *                   reason:
+ *                     type: string
+ *                     enum:
+ *                       - MANUAL_CORRECTION
+ *                   movementType:
+ *                     type: string
+ *                     enum:
+ *                       - IN
+ *                       - OUT
+ *     responses:
+ *       204:
+ *         description: Ajuste registrado. Sin cuerpo de respuesta.
  *       400:
- *         description: Query inválida
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         $ref: '#/components/responses/InventoryExitConflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
-inventoryMovementRouter.get('/exits', InventoryMovementController.listExitsByCursor);
+inventoryMovementRouter.post('/adjustments', validateBody(adjustmentSchema), InventoryMovementController.registerAdjustment);
 
 export default inventoryMovementRouter;

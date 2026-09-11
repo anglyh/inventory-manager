@@ -9,7 +9,7 @@ export default class ReportController {
   static async getProfitSummary(req: Request, res: Response, next: NextFunction) {
     try {
       const { from, to } = profitSummaryQuerySchema.parse(req.query);
-      const result = await reportService.getProfitSummary(req.user!.userId, { from, to });
+      const result = await reportService.getProfitSummary(req.user!.storeId, { from, to });
       res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -19,7 +19,7 @@ export default class ReportController {
   static async getProfitByProduct(req: Request, res: Response, next: NextFunction) {
     try {
       const { from, to, limit } = profitByProductQuerySchema.parse(req.query);
-      const result = await reportService.getProfitByProduct(req.user!.userId, {
+      const result = await reportService.getProfitByProduct(req.user!.storeId, {
         from,
         to,
         limit,

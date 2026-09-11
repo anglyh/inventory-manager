@@ -17,6 +17,7 @@ const userRouter = express.Router();
  * @swagger
  * /api/auth/register:
  *   post:
+ *     security: []
  *     summary: Registrar un nuevo usuario
  *     tags: [Users]
  *     requestBody:
@@ -41,31 +42,26 @@ const userRouter = express.Router();
  *                 example: juan@example.com
  *               password:
  *                 type: string
- *                 minLength: 8
- *                 example: "secret123"
+ *                 minLength: 12
+ *                 pattern: "[A-Z]"
+ *                 example: "Secret1234567"
  *     responses:
  *       201:
- *         description: Usuario creado exitosamente
+ *         description: Usuario creado; retorna token y usuario.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                   description: JWT de acceso
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     name:
- *                       type: string
- *                     email:
- *                       type: string
+ *               $ref: '#/components/schemas/AuthResponse'
  *       400:
- *         description: Datos inválidos
+ *         $ref: '#/components/responses/BadRequest'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 userRouter.post("/register", validateBody(createUserSchema), UserController.signUp)
 
@@ -73,6 +69,7 @@ userRouter.post("/register", validateBody(createUserSchema), UserController.sign
  * @swagger
  * /api/auth/login:
  *   post:
+ *     security: []
  *     summary: Autenticar usuario y obtener token JWT
  *     tags: [Users]
  *     requestBody:
@@ -92,32 +89,24 @@ userRouter.post("/register", validateBody(createUserSchema), UserController.sign
  *               password:
  *                 type: string
  *                 minLength: 1
- *                 example: "secret123"
+ *                 example: "Secret1234567"
  *     responses:
  *       200:
- *         description: Autenticación exitosa, retorna el JWT y datos del usuario
+ *         description: Autenticación exitosa; retorna token y usuario.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                   description: JWT de acceso
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     name:
- *                       type: string
- *                     email:
- *                       type: string
+ *               $ref: '#/components/schemas/AuthResponse'
  *       400:
- *         description: Datos inválidos
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: Credenciales incorrectas
+ *         $ref: '#/components/responses/Unauthorized'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 
 userRouter.post("/login", validateBody(loginSchema), UserController.login)
@@ -132,21 +121,19 @@ userRouter.post("/login", validateBody(loginSchema), UserController.login)
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Token válido, retorna los datos del usuario autenticado
+ *         description: Token actual y sus datos de usuario autenticado.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: string
- *                   format: uuid
- *                 name:
- *                   type: string
- *                 email:
- *                   type: string
+ *               $ref: '#/components/schemas/AuthStatusResponse'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado o token inválido
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 userRouter.get("/check-status", requireAuth, UserController.checkStatus)
 

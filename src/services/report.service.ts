@@ -12,21 +12,21 @@ export default class ReportService implements IReportService {
   constructor(private reportRepo: IReportRepository) {}
 
   async getProfitSummary(
-    userId: string,
+    storeId: string,
     params: { from?: Date | undefined; to?: Date | undefined }
   ): Promise<ProfitSummaryResult> {
     const { from, to } = this.resolveRange(params);
-    const row = await this.reportRepo.getProfitSummary({ userId, from, to });
+    const row = await this.reportRepo.getProfitSummary({ storeId, from, to });
     return { from: from.toISOString(), to: to.toISOString(), ...row };
   }
 
   async getProfitByProduct(
-    userId: string,
+    storeId: string,
     params: { from?: Date | undefined; to?: Date | undefined; limit: number }
   ): Promise<ProfitByProductResult> {
     const { from, to } = this.resolveRange(params);
     const products = await this.reportRepo.getProfitByProduct({
-      userId,
+      storeId,
       from,
       to,
       limit: params.limit,

@@ -1,10 +1,12 @@
-import { z } from 'zod';
+import z from 'zod';
 
 export const createProductSchema = z.object({
   name: z.string('Nombre requerido').min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
   minStock: z.coerce.number().int('Debe ser un número entero').nonnegative('No puede ser negativo').optional().default(0),
   barcode: z.string().max(50, 'Máximo 50 caracteres').optional(),
-  salePrice: z.coerce.number('Precio de venta requerido').nonnegative('Precio no puede ser negativo'),
+  salePrice: z.coerce.number('Precio de venta requerido').nonnegative('Precio no puede ser negativo')
+    .max(99999999.99, 'Precio fuera de rango')
+    .multipleOf(0.01, 'Precio debe tener como máximo 2 decimales'),
   categoryId: z.uuid('ID de categoría inválido').nullable().optional()
 })
 
@@ -12,7 +14,9 @@ export const updateProductSchema = z.object({
   name: z.string('Nombre requerido').min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
   barcode: z.string().max(50, 'Máximo 50 caracteres').nullable().optional(),
   minStock: z.coerce.number().int('Debe ser un número entero').nonnegative('No puede ser negativo').optional(),
-  salePrice: z.coerce.number('Precio de venta requerido').nonnegative('Precio no puede ser negativo'),
+  salePrice: z.coerce.number('Precio de venta requerido').nonnegative('Precio no puede ser negativo')
+    .max(99999999.99, 'Precio fuera de rango')
+    .multipleOf(0.01, 'Precio debe tener como máximo 2 decimales'),
   categoryId: z.uuid('ID de categoría inválido').nullable().optional()
 })
 

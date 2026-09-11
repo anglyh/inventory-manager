@@ -8,7 +8,7 @@ export default class SeedController {
       // 1. Create Default User
       const defaultEmail = 'admin@example.com';
       const defaultPassword = 'password123';
-      let adminUserId: string;
+      let adminStoreId: string;
       let didCreateUser = false;
 
       try {
@@ -17,7 +17,7 @@ export default class SeedController {
           email: defaultEmail,
           password: defaultPassword
         });
-        adminUserId = adminUser.user.id;
+        adminStoreId = adminUser.user.id;
         didCreateUser = true;
         console.log('✅ Default user created:', defaultEmail);
       } catch (error) {
@@ -26,7 +26,7 @@ export default class SeedController {
             email: defaultEmail,
             password: defaultPassword,
           });
-          adminUserId = adminUser.user.id;
+          adminStoreId = adminUser.user.id;
           console.log('⚠️ Default user already exists, continuing seed for:', defaultEmail);
         } else {
           throw error;
@@ -43,7 +43,7 @@ export default class SeedController {
         { name: 'Varios', icon: '🛒' }
       ];
 
-      const existingCategories = await categoryService.listAll(adminUserId);
+      const existingCategories = await categoryService.listAll(adminStoreId);
       const categoriesByName = new Map(existingCategories.map(c => [c.name, c]));
 
       const createdCategories = [...existingCategories];
@@ -54,7 +54,7 @@ export default class SeedController {
         if (existing) continue;
 
         // Casting as any because the `create` service expects a full `Category` object with ID which we don't have yet
-        const category = await categoryService.create(adminUserId, catData as any);
+        const category = await categoryService.create(adminStoreId, catData as any);
         categoriesByName.set(category.name, category);
         createdCategories.push(category);
         categoriesCreatedCount++;
@@ -123,7 +123,7 @@ export default class SeedController {
       ];
 
       const existingProductsPage = await productService.listAll({
-        userId: adminUserId,
+        storeId: adminStoreId,
         page: 1,
         limit: 100,
       });
@@ -138,7 +138,7 @@ export default class SeedController {
         if (existing) continue;
 
         // Casting as any because the `create` service expects a full `Product` object with ID which we don't have yet
-        const product = await productService.create(adminUserId, prodData as any);
+        const product = await productService.create(adminStoreId, prodData as any);
         productsByName.set(product.name, product as any);
         createdProducts.push(product as any);
         productsCreatedCount++;
@@ -198,19 +198,18 @@ export default class SeedController {
 
       // Create 50 entries first to guarantee stock for exits
       for (let i = 0; i < 50; i++) {
-        await inventoryMovementService.registerEntry(adminUserId, {
-          entityName: 'Seed - Proveedor',
+        await inventoryMovementService.registerPurchase(adminStoreId, {
           notes: `Seed IN #${i + 1}`,
-          items: buildItems(i, 'IN'),
+          items: buildItems(i, 'IN').map(({ unitPrice, ...item }) => ({ ...item, unitCost: unitPrice })),
         });
         entriesCreated++;
       }
 
       for (let i = 0; i < 50; i++) {
-        await inventoryMovementService.registerExit(adminUserId, {
-          entityName: 'Seed - Cliente',
+        await inventoryMovementService.registerSale(adminStoreId, {
+          paymentMethod: 'CASH',
           notes: `Seed OUT #${i + 1}`,
-          items: buildItems(i + 50, 'OUT'),
+          items: buildItems(i + 50, 'OUT').map(({ unitPrice, ...item }) => ({ ...item, salePrice: unitPrice })),
         });
         exitsCreated++;
       }

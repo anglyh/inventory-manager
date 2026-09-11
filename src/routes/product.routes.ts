@@ -38,6 +38,8 @@ const productRouter: Router = express.Router();
  *               salePrice:
  *                 type: number
  *                 minimum: 0
+ *                 maximum: 99999999.99
+ *                 multipleOf: 0.01
  *                 example: 2.5
  *               minStock:
  *                 type: integer
@@ -47,7 +49,6 @@ const productRouter: Router = express.Router();
  *               barcode:
  *                 type: string
  *                 maxLength: 50
- *                 nullable: true
  *                 example: "7501030300050"
  *               categoryId:
  *                 type: string
@@ -56,11 +57,23 @@ const productRouter: Router = express.Router();
  *                 example: "550e8400-e29b-41d4-a716-446655440000"
  *     responses:
  *       201:
- *         description: Producto creado exitosamente
+ *         description: Producto creado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
  *       400:
- *         description: Datos inválidos
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 productRouter.post("/", validateBody(createProductSchema), ProductController.createProduct)
 
@@ -78,12 +91,15 @@ productRouter.post("/", validateBody(createProductSchema), ProductController.cre
  *         schema:
  *           type: integer
  *           default: 1
+ *           minimum: 1
  *         description: Número de página para la paginación
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 12
+ *           minimum: 1
+ *           maximum: 100
  *         description: Cantidad de productos a devolver por página
  *       - in: query
  *         name: searchTerm
@@ -97,9 +113,21 @@ productRouter.post("/", validateBody(createProductSchema), ProductController.cre
  *         description: Filtra por nombre de categoría. Acepta uno o varios nombres separados por coma (ej. "Bebidas" o "Bebidas,Snacks"). Comparación insensible a mayúsculas/acentos. Si no se envía, retorna productos de todas las categorías.
  *     responses:
  *       200:
- *         description: Lista de productos
+ *         description: Página de productos activos.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductsPage'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 productRouter.get("/", ProductController.listAllProducts)
 
@@ -108,31 +136,27 @@ productRouter.get("/", ProductController.listAllProducts)
  * /api/product/options:
  *   get:
  *     summary: Opciones de productos para desplegables
- *     description: Lista todos los productos activos con id, nombre y precio de venta (sin paginación), pensado para selects y formularios de venta u otros flujos.
+ *     description: Lista todos los productos activos con id, nombre, precio de venta, código de barras, stock y categoría (sin paginación), pensado para selects y formularios de venta u otros flujos.
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de opciones (id, nombre, precio de venta)
+ *         description: Opciones de productos activos con precio, código de barras, stock y categoría.
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                     format: uuid
- *                   name:
- *                     type: string
- *                     example: "Agua mineral 500ml"
- *                   salePrice:
- *                     type: string
- *                     example: "2.50"
+ *                 $ref: '#/components/schemas/ProductOption'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 productRouter.get("/options", ProductController.listProductOptions)
 
@@ -170,6 +194,8 @@ productRouter.get("/options", ProductController.listProductOptions)
  *               salePrice:
  *                 type: number
  *                 minimum: 0
+ *                 maximum: 99999999.99
+ *                 multipleOf: 0.01
  *                 example: 2.5
  *               minStock:
  *                 type: integer
@@ -187,13 +213,25 @@ productRouter.get("/options", ProductController.listProductOptions)
  *                 example: "550e8400-e29b-41d4-a716-446655440000"
  *     responses:
  *       200:
- *         description: Producto actualizado exitosamente
+ *         description: Producto actualizado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
  *       400:
- *         description: Datos inválidos
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
- *         description: Producto no encontrado
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 productRouter.put("/:id", validateParams(productIdParamSchema), validateBody(updateProductSchema), ProductController.updateProduct)
 
@@ -201,7 +239,7 @@ productRouter.put("/:id", validateParams(productIdParamSchema), validateBody(upd
  * @swagger
  * /api/product/{id}:
  *   delete:
- *     summary: Eliminar un producto
+ *     summary: Desactivar un producto
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
@@ -214,12 +252,20 @@ productRouter.put("/:id", validateParams(productIdParamSchema), validateBody(upd
  *           format: uuid
  *         description: ID UUID del producto a eliminar
  *     responses:
- *       200:
- *         description: Producto eliminado exitosamente
+ *       204:
+ *         description: Producto desactivado. Sin cuerpo de respuesta.
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
- *         description: Producto no encontrado
+ *         $ref: '#/components/responses/NotFound'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 productRouter.delete("/:id", validateParams(productIdParamSchema), ProductController.delete)
 
@@ -235,32 +281,28 @@ productRouter.delete("/:id", validateParams(productIdParamSchema), ProductContro
  *     parameters:
  *       - in: query
  *         name: searchTerm
- *         required: true
+ *         required: false
  *         schema:
  *           type: string
  *         description: Término de búsqueda parcial por nombre de producto
  *         example: "agua"
  *     responses:
  *       200:
- *         description: Lista de productos encontrados
+ *         description: Productos encontrados.
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                     format: uuid
- *                   name:
- *                     type: string
- *                     example: "Agua mineral 500ml"
- *                   salePrice:
- *                     type: number
- *                     example: 2.5
+ *                 $ref: '#/components/schemas/ProductSearchItem'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 productRouter.get("/search/by-name", ProductController.getByName)
 

@@ -10,9 +10,9 @@
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
 DO $$ BEGIN CREATE TYPE user_role AS ENUM ('ADMIN', 'GUEST'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-DO $$ BEGIN CREATE TYPE movement_type AS ENUM ('IN', 'OUT', 'ADJUSTMENT'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-DO $$ BEGIN CREATE TYPE movement_reason AS ENUM ('PURCHASE', 'SALE', 'CUSTOMER_RETURN', 'SUPPLIER_RETURN', 'LOSS_EXPIRED', 'LOSS_DAMAGED', 'LOSS_THEFT', 'COUNT_SURPLUS', 'COUNT_SHORTAGE', 'INITIAL_LOAD', 'MANUAL_CORRECTION'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-DO $$ BEGIN CREATE TYPE payment_method AS ENUM ('CASH', 'YAPE', 'MIXED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE movement_type AS ENUM ('IN', 'OUT'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE movement_reason AS ENUM ('PURCHASE', 'SALE', 'LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SURPLUS', 'COUNT_SHORTAGE', 'INITIAL_LOAD', 'MANUAL_CORRECTION'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE payment_method AS ENUM ('CASH', 'YAPE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE movement_status AS ENUM ('COMPLETED', 'VOIDED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ---------------------------------------------------------
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS inventory_movement (
     created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT chk_supplier_requires_purchase_reason
-        CHECK (supplier_id IS NULL OR reason IN ('PURCHASE', 'SUPPLIER_RETURN')),
+        CHECK (supplier_id IS NULL OR reason IN ('PURCHASE')),
 
     CONSTRAINT chk_sale_requires_payment
         CHECK (reason <> 'SALE' OR payment_method IS NOT NULL),
@@ -105,15 +105,12 @@ CREATE TABLE IF NOT EXISTS inventory_movement (
         CHECK (
             (reason = 'PURCHASE'         AND movement_type = 'IN')  OR
             (reason = 'SALE'             AND movement_type = 'OUT') OR
-            (reason = 'CUSTOMER_RETURN'  AND movement_type = 'IN')  OR
-            (reason = 'SUPPLIER_RETURN'  AND movement_type = 'OUT') OR
             (reason = 'LOSS_EXPIRED'     AND movement_type = 'OUT') OR
             (reason = 'LOSS_DAMAGED'     AND movement_type = 'OUT') OR
-            (reason = 'LOSS_THEFT'       AND movement_type = 'OUT') OR
             (reason = 'COUNT_SURPLUS'    AND movement_type = 'IN')  OR
             (reason = 'COUNT_SHORTAGE'   AND movement_type = 'OUT') OR
             (reason = 'INITIAL_LOAD'     AND movement_type = 'IN')  OR
-            (reason = 'MANUAL_CORRECTION')
+            (reason = 'MANUAL_CORRECTION'     AND movement_type IN ('IN', 'OUT'))
         ),
 
     CONSTRAINT chk_cash_register_requires_sale

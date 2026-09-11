@@ -1,8 +1,6 @@
-import type { User } from './user.model.js';
-
 export interface Category {
   id: string;
-  userId: User["id"];
+  storeId: string;
   name: string;
   createdAt: Date
 }

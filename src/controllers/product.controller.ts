@@ -6,7 +6,7 @@ import { listProductPaginationSchema } from '../schemas/product.schema.js';
 export default class ProductController {
   static async createProduct(req: Request, res: Response, next: NextFunction) {
     try {
-      const product = await productService.create(req.user!.userId, req.body);
+      const product = await productService.create(req.user!.storeId, req.body);
       res.status(201).json(product)
     } catch (err) {
       next(err)
@@ -18,7 +18,7 @@ export default class ProductController {
       const { limit, page, category: categoryNames, searchTerm } = listProductPaginationSchema.parse(req.query)
 
       const result = await productService.listAll({
-        userId: req.user!.userId,
+        storeId: req.user!.storeId,
         categoryNames,
         search: searchTerm,
         page,
@@ -53,7 +53,7 @@ export default class ProductController {
 
   static async listProductOptions(req: Request, res: Response, next: NextFunction) {
     try {
-      const products = await productService.listProductOptions(req.user!.userId);
+      const products = await productService.listProductOptions(req.user!.storeId);
       res.status(200).json(products);
     } catch (err) {
       next(err);
@@ -63,7 +63,7 @@ export default class ProductController {
   static async getByName(req: Request, res: Response, next: NextFunction) {
     try {
       const searchTerm = req.query.searchTerm?.toString() ?? ''
-      const products = await productService.getByName(req.user!.userId, searchTerm)
+      const products = await productService.getByName(req.user!.storeId, searchTerm)
       res.status(200).json(products)
     } catch (err) {
       next(err)

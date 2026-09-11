@@ -36,11 +36,23 @@ const categoryRouter: Router = express.Router();
  *                 example: Bebidas
  *     responses:
  *       201:
- *         description: Categoría creada exitosamente
+ *         description: Categoría creada.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
  *       400:
- *         description: Datos inválidos
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 categoryRouter.post("/", validateBody(createCategorySchema), CategoryController.createCategory)
 
@@ -54,7 +66,21 @@ categoryRouter.post("/", validateBody(createCategorySchema), CategoryController.
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Retorna un listado de categorías
+ *         description: Listado de categorías.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Category'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 categoryRouter.get("/", CategoryController.listCategories)
 
@@ -90,15 +116,25 @@ categoryRouter.get("/", CategoryController.listCategories)
  *                 example: Snacks
  *     responses:
  *       200:
- *         description: Categoría actualizada exitosamente
+ *         description: Categoría actualizada.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
  *       400:
- *         description: Datos inválidos
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
- *         description: Categoría no encontrada
+ *         $ref: '#/components/responses/NotFound'
  *       409:
- *         description: Conflicto (por ejemplo, nombre duplicado por usuario)
+ *         $ref: '#/components/responses/Conflict'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 categoryRouter.put(
   "/:id",
@@ -126,11 +162,19 @@ categoryRouter.put(
  *         description: ID UUID de la categoría a eliminar
  *     responses:
  *       204:
- *         description: Categoría eliminada exitosamente (sin contenido)
+ *         description: Categoría eliminada. Sin cuerpo de respuesta.
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
- *         description: No autorizado
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
- *         description: Categoría no encontrada
+ *         $ref: '#/components/responses/NotFound'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/InternalError'
+ *       503:
+ *         $ref: '#/components/responses/DatabaseUnavailable'
  */
 categoryRouter.delete(
   "/:id",

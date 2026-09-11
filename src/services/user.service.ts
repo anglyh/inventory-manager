@@ -1,12 +1,12 @@
 import { hash, compare } from 'bcrypt-ts';
-import type { 
-  CreateUserInput, 
-  LoginInput, 
-  AuthResponse, 
-  UserResponse 
+import type {
+  CreateUserInput,
+  LoginInput,
+  AuthResponse,
+  UserResponse
 } from '../schemas/user.schema.js';
 import type { User } from '../models/user.model.js';
-import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/app.error.js';
+import { ConflictError, UnauthorizedError } from '../errors/app.error.js';
 import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 import JWT from '../lib/jwt.js';
 import type { IUserService } from '../interfaces/services/user.service.interface.js';
@@ -21,10 +21,14 @@ export default class UserService implements IUserService {
     if (existingUser) throw new ConflictError("El email ya está registrado");
 
     const passwordHashed = await hash(input.password, UserService.COST);
-    const user = await this.userRepo.create(input.name, input.email, passwordHashed);
+    
+    const storeName = "Mi tienda";
+    const user = await this.userRepo.create(storeName, input.name, input.email, passwordHashed);
 
     const token = JWT.signAccessToken({
       userId: user.id,
+      storeId: user.storeId,
+      role: user.role,
       name: user.name,
       email: user.email,
     });
@@ -44,6 +48,8 @@ export default class UserService implements IUserService {
 
     const token = JWT.signAccessToken({
       userId: user.id,
+      storeId: user.storeId,
+      role: user.role,
       name: user.name,
       email: user.email,
     });

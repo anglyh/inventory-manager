@@ -1,10 +1,10 @@
 import type { PoolClient } from 'pg';
 import { query } from '../db/index.js';
 import { TABLES, VIEWS } from '../db/tables.js';
-import type { Product, ProductWithStock, ProductListItem, ProductSearchItem, ListProductQuery } from '../models/product.model.js';
+import type { Product, ProductWithStock, ProductListItem, ProductSearchItem } from '../models/product.model.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { NotFoundError } from '../errors/app.error.js';
-import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
+import type { IProductRepository, ListProductQuery } from '../interfaces/repositories/product.repository.interface.js';
 
 export default class ProductRepository implements IProductRepository {
   async findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null> {
@@ -49,13 +49,13 @@ export default class ProductRepository implements IProductRepository {
     return snakeToCamel(result.rows)
   }
 
-  async create(userId: string, productData: Product): Promise<Product> {
+  async create(storeId: string, productData: Product): Promise<Product> {
     const { name, salePrice, minStock, barcode, categoryId } = productData;
     const result = await query(`
-      INSERT INTO ${TABLES.PRODUCT} (user_id, name, sale_price, barcode, min_stock, category_id)
+      INSERT INTO ${TABLES.PRODUCT} (store_id, name, sale_price, barcode, min_stock, category_id)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-      `, [userId, name, salePrice, barcode ?? null, minStock, categoryId ?? null]
+      `, [storeId, name, salePrice, barcode ?? null, minStock, categoryId ?? null]
     );
 
     return snakeToCamel(result.rows[0])
@@ -122,38 +122,41 @@ export default class ProductRepository implements IProductRepository {
     )
   }
 
-  async listProductOptions(userId: string): Promise<ProductSearchItem[]> {
-    const params = [userId]
+  async listProductOptions(storeId: string): Promise<ProductSearchItem[]> {
+    const params = [storeId]
     const text = `
     SELECT
       p.id,
       p.name,
       p.sale_price,
-      p.barcode
-    FROM ${TABLES.PRODUCT} AS p
-    WHERE p.user_id = $1 AND p.is_active = true
+      p.barcode,
+      p.stock,
+      c.name AS category_name
+    FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
+    LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
+    WHERE p.store_id = $1 AND p.is_active = true
     ORDER BY p.name ASC
     `
     const result = await query(text, params)
     return snakeToCamel(result.rows)
   }
 
-  async getByName(userId: string, searchTerm: string): Promise<ProductSearchItem[]> {
-    const params = [userId, `%${searchTerm}%`]
+  async getByName(storeId: string, searchTerm: string): Promise<ProductSearchItem[]> {
+    const params = [storeId, `%${searchTerm}%`]
     const text =`
     SELECT 
       p.id,
       p.name,
       p.sale_price
     FROM ${TABLES.PRODUCT} AS p
-    WHERE p.user_id = $1 AND p.is_active = true AND unaccent(p.name) ILIKE unaccent($2)
+    WHERE p.store_id = $1 AND p.is_active = true AND unaccent(p.name) ILIKE unaccent($2)
     `
 
     const result = await query(text, params)
     return snakeToCamel(result.rows)
   }
 
-  async count(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryNames'>): Promise<number> {
+  async count(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryNames'>): Promise<number> {
     const { conditions, params } = this.buildWhereClause(filters)
     const whereClause = conditions.length
       ? `WHERE ${conditions.join(' AND ')}`
@@ -170,13 +173,13 @@ export default class ProductRepository implements IProductRepository {
     return parseInt(result.rows[0].count, 10)
   }
 
-  private buildWhereClause(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryNames'>) {
-    const { userId, search, categoryNames } = filters;
+  private buildWhereClause(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryNames'>) {
+    const { storeId, search, categoryNames } = filters;
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    params.push(userId)
-    conditions.push(`p.user_id = $${params.length}`)
+    params.push(storeId)
+    conditions.push(`p.store_id = $${params.length}`)
 
     if (search) {
       params.push(`%${search}%`)

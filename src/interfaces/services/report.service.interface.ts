@@ -17,12 +17,12 @@ export interface ProfitByProductResult extends DateRangeEnvelope {
 
 export interface IReportService {
   getProfitSummary(
-    userId: string,
+    storeId: string,
     params: { from?: Date | undefined; to?: Date | undefined }
   ): Promise<ProfitSummaryResult>;
 
   getProfitByProduct(
-    userId: string,
+    storeId: string,
     params: { from?: Date | undefined; to?: Date | undefined; limit: number }
   ): Promise<ProfitByProductResult>;
 }

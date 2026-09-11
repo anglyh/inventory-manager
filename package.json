@@ -9,6 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
+    "prestart": "bun run db:migrate",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "dev": "cross-env NODE_ENV=development bun --watch src/index.ts",
     "db:reset": "cross-env NODE_ENV=development tsx scripts/reset-db.ts",

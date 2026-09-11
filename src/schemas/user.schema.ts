@@ -3,7 +3,9 @@ import { z } from "zod";
 export const createUserSchema = z.object({
   name: z.string('Nombre requerido').min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
   email: z.email('Email inválido'),
-  password: z.string('Contraseña requerida').min(8, 'La contraseña debe tener al menos 8 caracteres'),
+  password: z.string('Contraseña requerida')
+  .min(12, 'La contraseña debe tener al menos 8 caracteres')
+  .regex(/[A-Z]/, "Debe contener al menos una mayúscula"),
 });
 
 export const loginSchema = z.object({

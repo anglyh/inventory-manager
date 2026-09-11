@@ -1,55 +1,45 @@
-import type { User } from './user.model.js';
+import type { Supplier } from './supplier.model.js';
 
-export type MovementType = "IN" | "OUT" | "ADJUSTMENT";
+export type MovementType = "IN" | "OUT";
+export type MovementReason = "PURCHASE" | "SALE" | "LOSS_EXPIRED" | "LOSS_DAMAGED" | "COUNT_SURPLUS" | "COUNT_SHORTAGE" | "INITIAL_LOAD" | "MANUAL_CORRECTION";
+export type PaymentMethod = "CASH" | "YAPE";
+export type MovementStatus = "COMPLETED" | "VOIDED";
+
+export const movementDirections: Record<MovementReason, readonly MovementType[]> = {
+  PURCHASE: ['IN'], SALE: ['OUT'],
+  LOSS_EXPIRED: ['OUT'], LOSS_DAMAGED: ['OUT'],
+  COUNT_SURPLUS: ['IN'], COUNT_SHORTAGE: ['OUT'], INITIAL_LOAD: ['IN'],
+  MANUAL_CORRECTION: ['IN', 'OUT'],
+};
+
+export const movementGroupReasons = {
+  sales: ['SALE'],
+  purchase: ['PURCHASE'],
+  loss: ['LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SHORTAGE'],
+} as const satisfies Record<string, readonly MovementReason[]>;
+export type MovementGroup = keyof typeof movementGroupReasons | 'voids';
 
 export interface InventoryMovement {
   id: string;
-  userId: User['id'];
+  storeId: string;
+  cashRegisterId: string | null;
   movementType: MovementType;
-  entityName: string | null;
+  reason: MovementReason;
+  paymentMethod: PaymentMethod | null;
+  supplierId: Supplier['id'] | null;
+  status: MovementStatus;
+  voidedAt: Date | null;
+  voidReason: string | null;
   notes: string | null;
   createdAt: Date;
 }
-
-export type InventoryMovementInsert = Omit<InventoryMovement, 'id' | 'createdAt'>;
 
 export interface InventoryMovementWithItems extends InventoryMovement {
-  totalAmount: number; // La suma de quantity * unitPrice
-  items: Array<{
-    productId: string;
-    productName: string;
-    unitPrice: number; // Recuerda que en el repo haces un cast a texto, quizá tengas que poner string aquí dependiendo de tu utils/mapper
-    quantity: number;
-  }>;
-}
-
-/** Parámetros para listar movimientos con paginación por cursor (created_at + id). */
-export interface InventoryMovementsByCursorParams {
-  userId: string;
-  movementType: MovementType;
-  cursorDate?: string | undefined;
-  cursorId?: string | undefined;
-  limit: number;
-}
-
-/** Fila agregada en listado (repo JSON + sum). */
-export interface InventoryMovementListItem {
-  id: string;
-  movementType: MovementType;
-  entityName: string | null;
-  notes: string | null;
-  createdAt: Date;
-  totalAmount: number | null;
+  totalAmount: string;
   items: Array<{
     productId: string;
     productName: string;
     unitPrice: string;
     quantity: number;
   }>;
-}
-
-/** Respuesta de una página al listar movimientos por cursor. */
-export interface InventoryMovementsCursorPageResult {
-  data: InventoryMovementListItem[];
-  nextCursor: { cursorDate: string; cursorId: string } | null;
 }

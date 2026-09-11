@@ -5,12 +5,17 @@ import { snakeToCamel } from '../utils/mapper.js';
 import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 
 export default class UserRepository implements IUserRepository {
-  async create(name: string, email: string, password: string): Promise<User> {
+  async create(storeName: string, name: string, email: string, password: string): Promise<User> {
     const result = await query(
-      `INSERT INTO ${TABLES.USER} (name, email, password)
-       VALUES ($1, $2, $3)
-       RETURNING *
-      `, [name, email, password]
+      `WITH new_store AS (
+        INSERT INTO ${TABLES.STORE} (name)
+        VALUES ($1)
+        RETURNING id
+      )
+      INSERT INTO ${TABLES.USER} (store_id, name, email, password, role)
+      VALUES ((SELECT id FROM new_store), $2, $3, $4, 'ADMIN')
+      RETURNING *;
+      `, [storeName, name, email, password]
     );
 
     return snakeToCamel(result.rows[0]);

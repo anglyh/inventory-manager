@@ -6,7 +6,7 @@ import { mockProductRepo } from './mockProductRepo.js';
 
 export const fakeProductWithStock: ProductWithStock = {
   id: 'product-123',
-  userId: 'user-456',
+  storeId: 'user-456',
   name: 'Jabón de manos',
   salePrice: '5.50',
   barcode: null,
@@ -20,7 +20,7 @@ export const fakeProductWithStock: ProductWithStock = {
 
 export const fakeDeactivatedProduct: Product = {
   id: 'product-123',
-  userId: 'user-456',
+  storeId: 'user-456',
   name: 'Jabón de manos',
   salePrice: '5.50',
   barcode: null,

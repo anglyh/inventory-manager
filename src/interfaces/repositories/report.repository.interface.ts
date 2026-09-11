@@ -19,7 +19,7 @@ export interface ProfitByProductRow {
 
 /** Filtros comunes: rango de fechas ya resuelto por el service. */
 export interface ReportDateRange {
-  userId: string;
+  storeId: string;
   from: Date;
   to: Date;
 }

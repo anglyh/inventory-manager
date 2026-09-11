@@ -6,37 +6,37 @@ import type { ICategoryRepository } from '../interfaces/repositories/category.re
 import { withTransaction } from '../db/transactions.js';
 
 export default class CategoryRepository implements ICategoryRepository {
-  async create(userId: string, categoryData: Category): Promise<Category> {
+  async create(storeId: string, categoryData: Category): Promise<Category> {
     const { name } = categoryData
     const result = await query(
-      `INSERT INTO category (user_id, name)
+      `INSERT INTO category (store_id, name)
        VALUES ($1, $2)
        RETURNING *
-      `, [userId, name]
+      `, [storeId, name]
     );
     return snakeToCamel(result.rows[0])
   }
 
-  async listAll(userId: string): Promise<Category[]> {
+  async listAll(storeId: string): Promise<Category[]> {
     const result = await query(
       ` SELECT * FROM category
-        WHERE user_id = $1
-      `, [userId]
+        WHERE store_id = $1
+      `, [storeId]
     )
     return snakeToCamel(result.rows)
   }
 
-  async findById(userId: string, categoryId: string): Promise<Category | null> {
+  async findById(storeId: string, categoryId: string): Promise<Category | null> {
     const result = await query(
-      `SELECT * FROM category WHERE user_id = $1 AND id = $2`,
-      [userId, categoryId]
+      `SELECT * FROM category WHERE store_id = $1 AND id = $2`,
+      [storeId, categoryId]
     );
     if (result.rows.length === 0) return null;
     return snakeToCamel(result.rows[0]);
   }
 
   async update(
-    userId: string,
+    storeId: string,
     categoryId: string,
     categoryData: Pick<Category, 'name'>
   ): Promise<Category> {
@@ -44,28 +44,28 @@ export default class CategoryRepository implements ICategoryRepository {
     const result = await query(
       `UPDATE category
         SET name = $1
-        WHERE user_id = $2 AND id = $3
+        WHERE store_id = $2 AND id = $3
         RETURNING *
       `,
-      [name, userId, categoryId]
+      [name, storeId, categoryId]
     );
     return snakeToCamel(result.rows[0]);
   }
 
-  async delete(userId: string, categoryId: string): Promise<void> {
+  async delete(storeId: string, categoryId: string): Promise<void> {
     await withTransaction(async (client: PoolClient) => {
       // Primero desasociamos los productos para permitir el borrado sin conflictos FK.
       await client.query(
         `UPDATE product
           SET category_id = NULL
-          WHERE user_id = $1 AND category_id = $2
+          WHERE store_id = $1 AND category_id = $2
         `,
-        [userId, categoryId]
+        [storeId, categoryId]
       );
 
       await client.query(
-        `DELETE FROM category WHERE user_id = $1 AND id = $2`,
-        [userId, categoryId]
+        `DELETE FROM category WHERE store_id = $1 AND id = $2`,
+        [storeId, categoryId]
       );
     });
   }

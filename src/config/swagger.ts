@@ -1,54 +1,62 @@
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import type { Application } from 'express';
-import { cashRegisterParameters, errorResponses, responseSchemas } from './swagger-schemas.js';
-import { inventorySchemas, inventoryPaths, inventoryHistoryParameters } from './swagger-inventory.js';
+import { cashRegisterParameters, responseSchemas } from './swagger-schemas.js';
+import { inventorySchemas, inventoryPaths } from './swagger-inventory.js';
+import { generateOpenApiDocument, openApiInfo, openApiServers } from '../openapi/document.js';
 
+// Transition: modules not yet migrated to Zod are still documented with JSDoc.
 const options: swaggerJSDoc.Options = {
     failOnErrors: true,
     definition: {
         openapi: '3.0.0',
-        info: {
-            title: 'Hostal API',
-            version: '1.0.0',
-            description: 'API del proyecto Hostal. Cada petición recibe una sola de las respuestas documentadas. Un 204 confirma el éxito sin cuerpo; los ejemplos JSON de errores solo se devuelven cuando ocurre el error correspondiente.',
-        },
-        servers: [
-            {
-                url: 'http://localhost:3000',
-                description: 'Development server',
-            },
-        ],
+        info: openApiInfo,
+        servers: openApiServers,
         components: {
             parameters: cashRegisterParameters,
             schemas: { ...responseSchemas, ...inventorySchemas },
-            responses: errorResponses,
-            securitySchemes: {
-                bearerAuth: {
-                    type: 'http',
-                    scheme: 'bearer',
-                    bearerFormat: 'JWT',
-                },
-            },
         },
-        security: [
-            {
-                bearerAuth: [],
-            },
-        ],
     },
     // Rutas donde Swagger buscará los comentarios de documentación
     apis: ['./src/routes/*.ts', './src/controllers/*.ts'],
 };
 
-export const swaggerSpec = swaggerJSDoc(options);
+type Spec = {
+    paths: Record<string, Record<string, unknown>>;
+    components: Record<string, Record<string, unknown>>;
+    tags?: { name: string }[];
+};
+
+const legacySpec = swaggerJSDoc(options) as Spec;
+const generated = generateOpenApiDocument() as unknown as Spec & Record<string, unknown>;
 
 // Añadir operaciones sin reemplazar los PUT/DELETE ya documentados en las mismas rutas.
-const paths = (swaggerSpec as { paths: Record<string, Record<string, any>> }).paths;
-for (const [path, operations] of Object.entries(inventoryPaths)) {
-    paths[path] = { ...paths[path], ...operations };
+const mergePaths = (target: Spec['paths'], source: Spec['paths']) => {
+    for (const [path, operations] of Object.entries(source)) {
+        target[path] = { ...target[path], ...operations };
+    }
+};
+mergePaths(legacySpec.paths, inventoryPaths);
+mergePaths(legacySpec.paths, generated.paths);
+
+// Generated components (security schemes, shared responses, Zod schemas) take precedence.
+for (const [type, entries] of Object.entries(generated.components)) {
+    legacySpec.components[type] = { ...legacySpec.components[type], ...entries };
 }
-paths['/api/inventory-movement']!.get.parameters.push(...inventoryHistoryParameters);
+
+const tags = [...(legacySpec.tags ?? []), ...(generated.tags ?? [])]
+    .filter((tag, index, all) => all.findIndex(other => other.name === tag.name) === index)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+export const swaggerSpec: object = {
+    openapi: generated.openapi,
+    info: generated.info,
+    servers: generated.servers,
+    components: legacySpec.components,
+    security: generated.security,
+    paths: legacySpec.paths,
+    tags,
+};
 
 export const setupSwagger = (app: Application) => {
     // Spec en JSON para generar tipos del frontend (p. ej. con openapi-typescript).

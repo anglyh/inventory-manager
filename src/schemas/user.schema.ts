@@ -8,15 +8,15 @@ export const createUserSchema = z.object({
   .min(12, 'La contraseña debe tener al menos 12 caracteres')
   .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
   .meta({ writeOnly: true, example: 'Secret1234567' }),
-});
+}).meta({ id: 'RegisterUser' });
 
 /** Body for adding a worker to the current store; unknown fields are rejected. */
-export const createStoreUserSchema = createUserSchema.strict();
+export const createStoreUserSchema = createUserSchema.strict().meta({ id: 'CreateStoreUser' });
 
 export const loginSchema = z.object({
   email: z.email('Email inválido').meta({ example: 'juan@example.com' }),
   password: z.string('Contraseña requerida').min(1, 'Contraseña requerida').meta({ example: 'Secret1234567' }),
-});
+}).meta({ id: 'Login' });
 
 export const updateUserSchema = z.object({
   name: z.string().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres').optional(),

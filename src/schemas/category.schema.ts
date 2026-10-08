@@ -4,11 +4,11 @@ const nameSchema = z.string('Nombre requerido').min(1, 'Nombre requerido').max(1
 
 export const createCategorySchema = z.object({
   name: nameSchema.meta({ example: 'Bebidas' }),
-});
+}).meta({ id: 'CreateCategory' });
 
 export const updateCategorySchema = z.object({
   name: nameSchema.meta({ example: 'Snacks' }),
-});
+}).meta({ id: 'UpdateCategory' });
 
 export const categoryIdParamSchema = z.object({
   id: z.uuid('ID de categoría inválido'),

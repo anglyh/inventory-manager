@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { mergePaths, swaggerSpec } from '../../config/swagger.js';
 
-type Operation = { summary?: string; tags?: string[]; responses?: Record<string, unknown> };
+type Operation = {
+  summary?: string;
+  tags?: string[];
+  responses?: Record<string, unknown>;
+  requestBody?: { content?: Record<string, { schema?: { $ref?: string } }> };
+};
 type Spec = { paths: Record<string, Record<string, Operation>> };
 
 const spec = swaggerSpec as Spec;
@@ -63,6 +68,18 @@ describe('generated OpenAPI spec', () => {
       .map(({ path, method }) => `${method.toUpperCase()} ${path}`);
 
     expect(incomplete).toEqual([]);
+  });
+
+  it('names every JSON request body so clients get a stable type name', () => {
+    // An inline body forces clients to reach it through paths[...]['requestBody']; name it with .meta({ id }).
+    const inline = operations()
+      .filter(({ operation }) => {
+        const schema = operation.requestBody?.content?.['application/json']?.schema;
+        return schema && !schema.$ref?.startsWith('#/components/schemas/');
+      })
+      .map(({ path, method }) => `${method.toUpperCase()} ${path}`);
+
+    expect(inline).toEqual([]);
   });
 });
 

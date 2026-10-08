@@ -20,7 +20,7 @@ export const createProductSchema = z.object({
   barcode: barcodeSchema.optional(),
   salePrice: salePriceSchema,
   categoryId: categoryIdSchema,
-})
+}).meta({ id: 'CreateProduct' });
 
 export const updateProductSchema = z.object({
   name: nameSchema,
@@ -28,7 +28,7 @@ export const updateProductSchema = z.object({
   minStock: minStockSchema.optional(),
   salePrice: salePriceSchema,
   categoryId: categoryIdSchema,
-})
+}).meta({ id: 'UpdateProduct' });
 
 export const productIdParamSchema = z.object({
   id: z.uuid('ID de producto inválido')

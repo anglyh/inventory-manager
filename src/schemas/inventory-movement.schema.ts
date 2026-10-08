@@ -41,24 +41,24 @@ export const saleSchema = movementBaseSchema.extend({
   paymentMethod: paymentMethodSchema,
   cashRegisterId: z.uuid('ID de caja inválido').optional()
     .meta({ description: 'Caja abierta de la misma tienda; si se omite, el servidor la selecciona.' }),
-}).strict();
+}).strict().meta({ id: 'CreateSale' });
 
 export const purchaseSchema = movementBaseSchema.extend({
   items: purchaseItemsSchema,
   supplierId: z.uuid('ID de proveedor inválido').optional(),
-}).strict();
+}).strict().meta({ id: 'CreatePurchase' });
 
 export const lossSchema = movementBaseSchema.extend({
   reason: z.enum(['LOSS_EXPIRED', 'LOSS_DAMAGED',]),
-}).strict();
+}).strict().meta({ id: 'CreateLoss' });
 
-export const initialLoadSchema = movementBaseSchema.strict();
+export const initialLoadSchema = movementBaseSchema.strict().meta({ id: 'CreateInitialLoad' });
 
 // Las diferencias de conteo (COUNT_*) solo se registran vía /stock-counts.
 export const adjustmentSchema = movementBaseSchema.extend({
   reason: z.literal('MANUAL_CORRECTION'),
   movementType: movementTypeSchema,
-}).strict();
+}).strict().meta({ id: 'CreateAdjustment' });
 
 export type MovementItemDTO = z.infer<typeof movementItemSchema>;
 export type SaleDTO = z.infer<typeof saleSchema>;
@@ -80,7 +80,7 @@ export type StockCountDTO = z.infer<typeof stockCountSchema>;
 export const inventoryMovementIdSchema = z.object({ id: z.uuid('ID de movimiento inválido') });
 export const voidMovementSchema = z.object({
   reason: z.string().trim().min(1, 'El motivo es obligatorio').max(500),
-}).strict();
+}).strict().meta({ id: 'VoidMovement' });
 
 // Documents a query parameter without changing its validation.
 const paramDoc = (description: string) => ({ param: { description } });

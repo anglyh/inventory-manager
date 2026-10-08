@@ -875,6 +875,37 @@
         ],
         "type": "object"
       },
+      "CreateAdjustment": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "$ref": "#/components/schemas/MovementItems"
+          },
+          "movementType": {
+            "enum": [
+              "IN",
+              "OUT"
+            ],
+            "type": "string"
+          },
+          "notes": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "MANUAL_CORRECTION"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "reason",
+          "movementType"
+        ],
+        "type": "object"
+      },
       "CreateCashMovement": {
         "additionalProperties": false,
         "properties": {
@@ -905,6 +936,178 @@
           "type",
           "amount",
           "reason"
+        ],
+        "type": "object"
+      },
+      "CreateCategory": {
+        "properties": {
+          "name": {
+            "example": "Bebidas",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateInitialLoad": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "$ref": "#/components/schemas/MovementItems"
+          },
+          "notes": {
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "CreateLoss": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "$ref": "#/components/schemas/MovementItems"
+          },
+          "notes": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "LOSS_EXPIRED",
+              "LOSS_DAMAGED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "CreateProduct": {
+        "properties": {
+          "barcode": {
+            "example": "7501030300050",
+            "maxLength": 50,
+            "type": "string"
+          },
+          "categoryId": {
+            "example": "550e8400-e29b-41d4-a716-446655440000",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "minStock": {
+            "default": 0,
+            "example": 10,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "example": "Agua mineral 500ml",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "salePrice": {
+            "example": 2.5,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "salePrice"
+        ],
+        "type": "object"
+      },
+      "CreatePurchase": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "$ref": "#/components/schemas/PurchaseItems"
+          },
+          "notes": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "supplierId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "CreateSale": {
+        "additionalProperties": false,
+        "properties": {
+          "cashRegisterId": {
+            "description": "Caja abierta de la misma tienda; si se omite, el servidor la selecciona.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "$ref": "#/components/schemas/SaleItems"
+          },
+          "notes": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "paymentMethod": {
+            "enum": [
+              "CASH",
+              "YAPE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "paymentMethod"
+        ],
+        "type": "object"
+      },
+      "CreateStoreUser": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "example": "juan@example.com",
+            "format": "email",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "name": {
+            "example": "Juan Pérez",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "example": "Secret1234567",
+            "minLength": 12,
+            "pattern": "[A-Z]",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password"
         ],
         "type": "object"
       },
@@ -1089,6 +1292,25 @@
         "required": [
           "data",
           "nextCursor"
+        ],
+        "type": "object"
+      },
+      "Login": {
+        "properties": {
+          "email": {
+            "example": "juan@example.com",
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "example": "Secret1234567",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
         ],
         "type": "object"
       },
@@ -1596,6 +1818,35 @@
         "minItems": 1,
         "type": "array"
       },
+      "RegisterUser": {
+        "properties": {
+          "email": {
+            "example": "juan@example.com",
+            "format": "email",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "name": {
+            "example": "Juan Pérez",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "example": "Secret1234567",
+            "minLength": 12,
+            "pattern": "[A-Z]",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
       "SaleItems": {
         "items": {
           "additionalProperties": false,
@@ -1753,6 +2004,87 @@
           "createdAt"
         ],
         "type": "object"
+      },
+      "SupplierInput": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "UpdateCategory": {
+        "properties": {
+          "name": {
+            "example": "Snacks",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "UpdateProduct": {
+        "properties": {
+          "barcode": {
+            "example": "7501030300050",
+            "maxLength": 50,
+            "nullable": true,
+            "type": "string"
+          },
+          "categoryId": {
+            "example": "550e8400-e29b-41d4-a716-446655440000",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "minStock": {
+            "example": 10,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "example": "Agua mineral 500ml",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "salePrice": {
+            "example": 2.5,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "salePrice"
+        ],
+        "type": "object"
+      },
+      "VoidMovement": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -1813,23 +2145,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "properties": {
-                  "email": {
-                    "example": "juan@example.com",
-                    "format": "email",
-                    "type": "string"
-                  },
-                  "password": {
-                    "example": "Secret1234567",
-                    "minLength": 1,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "email",
-                  "password"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/Login"
               }
             }
           },
@@ -1875,33 +2191,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "properties": {
-                  "email": {
-                    "example": "juan@example.com",
-                    "format": "email",
-                    "maxLength": 100,
-                    "type": "string"
-                  },
-                  "name": {
-                    "example": "Juan Pérez",
-                    "maxLength": 50,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "password": {
-                    "example": "Secret1234567",
-                    "minLength": 12,
-                    "pattern": "[A-Z]",
-                    "type": "string",
-                    "writeOnly": true
-                  }
-                },
-                "required": [
-                  "name",
-                  "email",
-                  "password"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/RegisterUser"
               }
             }
           },
@@ -2430,18 +2720,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "properties": {
-                  "name": {
-                    "example": "Bebidas",
-                    "maxLength": 100,
-                    "minLength": 1,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/CreateCategory"
               }
             }
           },
@@ -2553,18 +2832,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "properties": {
-                  "name": {
-                    "example": "Snacks",
-                    "maxLength": 100,
-                    "minLength": 1,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/UpdateCategory"
               }
             }
           },
@@ -2786,35 +3054,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "items": {
-                    "$ref": "#/components/schemas/MovementItems"
-                  },
-                  "movementType": {
-                    "enum": [
-                      "IN",
-                      "OUT"
-                    ],
-                    "type": "string"
-                  },
-                  "notes": {
-                    "maxLength": 500,
-                    "type": "string"
-                  },
-                  "reason": {
-                    "enum": [
-                      "MANUAL_CORRECTION"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "items",
-                  "reason",
-                  "movementType"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/CreateAdjustment"
               }
             }
           },
@@ -2864,20 +3104,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "items": {
-                    "$ref": "#/components/schemas/MovementItems"
-                  },
-                  "notes": {
-                    "maxLength": 500,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "items"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/CreateInitialLoad"
               }
             }
           },
@@ -2926,28 +3153,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "items": {
-                    "$ref": "#/components/schemas/MovementItems"
-                  },
-                  "notes": {
-                    "maxLength": 500,
-                    "type": "string"
-                  },
-                  "reason": {
-                    "enum": [
-                      "LOSS_EXPIRED",
-                      "LOSS_DAMAGED"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "items",
-                  "reason"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/CreateLoss"
               }
             }
           },
@@ -2997,24 +3203,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "items": {
-                    "$ref": "#/components/schemas/PurchaseItems"
-                  },
-                  "notes": {
-                    "maxLength": 500,
-                    "type": "string"
-                  },
-                  "supplierId": {
-                    "format": "uuid",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "items"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/CreatePurchase"
               }
             }
           },
@@ -3064,33 +3253,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "cashRegisterId": {
-                    "description": "Caja abierta de la misma tienda; si se omite, el servidor la selecciona.",
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  "items": {
-                    "$ref": "#/components/schemas/SaleItems"
-                  },
-                  "notes": {
-                    "maxLength": 500,
-                    "type": "string"
-                  },
-                  "paymentMethod": {
-                    "enum": [
-                      "CASH",
-                      "YAPE"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "items",
-                  "paymentMethod"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/CreateSale"
               }
             }
           },
@@ -3258,18 +3421,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "reason": {
-                    "maxLength": 500,
-                    "minLength": 1,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "reason"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/VoidMovement"
               }
             }
           },
@@ -3403,43 +3555,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "properties": {
-                  "barcode": {
-                    "example": "7501030300050",
-                    "maxLength": 50,
-                    "type": "string"
-                  },
-                  "categoryId": {
-                    "example": "550e8400-e29b-41d4-a716-446655440000",
-                    "format": "uuid",
-                    "nullable": true,
-                    "type": "string"
-                  },
-                  "minStock": {
-                    "default": 0,
-                    "example": 10,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "name": {
-                    "example": "Agua mineral 500ml",
-                    "maxLength": 50,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "salePrice": {
-                    "example": 2.5,
-                    "maximum": 99999999.99,
-                    "minimum": 0,
-                    "multipleOf": 0.01,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "name",
-                  "salePrice"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/CreateProduct"
               }
             }
           },
@@ -3709,43 +3825,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "properties": {
-                  "barcode": {
-                    "example": "7501030300050",
-                    "maxLength": 50,
-                    "nullable": true,
-                    "type": "string"
-                  },
-                  "categoryId": {
-                    "example": "550e8400-e29b-41d4-a716-446655440000",
-                    "format": "uuid",
-                    "nullable": true,
-                    "type": "string"
-                  },
-                  "minStock": {
-                    "example": 10,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "name": {
-                    "example": "Agua mineral 500ml",
-                    "maxLength": 50,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "salePrice": {
-                    "example": 2.5,
-                    "maximum": 99999999.99,
-                    "minimum": 0,
-                    "multipleOf": 0.01,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "name",
-                  "salePrice"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/UpdateProduct"
               }
             }
           },
@@ -3981,34 +4061,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "email": {
-                    "example": "juan@example.com",
-                    "format": "email",
-                    "maxLength": 100,
-                    "type": "string"
-                  },
-                  "name": {
-                    "example": "Juan Pérez",
-                    "maxLength": 50,
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "password": {
-                    "example": "Secret1234567",
-                    "minLength": 12,
-                    "pattern": "[A-Z]",
-                    "type": "string",
-                    "writeOnly": true
-                  }
-                },
-                "required": [
-                  "name",
-                  "email",
-                  "password"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/CreateStoreUser"
               }
             }
           },
@@ -4111,18 +4164,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "maxLength": 50,
-                    "minLength": 1,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/SupplierInput"
               }
             }
           },
@@ -4228,18 +4270,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "name": {
-                    "maxLength": 50,
-                    "minLength": 1,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/SupplierInput"
               }
             }
           },

@@ -1,0 +1,4343 @@
+{
+  "components": {
+    "parameters": {},
+    "responses": {
+      "BadRequest": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "BAD_REQUEST",
+                "message": "Token no proporcionado"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Solicitud incorrecta, JSON inválido o token ausente, mal formado o expirado."
+      },
+      "CashMovementConflict": {
+        "content": {
+          "application/json": {
+            "examples": {
+              "closed": {
+                "summary": "Caja cerrada",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "La caja está cerrada"
+                  },
+                  "success": false
+                }
+              },
+              "insufficientCash": {
+                "summary": "Retiro superior al efectivo esperado",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Efectivo insuficiente en la caja para realizar el retiro"
+                  },
+                  "success": false
+                }
+              }
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Caja cerrada o efectivo insuficiente para el retiro."
+      },
+      "CashMovementQueryValidation": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "VALIDATION_ERROR",
+                "fields": [
+                  {
+                    "field": "limit",
+                    "message": "page debe ser >= 1 y limit debe estar entre 1 y 100"
+                  }
+                ],
+                "message": "Error de validación"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Datos inválidos en el cuerpo, identificador o query. Los campos afectados aparecen en error.fields."
+      },
+      "CashMovementValidation": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "VALIDATION_ERROR",
+                "fields": [
+                  {
+                    "field": "reason",
+                    "message": "El motivo es obligatorio"
+                  }
+                ],
+                "message": "Error de validación"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Datos inválidos en el cuerpo, identificador o query. Los campos afectados aparecen en error.fields."
+      },
+      "CashRegisterAlreadyOpen": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "CONFLICT",
+                "message": "Ya existe una caja abierta en esta tienda"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "La tienda ya tiene una caja abierta."
+      },
+      "CashRegisterClosed": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "CONFLICT",
+                "message": "La caja está cerrada"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "La caja ya está cerrada."
+      },
+      "CashRegisterClosingValidation": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "VALIDATION_ERROR",
+                "fields": [
+                  {
+                    "field": "notes",
+                    "message": "Debe explicar la diferencia entre el efectivo contado y el esperado"
+                  }
+                ],
+                "message": "Error de validación"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Datos inválidos en el cuerpo, identificador o query. Los campos afectados aparecen en error.fields."
+      },
+      "CashRegisterIdValidation": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "VALIDATION_ERROR",
+                "fields": [
+                  {
+                    "field": "id",
+                    "message": "ID de caja inválido"
+                  }
+                ],
+                "message": "Error de validación"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Datos inválidos en el cuerpo, identificador o query. Los campos afectados aparecen en error.fields."
+      },
+      "CashRegisterNotFound": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "NOT_FOUND",
+                "message": "La caja no existe"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Caja inexistente o perteneciente a otra tienda."
+      },
+      "CashRegisterOpeningValidation": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "VALIDATION_ERROR",
+                "fields": [
+                  {
+                    "field": "openingAmount",
+                    "message": "El efectivo inicial debe ser un importe no negativo con máximo dos decimales"
+                  }
+                ],
+                "message": "Error de validación"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Datos inválidos en el cuerpo, identificador o query. Los campos afectados aparecen en error.fields."
+      },
+      "CashRegisterQueryValidation": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "VALIDATION_ERROR",
+                "fields": [
+                  {
+                    "field": "page",
+                    "message": "page debe ser >= 1 y limit debe estar entre 1 y 100"
+                  }
+                ],
+                "message": "Error de validación"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Datos inválidos en el cuerpo, identificador o query. Los campos afectados aparecen en error.fields."
+      },
+      "Conflict": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "CONFLICT",
+                "message": "El registro ya existe"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Conflicto: registro duplicado, producto desactivado o stock insuficiente."
+      },
+      "DatabaseUnavailable": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "DB_ERROR",
+                "message": "Base de datos no disponible"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Base de datos no disponible."
+      },
+      "InternalError": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "Internal server error"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Error interno del servidor."
+      },
+      "InventoryEntryConflict": {
+        "content": {
+          "application/json": {
+            "examples": {
+              "alreadyInitialized": {
+                "summary": "Solo carga inicial: producto con historial",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El producto ya tiene movimientos; utilice una compra o un ajuste"
+                  },
+                  "success": false
+                }
+              },
+              "inactiveProduct": {
+                "summary": "Producto desactivado",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El producto \"Agua mineral 500ml\" está desactivado y no admite movimientos"
+                  },
+                  "success": false
+                }
+              }
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Producto desactivado o carga inicial sobre un producto que ya tiene movimientos."
+      },
+      "InventoryExitConflict": {
+        "content": {
+          "application/json": {
+            "examples": {
+              "inactiveProduct": {
+                "summary": "Producto desactivado",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El producto \"Agua mineral 500ml\" está desactivado y no admite movimientos"
+                  },
+                  "success": false
+                }
+              },
+              "insufficientStock": {
+                "summary": "Stock insuficiente (solo salidas)",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Stock insuficiente para \"Agua mineral 500ml\""
+                  },
+                  "success": false
+                }
+              }
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Producto desactivado o stock insuficiente para una salida de inventario."
+      },
+      "NotFound": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "NOT_FOUND",
+                "message": "Recurso no encontrado"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Recurso no encontrado."
+      },
+      "OperationConflict": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "CONFLICT",
+                "message": "La operación no puede realizarse con el estado actual"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Conflicto de estado o registro asociado a otras operaciones. El mensaje indica el motivo concreto."
+      },
+      "SaleConflict": {
+        "content": {
+          "application/json": {
+            "examples": {
+              "closed": {
+                "summary": "Caja cerrada",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "La caja está cerrada"
+                  },
+                  "success": false
+                }
+              },
+              "inactiveProduct": {
+                "summary": "Producto desactivado",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El producto \"Agua mineral 500ml\" está desactivado y no admite movimientos"
+                  },
+                  "success": false
+                }
+              },
+              "insufficientStock": {
+                "summary": "Stock insuficiente (solo salidas)",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Stock insuficiente para \"Agua mineral 500ml\""
+                  },
+                  "success": false
+                }
+              },
+              "noOpenRegister": {
+                "summary": "Se requiere abrir caja",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Debe abrir una caja antes de registrar una venta"
+                  },
+                  "success": false
+                }
+              }
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Sin caja abierta, caja cerrada, producto desactivado o stock insuficiente."
+      },
+      "Unauthorized": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "UNAUTHORIZED",
+                "message": "No autorizado"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Credenciales incorrectas o usuario no autorizado."
+      },
+      "ValidationError": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "VALIDATION_ERROR",
+                "fields": [
+                  {
+                    "field": "items",
+                    "message": "Debe incluir al menos un producto"
+                  }
+                ],
+                "message": "Error de validación"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Error de validación del cuerpo, parámetros o query. Incluye los campos inválidos."
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "properties": {
+          "error": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "CONFLICT",
+                  "BAD_REQUEST",
+                  "INTERNAL_ERROR",
+                  "INVALID_JSON",
+                  "DB_ERROR",
+                  "VALIDATION_ERROR"
+                ],
+                "type": "string"
+              },
+              "field": {
+                "description": "Opcional. Campo asociado al error, cuando corresponde.",
+                "type": "string"
+              },
+              "fields": {
+                "description": "Detalle de campos inválidos en errores de validación (422).",
+                "items": {
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "message"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          },
+          "success": {
+            "enum": [
+              false
+            ],
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "error"
+        ],
+        "type": "object"
+      },
+      "AuthResponse": {
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "user": {
+            "properties": {
+              "email": {
+                "format": "email",
+                "type": "string"
+              },
+              "id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "email"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "token",
+          "user"
+        ],
+        "type": "object"
+      },
+      "AuthStatusResponse": {
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "user": {
+            "properties": {
+              "email": {
+                "format": "email",
+                "type": "string"
+              },
+              "exp": {
+                "type": "integer"
+              },
+              "iat": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "role": {
+                "enum": [
+                  "ADMIN",
+                  "GUEST"
+                ],
+                "type": "string"
+              },
+              "storeId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "userId": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "userId",
+              "storeId",
+              "name",
+              "email",
+              "role",
+              "iat",
+              "exp"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "token",
+          "user"
+        ],
+        "type": "object"
+      },
+      "CashMovementPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "properties": {
+                "amount": {
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "cashRegisterId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "createdAt": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "createdBy": {
+                  "format": "uuid",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "createdByName": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "CASH_IN",
+                    "CASH_OUT"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "cashRegisterId",
+                "type",
+                "amount",
+                "reason",
+                "createdBy",
+                "createdByName",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "properties": {
+              "limit": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "totalPages"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "CashRegister": {
+        "properties": {
+          "closedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "closedBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "closedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "closingAmount": {
+            "example": "20.00",
+            "nullable": true,
+            "type": "string"
+          },
+          "closingNotes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openedBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "openedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "openingAmount": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "nullable": true,
+            "properties": {
+              "cashIn": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "cashOut": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "cashSales": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "difference": {
+                "example": "20.00",
+                "nullable": true,
+                "type": "string"
+              },
+              "expectedCash": {
+                "description": "Solo se envía a ADMIN; se omite por completo para GUEST.",
+                "example": "20.00",
+                "type": "string"
+              },
+              "salesCount": {
+                "type": "integer"
+              },
+              "totalSales": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "yapeSales": {
+                "example": "20.00",
+                "type": "string"
+              }
+            },
+            "required": [
+              "cashSales",
+              "yapeSales",
+              "totalSales",
+              "salesCount",
+              "cashIn",
+              "cashOut",
+              "difference"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "openedAt",
+          "openingAmount",
+          "openedBy",
+          "openedByName",
+          "notes",
+          "closedAt",
+          "closingAmount",
+          "closedBy",
+          "closedByName",
+          "closingNotes",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "CashRegisterOpened": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "OPEN"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "CashRegisterPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/CashRegister"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "properties": {
+              "limit": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "totalPages"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "Category": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "storeId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "storeId",
+          "name",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "CloseCashRegister": {
+        "additionalProperties": false,
+        "properties": {
+          "closingAmount": {
+            "example": 245,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "notes": {
+            "description": "Obligatorio y no vacío si existe diferencia con el efectivo esperado.",
+            "example": "Faltan 5 soles",
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "required": [
+          "closingAmount"
+        ],
+        "type": "object"
+      },
+      "CreateCashMovement": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "example": 20,
+            "exclusiveMinimum": true,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "reason": {
+            "example": "Dinero llevado al banco",
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "CASH_IN",
+              "CASH_OUT"
+            ],
+            "example": "CASH_OUT",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "amount",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "InventoryMovement": {
+        "properties": {
+          "cashRegisterId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "properties": {
+                "productId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "productName": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                },
+                "unitCost": {
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "example": "20.00",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "productId",
+                "productName",
+                "unitPrice",
+                "unitCost",
+                "quantity"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "movementType": {
+            "enum": [
+              "IN",
+              "OUT"
+            ],
+            "type": "string"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "paymentMethod": {
+            "enum": [
+              "CASH",
+              "YAPE",
+              null
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "PURCHASE",
+              "SALE",
+              "LOSS_EXPIRED",
+              "LOSS_DAMAGED",
+              "COUNT_SURPLUS",
+              "COUNT_SHORTAGE",
+              "INITIAL_LOAD",
+              "MANUAL_CORRECTION"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "COMPLETED",
+              "VOIDED"
+            ],
+            "type": "string"
+          },
+          "storeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "supplierId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "supplierName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "totalAmount": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "voidReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "storeId",
+          "cashRegisterId",
+          "movementType",
+          "reason",
+          "paymentMethod",
+          "supplierId",
+          "supplierName",
+          "createdBy",
+          "createdByName",
+          "voidedBy",
+          "status",
+          "voidedAt",
+          "voidReason",
+          "notes",
+          "createdAt",
+          "totalAmount",
+          "items"
+        ],
+        "type": "object"
+      },
+      "InventoryMovementsPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryMovement"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "nullable": true,
+            "properties": {
+              "cursorDate": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "cursorId": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "cursorDate",
+              "cursorId"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "MovementItems": {
+        "items": {
+          "properties": {
+            "productId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "quantity": {
+              "exclusiveMinimum": true,
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "unitPrice": {
+              "maximum": 99999999.99,
+              "minimum": 0,
+              "multipleOf": 0.01,
+              "type": "number"
+            }
+          },
+          "required": [
+            "productId",
+            "unitPrice",
+            "quantity"
+          ],
+          "type": "object"
+        },
+        "minItems": 1,
+        "type": "array"
+      },
+      "NullableCashRegister": {
+        "nullable": true,
+        "properties": {
+          "closedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "closedBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "closedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "closingAmount": {
+            "example": "20.00",
+            "nullable": true,
+            "type": "string"
+          },
+          "closingNotes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openedBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "openedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "openingAmount": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "nullable": true,
+            "properties": {
+              "cashIn": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "cashOut": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "cashSales": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "difference": {
+                "example": "20.00",
+                "nullable": true,
+                "type": "string"
+              },
+              "expectedCash": {
+                "description": "Solo se envía a ADMIN; se omite por completo para GUEST.",
+                "example": "20.00",
+                "type": "string"
+              },
+              "salesCount": {
+                "type": "integer"
+              },
+              "totalSales": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "yapeSales": {
+                "example": "20.00",
+                "type": "string"
+              }
+            },
+            "required": [
+              "cashSales",
+              "yapeSales",
+              "totalSales",
+              "salesCount",
+              "cashIn",
+              "cashOut",
+              "difference"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "openedAt",
+          "openingAmount",
+          "openedBy",
+          "openedByName",
+          "notes",
+          "closedAt",
+          "closingAmount",
+          "closedBy",
+          "closedByName",
+          "closingNotes",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "OpenCashRegister": {
+        "additionalProperties": false,
+        "properties": {
+          "notes": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "openingAmount": {
+            "example": 100,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          }
+        },
+        "required": [
+          "openingAmount"
+        ],
+        "type": "object"
+      },
+      "Product": {
+        "properties": {
+          "barcode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "minStock": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "salePrice": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "storeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitCostAvg": {
+            "example": "20.00",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "barcode",
+          "salePrice",
+          "unitCostAvg",
+          "minStock",
+          "isActive",
+          "categoryId",
+          "createdAt",
+          "storeId"
+        ],
+        "type": "object"
+      },
+      "ProductOption": {
+        "properties": {
+          "barcode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "categoryName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "salePrice": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "stock": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "salePrice",
+          "barcode",
+          "stock",
+          "categoryName"
+        ],
+        "type": "object"
+      },
+      "ProductSearchItem": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "salePrice": {
+            "example": "20.00",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "salePrice"
+        ],
+        "type": "object"
+      },
+      "ProductsPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "properties": {
+                "barcode": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "categoryId": {
+                  "format": "uuid",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "categoryName": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "createdAt": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "isActive": {
+                  "type": "boolean"
+                },
+                "minStock": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "salePrice": {
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "stock": {
+                  "type": "integer"
+                },
+                "unitCostAvg": {
+                  "example": "20.00",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "barcode",
+                "salePrice",
+                "unitCostAvg",
+                "minStock",
+                "isActive",
+                "categoryId",
+                "createdAt",
+                "stock",
+                "categoryName"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "totalItems": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "data",
+          "totalItems",
+          "totalPages"
+        ],
+        "type": "object"
+      },
+      "ProfitByProduct": {
+        "properties": {
+          "from": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "properties": {
+                "cogs": {
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "marginPct": {
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "productId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "productName": {
+                  "type": "string"
+                },
+                "profit": {
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "quantitySold": {
+                  "type": "integer"
+                },
+                "revenue": {
+                  "example": "20.00",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "productId",
+                "productName",
+                "quantitySold",
+                "revenue",
+                "cogs",
+                "profit",
+                "marginPct"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "to": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "products"
+        ],
+        "type": "object"
+      },
+      "ProfitSummary": {
+        "properties": {
+          "avgTicket": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "cogs": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "from": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "marginPct": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "profit": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "revenue": {
+            "example": "20.00",
+            "type": "string"
+          },
+          "salesCount": {
+            "type": "integer"
+          },
+          "to": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "revenue",
+          "cogs",
+          "profit",
+          "marginPct",
+          "salesCount",
+          "avgTicket"
+        ],
+        "type": "object"
+      },
+      "PurchaseItems": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "productId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "quantity": {
+              "exclusiveMinimum": true,
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "unitCost": {
+              "description": "Costo pagado por unidad en esta compra.",
+              "example": 2,
+              "maximum": 99999999.99,
+              "minimum": 0,
+              "multipleOf": 0.01,
+              "type": "number"
+            }
+          },
+          "required": [
+            "productId",
+            "quantity",
+            "unitCost"
+          ],
+          "type": "object"
+        },
+        "minItems": 1,
+        "type": "array"
+      },
+      "SaleItems": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "productId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "quantity": {
+              "exclusiveMinimum": true,
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "salePrice": {
+              "description": "Precio cobrado por unidad en esta venta.",
+              "example": 3.5,
+              "maximum": 99999999.99,
+              "minimum": 0,
+              "multipleOf": 0.01,
+              "type": "number"
+            }
+          },
+          "required": [
+            "productId",
+            "quantity",
+            "salePrice"
+          ],
+          "type": "object"
+        },
+        "minItems": 1,
+        "type": "array"
+      },
+      "StockCount": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "countedQuantity": {
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "productId": {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "productId",
+                "countedQuantity"
+              ],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "notes": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "notes",
+          "items"
+        ],
+        "type": "object"
+      },
+      "StoreUser": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "ADMIN",
+              "GUEST"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role"
+        ],
+        "type": "object"
+      },
+      "Supplier": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "storeId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "storeId",
+          "name",
+          "createdAt"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "API del proyecto Hostal. Cada petición recibe una sola de las respuestas documentadas. Un 204 confirma el éxito sin cuerpo; los ejemplos JSON de errores solo se devuelven cuando ocurre el error correspondiente.",
+    "title": "Hostal API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/auth/check-status": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatusResponse"
+                }
+              }
+            },
+            "description": "Token actual y sus datos de usuario autenticado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Verificar el estado de autenticación del usuario actual",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "email": {
+                    "example": "juan@example.com",
+                    "format": "email",
+                    "type": "string"
+                  },
+                  "password": {
+                    "example": "Secret1234567",
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "Autenticación exitosa; retorna token y usuario."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [],
+        "summary": "Autenticar usuario y obtener token JWT",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "email": {
+                    "example": "juan@example.com",
+                    "format": "email",
+                    "type": "string"
+                  },
+                  "name": {
+                    "example": "Juan Pérez",
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "password": {
+                    "example": "Secret1234567",
+                    "minLength": 12,
+                    "pattern": "[A-Z]",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "Usuario creado; retorna token y usuario."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [],
+        "summary": "Registrar un nuevo usuario",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/cash-register": {
+      "get": {
+        "description": "Orden descendente por apertura e id. Usa page (predeterminado 1) y limit (predeterminado 12, máximo 100); conserva el filtro status entre páginas. El summary depende del rol autenticado; expectedCash solo se entrega a ADMIN.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "OPEN",
+                "CLOSED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashRegisterPage"
+                }
+              }
+            },
+            "description": "Página de cajas de la tienda."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/CashRegisterQueryValidation"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Historial de cajas",
+        "tags": [
+          "CashRegisters"
+        ]
+      }
+    },
+    "/api/cash-register/current": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NullableCashRegister"
+                }
+              }
+            },
+            "description": "Caja abierta con resumen actualizado, o null si no existe."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Consultar la caja abierta de la tienda",
+        "tags": [
+          "CashRegisters"
+        ]
+      }
+    },
+    "/api/cash-register/current/movements": {
+      "get": {
+        "description": "Lista aportes y retiros de la caja actual, ordenados por fecha e id descendentes. La página predeterminada contiene 5 movimientos.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashMovementPage"
+                }
+              }
+            },
+            "description": "Página de movimientos, vacía si no hay caja abierta."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/CashMovementQueryValidation"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Movimientos de la caja abierta",
+        "tags": [
+          "CashRegisters"
+        ]
+      }
+    },
+    "/api/cash-register/open": {
+      "post": {
+        "description": "Una sola caja abierta por tienda. El servidor registra fecha y responsable autenticado.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenCashRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashRegisterOpened"
+                }
+              }
+            },
+            "description": "Caja abierta."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/CashRegisterAlreadyOpen"
+          },
+          "422": {
+            "$ref": "#/components/responses/CashRegisterOpeningValidation"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Abrir caja con el efectivo inicial",
+        "tags": [
+          "CashRegisters"
+        ]
+      }
+    },
+    "/api/cash-register/{id}": {
+      "get": {
+        "description": "El resumen de una caja abierta se calcula en el momento. El de una caja cerrada es el guardado al cerrar. Los cierres antiguos sin arqueo guardado tienen summary null. El summary depende del rol autenticado; expectedCash solo se entrega a ADMIN.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashRegister"
+                }
+              }
+            },
+            "description": "Datos y resumen de la caja."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/CashRegisterNotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/CashRegisterIdValidation"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Consultar una caja y su arqueo",
+        "tags": [
+          "CashRegisters"
+        ]
+      }
+    },
+    "/api/cash-register/{id}/close": {
+      "post": {
+        "description": "Pausar ventas y movimientos mientras se cuenta. Si hay diferencia, notes debe explicar el motivo. El servidor calcula y conserva el arqueo definitivo; no se permite reabrir.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseCashRegister"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Caja cerrada. Consultar GET /api/cash-register/{id} para ver el arqueo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/CashRegisterNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/CashRegisterClosed"
+          },
+          "422": {
+            "$ref": "#/components/responses/CashRegisterClosingValidation"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Cerrar caja con el efectivo contado",
+        "tags": [
+          "CashRegisters"
+        ]
+      }
+    },
+    "/api/cash-register/{id}/movements": {
+      "get": {
+        "description": "No incluye ventas. Orden descendente por fecha e id. Usa page (predeterminado 1) y limit (predeterminado 20, máximo 100).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashMovementPage"
+                }
+              }
+            },
+            "description": "Página de movimientos manuales de efectivo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/CashRegisterNotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/CashMovementQueryValidation"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Consultar aportes y retiros manuales",
+        "tags": [
+          "CashRegisters"
+        ]
+      },
+      "post": {
+        "description": "Requiere caja abierta. El motivo es obligatorio y un retiro no puede superar el efectivo esperado. No registrar aquí el efecto de una venta.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCashMovement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Movimiento registrado, sin cuerpo de respuesta."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/CashRegisterNotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/CashMovementConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/CashMovementValidation"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Registrar un aporte o retiro de efectivo",
+        "tags": [
+          "CashRegisters"
+        ]
+      }
+    },
+    "/api/category": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Listado de categorías."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Listar todas las categorías",
+        "tags": [
+          "Categories"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "name": {
+                    "example": "Bebidas",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            },
+            "description": "Categoría creada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Crear una nueva categoría",
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/api/category/{id}": {
+      "delete": {
+        "description": "Elimina una categoría del usuario. Los productos que estaban asociados quedan con categoryId = null.",
+        "parameters": [
+          {
+            "description": "ID UUID de la categoría a eliminar",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Categoría eliminada. Sin cuerpo de respuesta."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Eliminar una categoría",
+        "tags": [
+          "Categories"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "description": "ID UUID de la categoría a actualizar",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "name": {
+                    "example": "Snacks",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            },
+            "description": "Categoría actualizada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Actualizar una categoría existente",
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/api/inventory-movement": {
+      "get": {
+        "description": "Sin filtros devuelve todos los movimientos completados. movementType filtra la dirección y group el grupo; si se envían ambos, se aplican juntos. Una combinación sin coincidencias devuelve data vacío.\ngroup=voids consulta anulados; los demás grupos consultan completados.\nOrden descendente por fecha de creación e id. La primera petición no envía cursor.\nPara la siguiente página, envía cursorDate y cursorId de nextCursor juntos y conserva los filtros. Al cambiar filtros, reinicia la paginación sin cursor.\n",
+        "parameters": [
+          {
+            "description": "IN incluye compras, cargas iniciales y ajustes de entrada. OUT incluye ventas, pérdidas y ajustes de salida. Sin este filtro incluye ambas direcciones.",
+            "in": "query",
+            "name": "movementType",
+            "required": false,
+            "schema": {
+              "enum": [
+                "IN",
+                "OUT"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Motivo exacto; se combina con group y movementType.",
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "enum": [
+                "PURCHASE",
+                "SALE",
+                "LOSS_EXPIRED",
+                "LOSS_DAMAGED",
+                "COUNT_SURPLUS",
+                "COUNT_SHORTAGE",
+                "INITIAL_LOAD",
+                "MANUAL_CORRECTION"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Movimientos que contienen este producto; conserva todos los artículos del movimiento.",
+            "in": "query",
+            "name": "productId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fecha inicial inclusiva, ISO con zona horaria.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fecha final exclusiva, posterior a from.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filtra movimientos vinculados a una caja de esta tienda. Se puede combinar con movementType y group.",
+            "in": "query",
+            "name": "cashRegisterId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "sales incluye SALE; purchase incluye PURCHASE; loss incluye LOSS_EXPIRED, LOSS_DAMAGED y COUNT_SHORTAGE. Sin grupo incluye todos los motivos completados. voids incluye anulados de cualquier motivo.",
+            "in": "query",
+            "name": "group",
+            "required": false,
+            "schema": {
+              "enum": [
+                "sales",
+                "purchase",
+                "loss",
+                "voids"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Valor nextCursor.cursorId de la página anterior; enviar junto con cursorDate.",
+            "in": "query",
+            "name": "cursorId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Valor nextCursor.cursorDate de la página anterior; enviar junto con cursorId.",
+            "in": "query",
+            "name": "cursorDate",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryMovementsPage"
+                }
+              }
+            },
+            "description": "Historial de movimientos y cursor de la siguiente página (null si no hay más)."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/CashRegisterNotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Historial de movimientos con filtros por dirección y grupo",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/inventory-movement/adjustments": {
+      "post": {
+        "description": "Corrección manual de un error conocido (MANUAL_CORRECTION). movementType IN agrega stock y OUT lo descuenta. Las cantidades son unidades a agregar o retirar, no el stock final. Las diferencias de conteo físico se registran con /stock-counts.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "items": {
+                    "$ref": "#/components/schemas/MovementItems"
+                  },
+                  "movementType": {
+                    "enum": [
+                      "IN",
+                      "OUT"
+                    ],
+                    "type": "string"
+                  },
+                  "notes": {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  "reason": {
+                    "enum": [
+                      "MANUAL_CORRECTION"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "items",
+                  "reason",
+                  "movementType"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Ajuste registrado. Sin cuerpo de respuesta."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/InventoryExitConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Ajuste de inventario",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/inventory-movement/initial-loads": {
+      "post": {
+        "description": "El servicio asigna INITIAL_LOAD e IN. Solo admite productos sin movimientos previos, incluso anulados. unitPrice representa el costo inicial por unidad. No afecta caja.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "items": {
+                    "$ref": "#/components/schemas/MovementItems"
+                  },
+                  "notes": {
+                    "maxLength": 500,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "items"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Carga inicial registrada. Sin cuerpo de respuesta."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/InventoryEntryConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Carga inicial (IN)",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/inventory-movement/losses": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "items": {
+                    "$ref": "#/components/schemas/MovementItems"
+                  },
+                  "notes": {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  "reason": {
+                    "enum": [
+                      "LOSS_EXPIRED",
+                      "LOSS_DAMAGED"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "items",
+                  "reason"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Pérdida registrada. Sin cuerpo de respuesta."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/InventoryExitConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Registrar merma o pérdida (OUT)",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/inventory-movement/purchases": {
+      "post": {
+        "description": "El servicio asigna PURCHASE e IN. No enviar reason ni movementType.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "items": {
+                    "$ref": "#/components/schemas/PurchaseItems"
+                  },
+                  "notes": {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  "supplierId": {
+                    "format": "uuid",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "items"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Compra registrada. Sin cuerpo de respuesta; consultar el historial para obtener el detalle."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/InventoryEntryConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Registrar compra (IN)",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/inventory-movement/sales": {
+      "post": {
+        "description": "El servicio asigna SALE y OUT. Toda venta, incluso por Yape, requiere caja abierta. Si se omite cashRegisterId se utiliza la caja abierta de la tienda. No enviar reason ni movementType.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "cashRegisterId": {
+                    "description": "Caja abierta de la misma tienda; si se omite, el servidor la selecciona.",
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "items": {
+                    "$ref": "#/components/schemas/SaleItems"
+                  },
+                  "notes": {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  "paymentMethod": {
+                    "enum": [
+                      "CASH",
+                      "YAPE"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "items",
+                  "paymentMethod"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Venta registrada. Sin cuerpo de respuesta; consultar el historial para obtener el detalle."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/SaleConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Registrar venta (OUT)",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/inventory-movement/stock-counts": {
+      "post": {
+        "description": "Enviar las cantidades contadas, no diferencias. Pausar movimientos mientras se cuenta. El servidor bloquea los productos y registra hasta dos movimientos: sobrantes IN y faltantes OUT, en una transacción. 409 si todo coincide; no registra movimientos vacíos. No afecta caja.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StockCount"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Conteo aplicado, sin cuerpo. Actualizar productos e historial."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Registrar conteo físico y calcular diferencias",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/inventory-movement/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryMovement"
+                }
+              }
+            },
+            "description": "Movimiento de la tienda con sus artículos."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Consultar detalle de movimiento completado o anulado",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/inventory-movement/{id}/void": {
+      "post": {
+        "description": "Exige motivo. Rechaza movimientos ya anulados o con movimientos completados posteriores de alguno de sus productos. Las ventas requieren su caja original abierta; las CASH requieren efectivo suficiente para revertir el importe. Las entradas restauran el costo anterior guardado y no pueden dejar stock negativo. No es una devolución parcial ni permite cambiar cierres históricos. No registre otro retiro por la misma reversión de venta.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Movimiento anulado, sin cuerpo. Actualizar inventario, reportes y caja si corresponde."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Anular un movimiento registrado por error",
+        "tags": [
+          "InventoryMovements"
+        ]
+      }
+    },
+    "/api/product": {
+      "get": {
+        "parameters": [
+          {
+            "description": "Número de página para la paginación",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Cantidad de productos a devolver por página",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 12,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Término opcional para buscar productos por nombre",
+            "in": "query",
+            "name": "searchTerm",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filtra por nombre de categoría. Acepta uno o varios nombres separados por coma (ej. \"Bebidas\" o \"Bebidas,Snacks\"). Comparación insensible a mayúsculas/acentos. Si no se envía, retorna productos de todas las categorías.",
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductsPage"
+                }
+              }
+            },
+            "description": "Página de productos activos."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Obtener todos los productos",
+        "tags": [
+          "Products"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "barcode": {
+                    "example": "7501030300050",
+                    "maxLength": 50,
+                    "type": "string"
+                  },
+                  "categoryId": {
+                    "example": "550e8400-e29b-41d4-a716-446655440000",
+                    "format": "uuid",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "minStock": {
+                    "default": 0,
+                    "example": 10,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "name": {
+                    "example": "Agua mineral 500ml",
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "salePrice": {
+                    "example": 2.5,
+                    "maximum": 99999999.99,
+                    "minimum": 0,
+                    "multipleOf": 0.01,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "name",
+                  "salePrice"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            },
+            "description": "Producto creado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Crear un nuevo producto",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/product/options": {
+      "get": {
+        "description": "Lista todos los productos activos con id, nombre, precio de venta, código de barras, stock y categoría (sin paginación), pensado para selects y formularios de venta u otros flujos.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductOption"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Opciones de productos activos con precio, código de barras, stock y categoría."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Opciones de productos para desplegables",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/product/search/by-name": {
+      "get": {
+        "description": "Retorna una lista de productos cuyo nombre coincide parcialmente con el término de búsqueda (insensible a mayúsculas y acentos)",
+        "parameters": [
+          {
+            "description": "Término de búsqueda parcial por nombre de producto",
+            "example": "agua",
+            "in": "query",
+            "name": "searchTerm",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductSearchItem"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Productos encontrados."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Buscar productos por nombre",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/product/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "description": "ID UUID del producto a eliminar",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Producto desactivado. Sin cuerpo de respuesta."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Desactivar un producto",
+        "tags": [
+          "Products"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Product"
+                    },
+                    {
+                      "properties": {
+                        "stock": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "stock"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Producto con stock actual."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Consultar producto y stock de la tienda",
+        "tags": [
+          "Products"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "description": "ID UUID del producto a actualizar",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "barcode": {
+                    "example": "7501030300050",
+                    "maxLength": 50,
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "categoryId": {
+                    "example": "550e8400-e29b-41d4-a716-446655440000",
+                    "format": "uuid",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "minStock": {
+                    "example": 10,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "name": {
+                    "example": "Agua mineral 500ml",
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "salePrice": {
+                    "example": 2.5,
+                    "maximum": 99999999.99,
+                    "minimum": 0,
+                    "multipleOf": 0.01,
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "name",
+                  "salePrice"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            },
+            "description": "Producto actualizado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Actualizar un producto existente",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/report/profit/by-product": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 10,
+              "maximum": 100,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfitByProduct"
+                }
+              }
+            },
+            "description": "Ranking de productos y rango efectivo del periodo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Top productos por ganancia",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/report/profit/summary": {
+      "get": {
+        "description": "Totales del rango: ingresos, COGS, ganancia, margen %, # ventas y ticket promedio.\nSi no se envían `from` y `to`, se asumen los últimos 30 días.\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfitSummary"
+                }
+              }
+            },
+            "description": "Totales y rango efectivo del periodo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Resumen de ganancias del periodo",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/store-user": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoreUser"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Usuarios de esta tienda, sin contraseñas."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Listar usuarios de la tienda y resolver responsables",
+        "tags": [
+          "StoreUsers"
+        ]
+      },
+      "post": {
+        "description": "Solo ADMIN. Crea un usuario GUEST en la misma tienda; puede operar caja e inventario. No crea otra tienda ni inicia sesión automáticamente.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "email": {
+                    "format": "email",
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 12,
+                    "pattern": "[A-Z]",
+                    "type": "string",
+                    "writeOnly": true
+                  }
+                },
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreUser"
+                }
+              }
+            },
+            "description": "Trabajador creado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Solo administradores."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Añadir trabajador a la tienda actual",
+        "tags": [
+          "StoreUsers"
+        ]
+      }
+    },
+    "/api/supplier": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Supplier"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Proveedores disponibles para compras."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Listar proveedores de la tienda",
+        "tags": [
+          "Suppliers"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Supplier"
+                }
+              }
+            },
+            "description": "Proveedor creado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Crear proveedor",
+        "tags": [
+          "Suppliers"
+        ]
+      }
+    },
+    "/api/supplier/{id}": {
+      "delete": {
+        "description": "Si el proveedor tiene compras, responde 409 para conservar la relación histórica.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Proveedor eliminado, sin cuerpo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Eliminar proveedor sin compras asociadas",
+        "tags": [
+          "Suppliers"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Supplier"
+                }
+              }
+            },
+            "description": "Proveedor actualizado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Editar proveedor",
+        "tags": [
+          "Suppliers"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "Development server",
+      "url": "http://localhost:3000"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Caja compartida por los usuarios de la tienda. Pausar las operaciones mientras se cuenta el efectivo; no hay cierre automático a medianoche.",
+      "name": "CashRegisters"
+    },
+    {
+      "description": "Endpoints para gestión de categorías",
+      "name": "Categories"
+    },
+    {
+      "description": "Registro e historial de ventas, compras, pérdidas, cargas iniciales y ajustes de inventario",
+      "name": "InventoryMovements"
+    },
+    {
+      "description": "Endpoints para la gestión de productos",
+      "name": "Products"
+    },
+    {
+      "description": "Reportes de ganancias basados en movimientos OUT (ventas)",
+      "name": "Reports"
+    },
+    {
+      "description": "Endpoints para gestión de usuarios y autenticación",
+      "name": "Users"
+    }
+  ]
+}

@@ -12,6 +12,13 @@ const operations = () => Object.entries(spec.paths).flatMap(([path, item]) => Ob
   .filter(([method]) => httpMethods.has(method))
   .map(([method, operation]) => ({ path, method, operation })));
 
+/** Recursively sorts object keys so the snapshot does not depend on generation order. */
+const sortKeys = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.keys(value).sort().map(key => [key, sortKeys((value as Record<string, unknown>)[key])]));
+};
+
 describe('generated OpenAPI spec', () => {
   it('documents exactly the expected operations and status codes', () => {
     // Fixture lines: `METHOD path [sorted status codes]`, sorted. Update it only for intended API changes.
@@ -43,6 +50,13 @@ describe('generated OpenAPI spec', () => {
     expect(unresolved).toEqual([]);
   });
 
+  it('matches the reviewed spec snapshot', async () => {
+    // Any change to schemas, parameters, defaults, required fields or responses shows up as a diff
+    // of this file. Review it, then update it with `npx vitest run -u`.
+    await expect(`${JSON.stringify(sortKeys(swaggerSpec), null, 2)}\n`)
+      .toMatchFileSnapshot('./__snapshots__/openapi-spec.json');
+  });
+
   it('gives every operation a summary and at least one tag', () => {
     const incomplete = operations()
       .filter(({ operation }) => !operation.summary?.trim() || !operation.tags?.length)
@@ -62,6 +76,18 @@ describe('mergePaths', () => {
   it('fails when two sources document the same path and method', () => {
     expect(() => mergePaths({ '/a': { get: {} } }, { '/a': { get: {}, post: {} } }))
       .toThrow('OpenAPI operation documented by more than one source: GET /a');
+  });
+
+  it('accepts identical path-level fields repeated by different sources', () => {
+    const parameters = [{ in: 'path', name: 'id', required: true }];
+    const merged = mergePaths({ '/a/{id}': { parameters, get: {} } }, { '/a/{id}': { parameters, summary: 'A', post: {} } });
+
+    expect(merged).toEqual({ '/a/{id}': { parameters, summary: 'A', get: {}, post: {} } });
+  });
+
+  it('fails with a distinct error when path-level fields differ between sources', () => {
+    expect(() => mergePaths({ '/a': { summary: 'A', get: {} } }, { '/a': { summary: 'B', post: {} } }))
+      .toThrow('OpenAPI path-level fields of /a differ between sources: summary');
   });
 
   it('does not mutate its sources', () => {

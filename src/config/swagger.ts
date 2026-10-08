@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import type { Application } from 'express';
@@ -28,22 +29,31 @@ type Spec = {
     tags?: { name: string }[];
 };
 
+const httpMethods = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
+
 /**
  * Merges the path maps of every documentation source into a new object. Operations on the same
  * path are combined, but two sources documenting the same path and method would silently
- * override each other, so that case fails fast instead.
+ * override each other, so that case fails fast instead. Path-level fields (parameters, summary,
+ * description, servers...) may be repeated only with identical values; conflicting values fail
+ * with their own error.
  */
 export const mergePaths = (...sources: Paths[]): Paths => {
     const merged: Paths = {};
     for (const source of sources) {
-        for (const [path, operations] of Object.entries(source)) {
+        for (const [path, item] of Object.entries(source)) {
             const current = merged[path] ?? {};
-            const duplicated = Object.keys(operations).filter(method => method in current);
+            const repeated = Object.keys(item).filter(key => key in current);
+            const duplicated = repeated.filter(key => httpMethods.has(key));
             if (duplicated.length > 0) {
                 const names = duplicated.map(method => `${method.toUpperCase()} ${path}`).join(', ');
                 throw new Error(`OpenAPI operation documented by more than one source: ${names}`);
             }
-            merged[path] = { ...current, ...operations };
+            const conflicting = repeated.filter(key => !isDeepStrictEqual(current[key], item[key]));
+            if (conflicting.length > 0) {
+                throw new Error(`OpenAPI path-level fields of ${path} differ between sources: ${conflicting.join(', ')}`);
+            }
+            merged[path] = { ...current, ...item };
         }
     }
     return merged;

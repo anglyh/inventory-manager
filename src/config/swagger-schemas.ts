@@ -133,15 +133,6 @@ export const responseSchemas = {
     ...range,
     products: array(object({ productId: uuid, productName: string, quantitySold: integer, ...profit })),
   }),
-  SeedResult: object({
-    message: string,
-    data: object({
-      user: object({ email: string, password: string, created: boolean }),
-      categoriesCreated: integer,
-      productsCreated: integer,
-      inventoryMovementsCreated: object({ entries: integer, exits: integer, total: integer }),
-    }),
-  }),
 };
 
 const errorResponse = (description: string, error: ApiError) => ({

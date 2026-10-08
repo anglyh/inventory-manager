@@ -96,8 +96,7 @@ El usuario debe pausar ventas y movimientos mientras cuenta. El bloqueo transacc
 impide que una operación se guarde después del cierre, pero no impide que otra persona
 mueva dinero físico durante el conteo.
 
-Los datos antiguos sin caja se conservan. El seed ahora usa el storeId real del usuario
-y crea una caja de ejemplo cuando no hay una abierta; deja esa sesión abierta.
+Los datos antiguos sin caja se conservan.
 
 El SQL inicial actualizado exige caja en cada venta. Esa restricción solo se instala
 en una base que reciba este esquema; editar el archivo no cambia bases ya creadas.

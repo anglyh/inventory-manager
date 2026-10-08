@@ -13,7 +13,6 @@ import { requireAdmin, requireAuth } from './middlewares/auth.middleware.js';
 import categoryRouter from './routes/category.routes.js';
 import inventoryMovementRouter from './routes/inventory-movement.routes.js';
 import reportRouter from './routes/report.routes.js';
-import seedRouter from './routes/seed.routes.js';
 import cashRegisterRouter from './routes/cash-register.routes.js';
 import supplierRouter from './routes/supplier.routes.js';
 import storeUserRouter from './routes/store-user.routes.js';
@@ -79,7 +78,6 @@ app.use("/api/cash-register", requireAuth, cashRegisterRouter);
 app.use('/api/supplier', requireAuth, supplierRouter);
 app.use('/api/store-user', requireAuth, storeUserRouter);
 app.use("/api/report", requireAuth, reportRouter);
-app.use("/api/seed", seedRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

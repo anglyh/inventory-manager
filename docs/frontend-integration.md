@@ -29,9 +29,6 @@ Todos los usuarios de una tienda pueden operar inventario y caja.
   `{name,email,password}`. Devuelve 201 con el usuario, sin contraseña ni token.
   Su rol es GUEST; ese nombre interno no impide usar ventas, compras o caja.
 - La contraseña nueva exige al menos 12 caracteres y una mayúscula.
-- El endpoint de datos de ejemplo `/seed` permanece como estaba; no forma parte del
-  flujo de una pantalla operativa. Los movimientos generados por el seed pueden tener
-  responsable null, mientras que las operaciones HTTP nuevas toman el usuario autenticado.
 
 ## Catálogo y proveedores
 

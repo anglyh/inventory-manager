@@ -6,7 +6,7 @@ import type { ICategoryRepository } from '../interfaces/repositories/category.re
 import { withTransaction } from '../db/transactions.js';
 
 export default class CategoryRepository implements ICategoryRepository {
-  async create(storeId: string, categoryData: Category): Promise<Category> {
+  async create(storeId: string, categoryData: Pick<Category, 'name'>): Promise<Category> {
     const { name } = categoryData
     const result = await query(
       `INSERT INTO category (store_id, name)

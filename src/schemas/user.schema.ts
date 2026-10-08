@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 export const createUserSchema = z.object({
-  name: z.string('Nombre requerido').min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
-  email: z.email('Email inválido'),
+  name: z.string('Nombre requerido').trim().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
+  email: z.email('Email inválido').max(100),
   password: z.string('Contraseña requerida')
-  .min(12, 'La contraseña debe tener al menos 8 caracteres')
+  .min(12, 'La contraseña debe tener al menos 12 caracteres')
   .regex(/[A-Z]/, "Debe contener al menos una mayúscula"),
 });
 
@@ -30,7 +30,7 @@ export const changePasswordSchema = z.object({
   }
 );
 
-export type CreateUserInput = z.infer<typeof createUserSchema>;z
+export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

@@ -6,7 +6,7 @@ import { NotFoundError } from '../errors/app.error.js';
 export default class CategoryService implements ICategoryService {
   constructor(private categoryRepo: ICategoryRepository) {}
 
-  async create(storeId: string, categoryData: Category): Promise<Category> {
+  async create(storeId: string, categoryData: Pick<Category, 'name'>): Promise<Category> {
     const category = await this.categoryRepo.create(storeId, categoryData);
     return category;
   }

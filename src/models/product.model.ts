@@ -5,7 +5,7 @@ export interface Product {
   storeId: string;
   name: string;
   salePrice: string;
-  barcode?: string | null;
+  barcode: string | null;
   unitCostAvg: string | null;
   minStock: number;
   categoryId: Category["id"] | null;
@@ -17,8 +17,11 @@ export type ProductWithStock = Product & {
   stock: number;
 }
 
-export type ProductListItem = ProductWithStock & {
+export type ProductListItem = Omit<ProductWithStock, 'storeId'> & {
   categoryName: string | null;
 }
 
-export type ProductSearchItem = Pick<ProductWithStock, 'id' | 'name' | 'salePrice' | 'barcode'>;
+export type ProductSearchItem = Pick<Product, 'id' | 'name' | 'salePrice'>;
+export type ProductOption = ProductSearchItem & Pick<ProductWithStock, 'barcode' | 'stock'> & {
+  categoryName: string | null;
+};

@@ -74,6 +74,31 @@ export function errorHandler(
       };
       return res.status(401).json(response);
     }
+    if (err.code === '23503') {
+      return res.status(409).json({ success: false, error: {
+        code: 'CONFLICT',
+        message: err.constraint?.includes('supplier')
+          ? 'El proveedor está asociado a compras o ya no está disponible'
+          : 'El registro está asociado a otras operaciones o ya no está disponible',
+      } });
+    }
+    if (err.code === '23514' && err.message.startsWith('Stock insuficiente')) {
+      return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: err.message } });
+    }
+    if (err.code === '23514' && err.message.startsWith('No se puede anular')) {
+      return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: err.message } });
+    }
+    if (['23514', '22P02', '22003', '22007', '22008'].includes(err.code ?? '')) {
+      return res.status(422).json({ success: false, error: {
+        code: 'VALIDATION_ERROR', message: 'Datos inválidos',
+        fields: [{ field: '_root', message: 'Revise los identificadores, fechas, cantidades e importes enviados' }],
+      } });
+    }
+    if (['40001', '40P01', '55P03'].includes(err.code ?? '')) {
+      return res.status(409).json({ success: false, error: {
+        code: 'CONFLICT', message: 'Otra operación modificó estos datos. Actualice la información antes de volver a intentar',
+      } });
+    }
     if (err.code === 'P0001') {
       const response: ApiErrorResponse = {
         success: false,
@@ -81,6 +106,11 @@ export function errorHandler(
       };
       return res.status(400).json(response);
     }
+  }
+
+  const errorCode = err && typeof err === 'object' && 'code' in err ? String(err.code) : '';
+  if (errorCode.startsWith('08') || ['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', '57P01', '57P03'].includes(errorCode)) {
+    return res.status(503).json({ success: false, error: { code: 'DB_ERROR', message: 'Base de datos no disponible' } });
   }
 
   const response: ApiErrorResponse = {

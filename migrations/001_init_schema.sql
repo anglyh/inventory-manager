@@ -1,6 +1,6 @@
 -- =========================================================================================
 -- SCHEMA INICIAL - HOSTAL INVENTORY
--- Diseñado para ser idempotente: se puede re-ejecutar sin romper la BD.
+-- Esquema base de desarrollo. CREATE TABLE IF NOT EXISTS no actualiza tablas existentes.
 -- Arquitectura: Multi-Tenant (Cada store/tienda es dueña de sus datos, usuarios y productos)
 -- =========================================================================================
 
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS store (
 
 CREATE TABLE IF NOT EXISTS app_user (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    store_id uuid REFERENCES store(id) ON DELETE CASCADE,
+    store_id uuid NOT NULL REFERENCES store(id) ON DELETE CASCADE,
     name varchar(50) NOT NULL,
     email varchar(100) NOT NULL UNIQUE,
     password varchar(255) NOT NULL,
@@ -72,6 +72,10 @@ CREATE TABLE IF NOT EXISTS cash_register (
     opening_amount numeric(10, 2) NOT NULL CHECK (opening_amount >= 0),
     closed_at timestamptz,
     closing_amount numeric(10, 2) CHECK (closing_amount IS NULL OR closing_amount >= 0),
+    opened_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    closed_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    closing_notes text,
+    closing_summary jsonb,
     notes TEXT,
     
     CONSTRAINT chk_close_fields_together
@@ -81,19 +85,31 @@ CREATE TABLE IF NOT EXISTS cash_register (
 -- ---------------------------------------------------------
 -- 4. TABLAS TRANSACCIONALES (Movimientos)
 -- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS cash_register_movement (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    cash_register_id uuid NOT NULL REFERENCES cash_register(id) ON DELETE RESTRICT,
+    type text NOT NULL CHECK (type IN ('CASH_IN', 'CASH_OUT')),
+    amount numeric(10, 2) NOT NULL CHECK (amount > 0),
+    reason text NOT NULL CHECK (length(btrim(reason)) BETWEEN 1 AND 500),
+    created_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
 CREATE TABLE IF NOT EXISTS inventory_movement (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     store_id uuid NOT NULL REFERENCES store(id) ON DELETE CASCADE,
-    cash_register_id uuid REFERENCES cash_register(id) ON DELETE SET NULL,
+    cash_register_id uuid REFERENCES cash_register(id) ON DELETE RESTRICT,
     movement_type movement_type NOT NULL,
     reason movement_reason NOT NULL,
     payment_method payment_method,
-    supplier_id uuid REFERENCES supplier(id) ON DELETE SET NULL,
+    supplier_id uuid REFERENCES supplier(id) ON DELETE RESTRICT,
+    created_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    voided_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
     status movement_status NOT NULL DEFAULT 'COMPLETED',
     voided_at timestamptz,
     void_reason TEXT,
     notes TEXT,
-    created_at timestamptz DEFAULT CURRENT_TIMESTAMP,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
 
     CONSTRAINT chk_supplier_requires_purchase_reason
         CHECK (supplier_id IS NULL OR reason IN ('PURCHASE')),
@@ -113,6 +129,11 @@ CREATE TABLE IF NOT EXISTS inventory_movement (
             (reason = 'MANUAL_CORRECTION'     AND movement_type IN ('IN', 'OUT'))
         ),
 
+    -- Toda venta debe estar vinculada a una caja.
+    CONSTRAINT chk_sale_requires_cash_register
+        CHECK (reason <> 'SALE' OR cash_register_id IS NOT NULL),
+
+    -- Solo las ventas pueden estar vinculadas a una caja.
     CONSTRAINT chk_cash_register_requires_sale
         CHECK (cash_register_id IS NULL OR reason = 'SALE')
 );
@@ -123,14 +144,26 @@ CREATE TABLE IF NOT EXISTS inventory_movement_item (
     product_id uuid NOT NULL REFERENCES product(id),
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price numeric(10, 2) NOT NULL CHECK (unit_price >= 0),
-    unit_cost numeric(10, 2) NOT NULL CHECK (unit_cost >= 0)
+    unit_cost numeric(10, 2) NOT NULL CHECK (unit_cost >= 0),
+    unit_cost_before numeric(10, 2) CHECK (unit_cost_before IS NULL OR unit_cost_before >= 0)
 );
 
 -- ---------------------------------------------------------
 -- 5. ÍNDICES (Optimización de búsquedas y unicidad)
 -- ---------------------------------------------------------
+CREATE UNIQUE INDEX IF NOT EXISTS cash_register_one_open_per_store
+    ON cash_register(store_id) WHERE closed_at IS NULL;
+CREATE INDEX IF NOT EXISTS cash_register_history_idx
+    ON cash_register(store_id, opened_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS inventory_movement_cash_register_idx
+    ON inventory_movement(cash_register_id) WHERE cash_register_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS cash_register_movement_history_idx
+    ON cash_register_movement(cash_register_id, created_at DESC, id DESC);
+
 -- Índices Únicos (Unicidad + Velocidad)
 CREATE UNIQUE INDEX IF NOT EXISTS product_store_name_unique ON product (store_id, lower(name));
+CREATE UNIQUE INDEX IF NOT EXISTS supplier_store_name_unique ON supplier (store_id, lower(name));
 CREATE UNIQUE INDEX IF NOT EXISTS product_store_barcode_unique ON product (store_id, barcode) WHERE barcode IS NOT NULL;
 
 -- Índices Regulares (Solo Velocidad)
@@ -226,13 +259,62 @@ JOIN inventory_movement_item mi ON mi.movement_id = m.id
 JOIN product p ON p.id = mi.product_id
 WHERE m.reason = 'SALE' AND m.status = 'COMPLETED';
 
--- Vista: Arqueo de caja diaria
+-- Agregaciones independientes: cada venta y cada aporte/retiro se suma una sola vez.
+CREATE OR REPLACE VIEW vw_cash_register_totals AS
+SELECT
+    cr.id AS cash_register_id,
+    s.cash_sales,
+    s.yape_sales,
+    s.total_sales,
+    s.sales_count,
+    cm.cash_in,
+    cm.cash_out,
+    cr.opening_amount + s.cash_sales + cm.cash_in - cm.cash_out AS expected_cash
+FROM cash_register cr
+CROSS JOIN LATERAL (
+    SELECT
+        COALESCE(
+            SUM(mi.unit_price * mi.quantity) FILTER (WHERE m.payment_method = 'CASH'),
+            0.00
+        ) AS cash_sales,
+        COALESCE(
+            SUM(mi.unit_price * mi.quantity) FILTER (WHERE m.payment_method = 'YAPE'),
+            0.00
+        ) AS yape_sales,
+        COALESCE(SUM(mi.unit_price * mi.quantity), 0.00) AS total_sales,
+        COUNT(DISTINCT m.id)::integer AS sales_count
+    FROM inventory_movement m
+    LEFT JOIN inventory_movement_item mi ON mi.movement_id = m.id
+    WHERE m.cash_register_id = cr.id
+        AND m.store_id = cr.store_id
+        AND m.reason = 'SALE'
+        AND m.status = 'COMPLETED'
+) s
+CROSS JOIN LATERAL (
+    SELECT
+        COALESCE(SUM(amount) FILTER (WHERE type = 'CASH_IN'), 0.00) AS cash_in,
+        COALESCE(SUM(amount) FILTER (WHERE type = 'CASH_OUT'), 0.00) AS cash_out
+    FROM cash_register_movement
+    WHERE cash_register_id = cr.id
+) cm;
+
+-- Vista: efectivo esperado de la caja abierta y arqueo guardado al cerrar.
 CREATE OR REPLACE VIEW vw_cash_register_summary AS
-SELECT 
-    cr.*,
-    cr.opening_amount + COALESCE(SUM(CASE WHEN m.payment_method = 'CASH' THEN mi.unit_price * mi.quantity ELSE 0 END), 0) AS expected_cash,
-    cr.closing_amount - (cr.opening_amount + COALESCE(SUM(CASE WHEN m.payment_method = 'CASH' THEN mi.unit_price * mi.quantity ELSE 0 END), 0)) AS difference
-FROM cash_register as cr
-LEFT JOIN inventory_movement m ON m.cash_register_id = cr.id AND m.reason = 'SALE' AND m.status = 'COMPLETED'
-LEFT JOIN inventory_movement_item mi ON mi.movement_id = m.id
-GROUP BY cr.id;
+SELECT
+    cr.id,
+    cr.store_id,
+    cr.opened_at,
+    cr.opening_amount,
+    cr.closed_at,
+    cr.closing_amount,
+    cr.notes,
+    CASE
+        WHEN cr.closed_at IS NULL THEN t.expected_cash
+        ELSE (cr.closing_summary->>'expectedCash')::numeric
+    END AS expected_cash,
+    CASE
+        WHEN cr.closed_at IS NULL THEN NULL::numeric
+        ELSE (cr.closing_summary->>'difference')::numeric
+    END AS difference
+FROM cash_register cr
+JOIN vw_cash_register_totals t ON t.cash_register_id = cr.id;

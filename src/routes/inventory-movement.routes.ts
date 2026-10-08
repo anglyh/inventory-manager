@@ -1,9 +1,13 @@
 import express, { Router } from 'express';
 import InventoryMovementController from '../controllers/inventory-movement.controller.js';
-import { validateBody, validateQuery } from '../middlewares/zod-validation.middleware.js';
+import { validateBody, validateQuery, validateParams } from '../middlewares/zod-validation.middleware.js';
+import { stockCountSchema, inventoryMovementIdSchema, voidMovementSchema } from '../schemas/inventory-movement.schema.js';
 import { initialLoadSchema, adjustmentSchema, inventoryMovementsCursorQuerySchema, saleSchema, purchaseSchema, lossSchema } from '../schemas/inventory-movement.schema.js';
 
 const inventoryMovementRouter: Router = express.Router();
+inventoryMovementRouter.post('/stock-counts', validateBody(stockCountSchema), InventoryMovementController.stockCount);
+inventoryMovementRouter.post('/:id/void', validateParams(inventoryMovementIdSchema), validateBody(voidMovementSchema), InventoryMovementController.voidMovement);
+inventoryMovementRouter.get('/:id', validateParams(inventoryMovementIdSchema), InventoryMovementController.getById);
 
 /**
  * @swagger
@@ -72,7 +76,7 @@ const inventoryMovementRouter: Router = express.Router();
  * /api/inventory-movement/sales:
  *   post:
  *     summary: Registrar venta (OUT)
- *     description: El servicio asigna SALE y OUT. No enviar reason ni movementType.
+ *     description: El servicio asigna SALE y OUT. Toda venta, incluso por Yape, requiere caja abierta. Si se omite cashRegisterId se utiliza la caja abierta de la tienda. No enviar reason ni movementType.
  *     tags: [InventoryMovements]
  *     security:
  *       - bearerAuth: []
@@ -91,6 +95,7 @@ const inventoryMovementRouter: Router = express.Router();
  *               cashRegisterId:
  *                 type: string
  *                 format: uuid
+ *                 description: Caja abierta de la misma tienda; si se omite, el servidor la selecciona.
  *               notes:
  *                 type: string
  *               items:
@@ -105,7 +110,7 @@ const inventoryMovementRouter: Router = express.Router();
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       409:
- *         $ref: '#/components/responses/InventoryExitConflict'
+ *         $ref: '#/components/responses/SaleConflict'
  *       422:
  *         $ref: '#/components/responses/ValidationError'
  *       500:
@@ -211,6 +216,12 @@ inventoryMovementRouter.post('/losses', validateBody(lossSchema), InventoryMovem
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
+ *         name: cashRegisterId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtra movimientos vinculados a una caja de esta tienda. Se puede combinar con movementType y group.
+ *       - in: query
  *         name: movementType
  *         schema:
  *           type: string
@@ -248,6 +259,8 @@ inventoryMovementRouter.post('/losses', validateBody(lossSchema), InventoryMovem
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/InventoryMovementsPage'
+ *       404:
+ *         $ref: '#/components/responses/CashRegisterNotFound'
  *       400:
  *         $ref: '#/components/responses/BadRequest'
  *       401:
@@ -273,7 +286,7 @@ inventoryMovementRouter.get('/', validateQuery(inventoryMovementsCursorQuerySche
  * /api/inventory-movement/initial-loads:
  *   post:
  *     summary: Carga inicial (IN)
- *     description: El servicio asigna INITIAL_LOAD e IN.
+ *     description: El servicio asigna INITIAL_LOAD e IN. Solo admite productos sin movimientos previos, incluso anulados. unitPrice representa el costo inicial por unidad. No afecta caja.
  *     tags:
  *       - InventoryMovements
  *     security:
@@ -317,7 +330,7 @@ inventoryMovementRouter.post('/initial-loads', validateBody(initialLoadSchema), 
  * /api/inventory-movement/adjustments:
  *   post:
  *     summary: Ajuste de inventario
- *     description: COUNT_SURPLUS agrega stock y COUNT_SHORTAGE descuenta stock. MANUAL_CORRECTION requiere movementType IN u OUT. Las cantidades son unidades a agregar o retirar, no el stock final.
+ *     description: Corrección manual de un error conocido (MANUAL_CORRECTION). movementType IN agrega stock y OUT lo descuenta. Las cantidades son unidades a agregar o retirar, no el stock final. Las diferencias de conteo físico se registran con /stock-counts.
  *     tags:
  *       - InventoryMovements
  *     security:
@@ -327,42 +340,26 @@ inventoryMovementRouter.post('/initial-loads', validateBody(initialLoadSchema), 
  *       content:
  *         application/json:
  *           schema:
- *             oneOf:
- *               - type: object
- *                 additionalProperties: false
- *                 required:
- *                   - items
- *                   - reason
- *                 properties:
- *                   notes:
- *                     type: string
- *                   items:
- *                     $ref: '#/components/schemas/MovementItems'
- *                   reason:
- *                     type: string
- *                     enum:
- *                       - COUNT_SURPLUS
- *                       - COUNT_SHORTAGE
- *               - type: object
- *                 additionalProperties: false
- *                 required:
- *                   - items
- *                   - reason
- *                   - movementType
- *                 properties:
- *                   notes:
- *                     type: string
- *                   items:
- *                     $ref: '#/components/schemas/MovementItems'
- *                   reason:
- *                     type: string
- *                     enum:
- *                       - MANUAL_CORRECTION
- *                   movementType:
- *                     type: string
- *                     enum:
- *                       - IN
- *                       - OUT
+ *             type: object
+ *             additionalProperties: false
+ *             required:
+ *               - items
+ *               - reason
+ *               - movementType
+ *             properties:
+ *               notes:
+ *                 type: string
+ *               items:
+ *                 $ref: '#/components/schemas/MovementItems'
+ *               reason:
+ *                 type: string
+ *                 enum:
+ *                   - MANUAL_CORRECTION
+ *               movementType:
+ *                 type: string
+ *                 enum:
+ *                   - IN
+ *                   - OUT
  *     responses:
  *       204:
  *         description: Ajuste registrado. Sin cuerpo de respuesta.

@@ -26,7 +26,7 @@ export async function requireAuth(
     const userRepo = new UserRepository();
     const userExists = await userRepo.findById(payload.userId)
     if (!userExists) throw new UnauthorizedError("No autorizado");
-    req.user = payload
+    req.user = { ...payload, storeId: userExists.storeId, role: userExists.role, name: userExists.name, email: userExists.email };
     next()
   } catch (err) {
     next(err)

@@ -5,7 +5,7 @@ import type { InventoryMovementsCursorQueryDTO } from '../schemas/inventory-move
 export default class InventoryMovementController {
   static async registerSale(req: Request, res: Response, next: NextFunction) {
     try {
-      await inventoryMovementService.registerSale(req.user!.storeId, req.body);
+      await inventoryMovementService.registerSale(req.user!.storeId, req.body, req.user!.userId);
       res.status(204).end();
     } catch (err) {
       next(err);
@@ -14,7 +14,7 @@ export default class InventoryMovementController {
 
   static async registerPurchase(req: Request, res: Response, next: NextFunction) {
     try {
-      await inventoryMovementService.registerPurchase(req.user!.storeId, req.body);
+      await inventoryMovementService.registerPurchase(req.user!.storeId, req.body, req.user!.userId);
       res.status(204).end();
     } catch (err) {
       next(err);
@@ -23,7 +23,7 @@ export default class InventoryMovementController {
 
   static async registerLoss(req: Request, res: Response, next: NextFunction) {
     try {
-      await inventoryMovementService.registerLoss(req.user!.storeId, req.body);
+      await inventoryMovementService.registerLoss(req.user!.storeId, req.body, req.user!.userId);
       res.status(204).end();
     } catch (err) {
       next(err);
@@ -44,7 +44,7 @@ export default class InventoryMovementController {
 
   static async registerInitialLoad(req: Request, res: Response, next: NextFunction) {
     try {
-      await inventoryMovementService.registerInitialLoad(req.user!.storeId, req.body);
+      await inventoryMovementService.registerInitialLoad(req.user!.storeId, req.body, req.user!.userId);
       res.status(204).end();
     } catch (err) {
       next(err);
@@ -53,10 +53,29 @@ export default class InventoryMovementController {
 
   static async registerAdjustment(req: Request, res: Response, next: NextFunction) {
     try {
-      await inventoryMovementService.registerAdjustment(req.user!.storeId, req.body);
+      await inventoryMovementService.registerAdjustment(req.user!.storeId, req.body, req.user!.userId);
       res.status(204).end();
     } catch (err) {
       next(err);
     }
+  }
+  static async getById(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await inventoryMovementService.getById(req.user!.storeId, req.params.id as string));
+    } catch (err) { next(err); }
+  }
+
+  static async stockCount(req: Request, res: Response, next: NextFunction) {
+    try {
+      await inventoryMovementService.registerStockCount(req.user!.storeId, req.user!.userId, req.body);
+      res.status(204).end();
+    } catch (err) { next(err); }
+  }
+
+  static async voidMovement(req: Request, res: Response, next: NextFunction) {
+    try {
+      await inventoryMovementService.voidMovement(req.user!.storeId, req.user!.userId, req.params.id as string, req.body);
+      res.status(204).end();
+    } catch (err) { next(err); }
   }
 }

@@ -5,13 +5,15 @@ export interface InventoryMovementItem {
   id: string;
   movementId: InventoryMovement['id'];
   productId: Product['id'];
-  /** Precio unitario de la operación. En OUT = precio de venta, en IN = costo de compra. */
+  /** Precio de venta en SALE, costo declarado en PURCHASE/INITIAL_LOAD y valor de referencia en ajustes. */
   unitPrice: string;
   /** Snapshot del costo unitario congelado al momento del movimiento.
-   * - IN  -> coincide con unitPrice (lo que se pagó).
-   * - OUT -> product.unitCostAvg vigente en ese instante.
+   * - PURCHASE/INITIAL_LOAD: costo declarado.
+   * - Otros motivos: costo promedio vigente del producto.
    * Sirve para calcular ganancias históricas de forma estable.
    */
   unitCost: string;
+  /** Costo promedio anterior a una entrada, para revertirla si no tiene operaciones posteriores. */
+  unitCostBefore: string | null;
   quantity: number;
 }

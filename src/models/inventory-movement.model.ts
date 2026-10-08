@@ -27,6 +27,8 @@ export interface InventoryMovement {
   reason: MovementReason;
   paymentMethod: PaymentMethod | null;
   supplierId: Supplier['id'] | null;
+  createdBy: string | null;
+  voidedBy: string | null;
   status: MovementStatus;
   voidedAt: Date | null;
   voidReason: string | null;

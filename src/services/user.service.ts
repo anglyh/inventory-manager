@@ -16,6 +16,16 @@ export default class UserService implements IUserService {
 
   constructor(private userRepo: IUserRepository) {}
 
+  listStoreUsers(storeId: string) {
+    return this.userRepo.listStoreUsers(storeId);
+  }
+
+  async createStoreUser(storeId: string, data: CreateUserInput) {
+    if (await this.userRepo.findByEmail(data.email)) throw new ConflictError('El email ya está registrado');
+    const password = await hash(data.password, UserService.COST);
+    return this.userRepo.createStoreUser(storeId, data.name, data.email, password);
+  }
+
   async register(input: CreateUserInput): Promise<AuthResponse> {
     const existingUser = await this.userRepo.findByEmail(input.email);
     if (existingUser) throw new ConflictError("El email ya está registrado");

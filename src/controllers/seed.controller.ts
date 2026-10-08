@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
-import { categoryService, inventoryMovementService, productService, userService } from '../container.js';
+import { cashRegisterService, categoryService, inventoryMovementService, productService, userService } from '../container.js';
 import { ConflictError } from '../errors/app.error.js';
+import UserRepository from '../repositories/user.repository.js';
 
 export default class SeedController {
   static async runSeed(req: Request, res: Response, next: NextFunction) {
@@ -8,7 +9,7 @@ export default class SeedController {
       // 1. Create Default User
       const defaultEmail = 'admin@example.com';
       const defaultPassword = 'password123';
-      let adminStoreId: string;
+      let adminUserId: string;
       let didCreateUser = false;
 
       try {
@@ -17,7 +18,7 @@ export default class SeedController {
           email: defaultEmail,
           password: defaultPassword
         });
-        adminStoreId = adminUser.user.id;
+        adminUserId = adminUser.user.id;
         didCreateUser = true;
         console.log('✅ Default user created:', defaultEmail);
       } catch (error) {
@@ -26,12 +27,16 @@ export default class SeedController {
             email: defaultEmail,
             password: defaultPassword,
           });
-          adminStoreId = adminUser.user.id;
+          adminUserId = adminUser.user.id;
           console.log('⚠️ Default user already exists, continuing seed for:', defaultEmail);
         } else {
           throw error;
         }
       }
+
+      const admin = await new UserRepository().findById(adminUserId);
+      if (!admin) throw new Error('No se encontró el usuario del seed');
+      const adminStoreId = admin.storeId;
 
       // 2. Create Categories
       const categoriesSeed = [
@@ -205,8 +210,14 @@ export default class SeedController {
         entriesCreated++;
       }
 
+      const currentRegister = await cashRegisterService.current(adminStoreId);
+      const register = currentRegister ?? await cashRegisterService.open(adminStoreId, adminUserId, {
+        openingAmount: 0, notes: 'Caja para ventas de ejemplo',
+      });
+
       for (let i = 0; i < 50; i++) {
         await inventoryMovementService.registerSale(adminStoreId, {
+          cashRegisterId: register.id,
           paymentMethod: 'CASH',
           notes: `Seed OUT #${i + 1}`,
           items: buildItems(i + 50, 'OUT').map(({ unitPrice, ...item }) => ({ ...item, salePrice: unitPrice })),

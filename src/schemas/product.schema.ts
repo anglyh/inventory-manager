@@ -1,7 +1,7 @@
 import z from 'zod';
 
 export const createProductSchema = z.object({
-  name: z.string('Nombre requerido').min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
+  name: z.string('Nombre requerido').trim().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
   minStock: z.coerce.number().int('Debe ser un número entero').nonnegative('No puede ser negativo').optional().default(0),
   barcode: z.string().max(50, 'Máximo 50 caracteres').optional(),
   salePrice: z.coerce.number('Precio de venta requerido').nonnegative('Precio no puede ser negativo')
@@ -11,7 +11,7 @@ export const createProductSchema = z.object({
 })
 
 export const updateProductSchema = z.object({
-  name: z.string('Nombre requerido').min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
+  name: z.string('Nombre requerido').trim().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
   barcode: z.string().max(50, 'Máximo 50 caracteres').nullable().optional(),
   minStock: z.coerce.number().int('Debe ser un número entero').nonnegative('No puede ser negativo').optional(),
   salePrice: z.coerce.number('Precio de venta requerido').nonnegative('Precio no puede ser negativo')
@@ -42,3 +42,5 @@ export const listProductPaginationSchema = z.object({
 })
 
 export type ListProductPagination = z.infer<typeof listProductPaginationSchema>
+export type CreateProductDTO = z.infer<typeof createProductSchema>;
+export type UpdateProductDTO = z.infer<typeof updateProductSchema>;

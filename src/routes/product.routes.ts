@@ -306,4 +306,6 @@ productRouter.delete("/:id", validateParams(productIdParamSchema), ProductContro
  */
 productRouter.get("/search/by-name", ProductController.getByName)
 
+productRouter.get('/:id', validateParams(productIdParamSchema), ProductController.getById);
+
 export default productRouter;

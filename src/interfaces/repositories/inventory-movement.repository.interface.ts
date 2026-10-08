@@ -6,6 +6,7 @@ export type InventoryMovementItemInsert = {
   productId: Product['id'];
   unitPrice: number;
   unitCost: number;
+  unitCostBefore?: number | undefined;
   quantity: number;
 }
 
@@ -19,10 +20,16 @@ import type {
   MovementGroup
 } from '../../models/inventory-movement.model.js';
 
-export type InventoryMovementInsert = Omit<InventoryMovement, 'id' | 'createdAt' | 'status' | 'voidedAt' | 'voidReason'>;
+export type InventoryMovementInsert = Omit<InventoryMovement, 'id' | 'createdAt' | 'status' | 'voidedAt' | 'voidReason' | 'voidedBy'>;
 
 export interface InventoryMovementsByCursorParams {
   storeId: string;
+  cashRegisterId?: string | undefined;
+  id?: string | undefined;
+  reason?: InventoryMovement['reason'] | undefined;
+  productId?: string | undefined;
+  from?: string | undefined;
+  to?: string | undefined;
   movementType?: MovementType | undefined;
   group?: MovementGroup | undefined;
   cursorDate?: string | undefined;
@@ -30,21 +37,30 @@ export interface InventoryMovementsByCursorParams {
   limit: number;
 }
 
-export interface InventoryMovementListItem extends InventoryMovement {
+export interface InventoryMovementListItem extends Omit<InventoryMovement, 'createdAt'> {
   id: string;
   movementType: MovementType;
   notes: string | null;
-  createdAt: Date;
+  createdAt: string;
   totalAmount: string;
+  createdByName: string | null;
+  supplierName: string | null;
   items: Array<{
     productId: string;
     productName: string;
     unitPrice: string;
+    unitCost: string;
     quantity: number;
   }>;
 }
 
 export interface IInventoryMovementRepository {
+  hasProductMovements(productId: string, client: PoolClient): Promise<boolean>;
+  getForVoid(storeId: string, id: string, client: PoolClient, lock?: boolean): Promise<InventoryMovement | null>;
+  getVoidItems(id: string, client: PoolClient): Promise<Array<{ productId: string; quantity: number; unitCostBefore: string | null }>>;
+  hasLaterMovement(id: string, productId: string, client: PoolClient): Promise<boolean>;
+  canReverseCashSale(id: string, client: PoolClient): Promise<boolean>;
+  void(storeId: string, id: string, userId: string, reason: string, client: PoolClient): Promise<void>;
   create(
     data: InventoryMovementInsert,
     client: PoolClient

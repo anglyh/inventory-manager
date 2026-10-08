@@ -25,7 +25,7 @@ const operations = [
   { path: 'purchases', method: 'registerPurchase', body: { items: [{ productId, quantity: 2, unitCost: 10 }] } },
   { path: 'losses', method: 'registerLoss', body: { reason: 'LOSS_DAMAGED', items } },
   { path: 'initial-loads', method: 'registerInitialLoad', body: { items } },
-  { path: 'adjustments', method: 'registerAdjustment', body: { reason: 'COUNT_SURPLUS', items } },
+  { path: 'adjustments', method: 'registerAdjustment', body: { reason: 'MANUAL_CORRECTION', movementType: 'IN', items } },
 ] as const;
 
 describe('Inventory movement HTTP contracts', () => {

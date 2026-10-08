@@ -14,6 +14,9 @@ import categoryRouter from './routes/category.routes.js';
 import inventoryMovementRouter from './routes/inventory-movement.routes.js';
 import reportRouter from './routes/report.routes.js';
 import seedRouter from './routes/seed.routes.js';
+import cashRegisterRouter from './routes/cash-register.routes.js';
+import supplierRouter from './routes/supplier.routes.js';
+import storeUserRouter from './routes/store-user.routes.js';
 import { setupSwagger } from './config/swagger.js';
 import { env } from './config.js';
 
@@ -56,7 +59,7 @@ app.use(async (req, res, next) => {
   } catch (err) {
     console.error("Error connecting to database", err);
     // Respuesta JSON consistente (y con CORS, porque el middleware cors ya corrió)
-    return res.status(503).json({ message: "Database unavailable" });
+    return res.status(503).json({ success: false, error: { code: 'DB_ERROR', message: 'Base de datos no disponible' } });
   }
 });
 
@@ -72,6 +75,9 @@ app.use("/api/auth", userRouter);
 app.use("/api/product", requireAuth, productRouter);
 app.use("/api/category", requireAuth, categoryRouter);
 app.use("/api/inventory-movement", requireAuth, inventoryMovementRouter);
+app.use("/api/cash-register", requireAuth, cashRegisterRouter);
+app.use('/api/supplier', requireAuth, supplierRouter);
+app.use('/api/store-user', requireAuth, storeUserRouter);
 app.use("/api/report", requireAuth, reportRouter);
 app.use("/api/seed", seedRouter);
 

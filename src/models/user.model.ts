@@ -9,3 +9,5 @@ export interface User {
   role: UserRole;
   createdAt: Date;
 }
+
+export type StoreUser = Pick<User, 'id' | 'name' | 'email' | 'role'>;

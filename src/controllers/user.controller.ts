@@ -2,6 +2,18 @@ import type { NextFunction, Request, Response } from 'express';
 import { userService } from '../container.js';
 
 export default class UserController {
+  static async listStoreUsers(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await userService.listStoreUsers(req.user!.storeId));
+    } catch (err) { next(err); }
+  }
+
+  static async createStoreUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.status(201).json(await userService.createStoreUser(req.user!.storeId, req.body));
+    } catch (err) { next(err); }
+  }
+
   static async signUp(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await userService.register(req.body);

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import InventoryMovementService from '../../services/inventory-movement.service.js';
 import InventoryMovementRepository from '../../repositories/inventory-movement.repository.js';
 import ProductRepository from '../../repositories/product.repository.js';
+import CashRegisterRepository from '../../repositories/cash-register.repository.js';
+import SupplierRepository from '../../repositories/supplier.repository.js';
 import { saleSchema, purchaseSchema, lossSchema, initialLoadSchema, adjustmentSchema } from '../../schemas/inventory-movement.schema.js';
 import { query } from '../../db/index.js';
 
@@ -16,9 +18,16 @@ const purchaseItems = [{ productId, quantity: 2, unitCost: 10 }];
 describe('Inventory movements', () => {
   const repo = new InventoryMovementRepository();
   const products = new ProductRepository();
-  const service = new InventoryMovementService(repo, products);
+  const cashRegisters = new CashRegisterRepository();
+  const suppliers = new SupplierRepository();
+  const service = new InventoryMovementService(repo, products, cashRegisters, suppliers);
 
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(cashRegisters, 'lockOpen').mockResolvedValue(productId);
+    vi.spyOn(suppliers, 'findById').mockResolvedValue({ id: productId } as never);
+    vi.spyOn(repo, 'hasProductMovements').mockResolvedValue(false);
+  });
 
   it('requires payment for sales and rejects fields belonging to other operations', () => {
     expect(saleSchema.safeParse({ items: saleItems }).success).toBe(false);
@@ -62,28 +71,30 @@ describe('Inventory movements', () => {
   //   expect(adjustmentSchema.safeParse({ reason: 'PURCHASE', items }).success).toBe(false);
   // });
 
+  it('rejects count differences and missing direction in adjustments', () => {
+    expect(adjustmentSchema.safeParse({ reason: 'COUNT_SURPLUS', items }).success).toBe(false);
+    expect(adjustmentSchema.safeParse({ reason: 'COUNT_SHORTAGE', items }).success).toBe(false);
+    expect(adjustmentSchema.safeParse({ reason: 'MANUAL_CORRECTION', items }).success).toBe(false);
+  });
+
   it.each([
     ['INITIAL_LOAD', 'IN'],
-    ['COUNT_SURPLUS', 'IN'], ['COUNT_SHORTAGE', 'OUT'],
     ['MANUAL_CORRECTION', 'IN'], ['MANUAL_CORRECTION', 'OUT'],
   ] as const)('registers %s in direction %s', async (reason, movementType) => {
     vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, unitCostAvg: '3.00' } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
     vi.spyOn(products, 'getStock').mockResolvedValue(10);
     const update = vi.spyOn(products, 'updateUnitCostAvg').mockResolvedValue();
     const create = vi.spyOn(repo, 'create').mockImplementation(async data => ({
-      ...data, id: 'movement', status: 'COMPLETED', voidedAt: null, voidReason: null, createdAt: new Date(),
+      ...data, id: 'movement', status: 'COMPLETED', voidedAt: null, voidedBy: null, voidReason: null, createdAt: new Date(),
     }));
     const insert = vi.spyOn(repo, 'createMovementItems').mockImplementation(async (_id, rows) => rows.map(row => ({ ...row, unitPrice: row.unitPrice.toFixed(2), unitCost: row.unitCost.toFixed(2) })));
-    switch (reason) {
-      case 'INITIAL_LOAD': await service.registerInitialLoad('store', { items }); break;
-      case 'MANUAL_CORRECTION': await service.registerAdjustment('store', { items, reason, movementType }); break;
-      default: await service.registerAdjustment('store', { items, reason });
-    }
+    if (reason === 'INITIAL_LOAD') await service.registerInitialLoad('store', { items });
+    else await service.registerAdjustment('store', { items, reason, movementType });
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
       storeId: 'store', reason, movementType,
       supplierId: null,
     }), {});
-    expect(insert).toHaveBeenCalledWith('movement', [{ ...items[0], unitCost: reason === 'INITIAL_LOAD' ? 10 : 3 }], {});
+    expect(insert).toHaveBeenCalledWith('movement', [expect.objectContaining({ ...items[0], unitCost: reason === 'INITIAL_LOAD' ? 10 : 3 })], {});
     if (reason === 'INITIAL_LOAD') expect(update).toHaveBeenCalledWith(productId, 4.17, {});
     else expect(update).not.toHaveBeenCalled();
   });
@@ -93,7 +104,7 @@ describe('Inventory movements', () => {
     vi.spyOn(products, 'getStock').mockResolvedValue(10);
     const update = vi.spyOn(products, 'updateUnitCostAvg').mockResolvedValue();
     const create = vi.spyOn(repo, 'create').mockImplementation(async data => ({
-      ...data, id: 'movement', status: 'COMPLETED', voidedAt: null, voidReason: null, createdAt: new Date(),
+      ...data, id: 'movement', status: 'COMPLETED', voidedAt: null, voidedBy: null, voidReason: null, createdAt: new Date(),
     }));
     const insert = vi.spyOn(repo, 'createMovementItems').mockImplementation(async (_id, rows) => rows.map(row => ({ ...row, unitPrice: row.unitPrice.toFixed(2), unitCost: row.unitCost.toFixed(2) })));
     const result = operation === 'sale'
@@ -109,7 +120,7 @@ describe('Inventory movements', () => {
       supplierId: operation === 'purchase' ? productId : null,
       cashRegisterId: operation === 'sale' ? productId : null,
     }), {});
-    expect(insert).toHaveBeenCalledWith('movement', [{ ...items[0], unitCost: operation === 'purchase' ? 10 : 3 }], {});
+    expect(insert).toHaveBeenCalledWith('movement', [expect.objectContaining({ ...items[0], unitCost: operation === 'purchase' ? 10 : 3 })], {});
     expect(result.totalAmount).toBe('20.00');
     expect(result.items[0]).toMatchObject({ unitPrice: '10.00', unitCost: operation === 'purchase' ? '10.00' : '3.00' });
     expect(result.reason).toBe(operation === 'sale' ? 'SALE' : operation === 'purchase' ? 'PURCHASE' : 'LOSS_DAMAGED');
@@ -154,7 +165,7 @@ describe('Inventory movements', () => {
   });
 
   it('uses the last returned row as cursor, preserving the extra row for the next page', async () => {
-    const date = new Date('2026-01-01');
+    const date = '2026-01-01T00:00:00.123456Z';
     vi.spyOn(repo, 'listMovementsByCursor').mockResolvedValue([
       { id: '3', createdAt: date }, { id: '2', createdAt: date }, { id: '1', createdAt: date },
     ] as Awaited<ReturnType<typeof repo.listMovementsByCursor>>);

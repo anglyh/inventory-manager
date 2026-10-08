@@ -3,12 +3,24 @@ import type { IProductRepository } from '../interfaces/repositories/product.repo
 import type { IProductService, ListProductFilters } from '../interfaces/services/product.service.interface.js';
 import { NotFoundError } from '../errors/app.error.js';
 import type { PaginatedResult } from '../types/api.types.js';
+import { withTransaction } from '../db/transactions.js';
+import type { CreateProductDTO, UpdateProductDTO } from '../schemas/product.schema.js';
 
 export default class ProductService implements IProductService {
   constructor(private productRepo: IProductRepository) { }
 
-  async create(storeId: string, productData: Product): Promise<Product> {
-    const product = await this.productRepo.create(storeId, productData);
+  async create(storeId: string, data: CreateProductDTO): Promise<Product> {
+    return withTransaction(async client => {
+      if (data.categoryId && !await this.productRepo.categoryBelongsToStore(storeId, data.categoryId, client)) {
+        throw new NotFoundError('La categoría no existe');
+      }
+      return this.productRepo.create(storeId, data, client);
+    });
+  }
+
+  async getById(storeId: string, id: string) {
+    const product = await this.productRepo.findForStore(storeId, id);
+    if (!product) throw new NotFoundError('El producto no existe');
     return product;
   }
 
@@ -31,26 +43,23 @@ export default class ProductService implements IProductService {
     }
   }
 
-  async update(newProductData: Product): Promise<Product> {
-    const product = await this.productRepo.findById(newProductData.id);
-
-    if (!product) throw new NotFoundError("No existe el producto");
-
-    const updatedProduct = await this.productRepo.update(newProductData);
-    return updatedProduct;
+  async update(storeId: string, id: string, data: UpdateProductDTO): Promise<Product> {
+    return withTransaction(async client => {
+      if (!await this.productRepo.findForStore(storeId, id, client)) {
+        throw new NotFoundError('El producto no existe');
+      }
+      if (data.categoryId && !await this.productRepo.categoryBelongsToStore(storeId, data.categoryId, client)) {
+        throw new NotFoundError('La categoría no existe');
+      }
+      return this.productRepo.update(storeId, id, data, client);
+    });
   }
 
-  async deactivate(productId: string): Promise<void> {
-    const product = await this.productRepo.findById(productId);
-
-    if (!product) throw new NotFoundError("No existe el producto");
-
-    await this.productRepo.deactivate(productId)
+  async deactivate(storeId: string, productId: string): Promise<void> {
+    await this.productRepo.deactivate(storeId, productId);
   }
 
-  async delete(productId: string): Promise<void> {}
-
-  async listProductOptions(storeId: string): Promise<ProductSearchItem[]> {
+  async listProductOptions(storeId: string) {
     return this.productRepo.listProductOptions(storeId);
   }
 

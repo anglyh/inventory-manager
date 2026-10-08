@@ -47,6 +47,8 @@ exist only in Swagger, not in Zod.
 - [x] T4c fix(auth): login/register/check-status return the same { token, user: SessionUser {id,name,email,role} } — route: delegated writer (5 files + tests) — commit 284439b — RED 3 failing → GREEN; snapshot: SessionUser added, AuthStatusResponse removed — review 4c603b4..284439b (high, auth hot path) granted → 4 lenses → approved, acknowledged (lineage review-9c342bf572352f1e). Reviewed boundary = 284439b.
   - WARNINGs R4-check-status-contract-break / R3-check-status-contract-narrowed: verified the only client (Angular frontend) never reads user.userId/storeId/exp from the session → safe.
   - Suggestions → T5: shared roleSchema; toSessionUser param as Pick<User,...> + explicit mapping in getSession; drop '' token fallback; remove redundant .strict() in tests; controller-level test for check-status.
+- [x] T4d feat(docs): name every JSON request body (Create*/Update*/Login/RegisterUser/SupplierInput/VoidMovement) + spec test forbidding inline bodies — route: inline (mechanical .meta ids) — commit 68bbd94 — RED 15 inline → GREEN; 19 resolved bodies deep-equal to before — review 284439b..68bbd94 (medium) granted → approved, acknowledged (lineage review-7961763fefccfad6). Reviewed boundary = 68bbd94.
+  - Suggestions → T5: naming test should check every requestBody media type; explicit assertion that POST /store-user references CreateStoreUser with additionalProperties false.
 - [ ] T5 Cleanup: remove swagger-jsdoc, merge plumbing, swagger-schemas.ts; T4 readability findings — route: delegated writer
 
 ## Acceptance criteria

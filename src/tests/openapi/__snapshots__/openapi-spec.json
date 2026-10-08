@@ -1921,6 +1921,7 @@
                   "email": {
                     "example": "juan@example.com",
                     "format": "email",
+                    "maxLength": 100,
                     "type": "string"
                   },
                   "name": {
@@ -1933,7 +1934,8 @@
                     "example": "Secret1234567",
                     "minLength": 12,
                     "pattern": "[A-Z]",
-                    "type": "string"
+                    "type": "string",
+                    "writeOnly": true
                   }
                 },
                 "required": [
@@ -4028,16 +4030,19 @@
                 "additionalProperties": false,
                 "properties": {
                   "email": {
+                    "example": "juan@example.com",
                     "format": "email",
                     "maxLength": 100,
                     "type": "string"
                   },
                   "name": {
+                    "example": "Juan Pérez",
                     "maxLength": 50,
                     "minLength": 1,
                     "type": "string"
                   },
                   "password": {
+                    "example": "Secret1234567",
                     "minLength": 12,
                     "pattern": "[A-Z]",
                     "type": "string",

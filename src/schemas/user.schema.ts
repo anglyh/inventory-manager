@@ -1,20 +1,21 @@
 import { z } from "zod";
 
 export const createUserSchema = z.object({
-  name: z.string('Nombre requerido').trim().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
-  email: z.email('Email inválido').max(100),
+  name: z.string('Nombre requerido').trim().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres')
+    .meta({ example: 'Juan Pérez' }),
+  email: z.email('Email inválido').max(100).meta({ example: 'juan@example.com' }),
   password: z.string('Contraseña requerida')
   .min(12, 'La contraseña debe tener al menos 12 caracteres')
   .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
-  .meta({ writeOnly: true }),
+  .meta({ writeOnly: true, example: 'Secret1234567' }),
 });
 
 /** Body for adding a worker to the current store; unknown fields are rejected. */
 export const createStoreUserSchema = createUserSchema.strict();
 
 export const loginSchema = z.object({
-  email: z.email('Email inválido'),
-  password: z.string('Contraseña requerida').min(1, 'Contraseña requerida'),
+  email: z.email('Email inválido').meta({ example: 'juan@example.com' }),
+  password: z.string('Contraseña requerida').min(1, 'Contraseña requerida').meta({ example: 'Secret1234567' }),
 });
 
 export const updateUserSchema = z.object({
@@ -46,6 +47,28 @@ export const storeUserSchema = z.object({
   email: z.email(),
   role: z.enum(['ADMIN', 'GUEST']),
 }).strict().meta({ id: 'StoreUser' });
+
+export const authResponseSchema = z.object({
+  token: z.string(),
+  user: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    email: z.email(),
+  }),
+}).meta({ id: 'AuthResponse' });
+
+export const authStatusResponseSchema = z.object({
+  token: z.string(),
+  user: z.object({
+    userId: z.uuid(),
+    storeId: z.uuid(),
+    name: z.string(),
+    email: z.email(),
+    role: z.enum(['ADMIN', 'GUEST']),
+    iat: z.number().int(),
+    exp: z.number().int(),
+  }),
+}).meta({ id: 'AuthStatusResponse' });
 
 export interface UserResponse {
   id: string;

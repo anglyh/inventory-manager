@@ -39,8 +39,11 @@ exist only in Swagger, not in Zod.
 - [x] T3 Spec guard test (operation inventory fixture + every $ref resolves) moved here from T5 (review R3-merged-spec-unasserted); mergePaths fails on duplicate path+method (review R3-silent-path-override); migrate cash-register, supplier, store-user — route: delegated writer (writer trigger: 15+ files) — commits e4687f9, 0febe0d, e647228 — tsc ok, vitest 7 known only, spec test 6/6 (parent spot check)
   - Cash-register `components.parameters` replaced by inline params (zod-to-openapi `.meta({id})` would collide with schema ids). `createStoreUserSchema = createUserSchema.strict()`.
   - Review main..e647228 slice (a723844..e647228): granted → approved, acknowledged (lineage review-4c0b693aed089458). Reviewed boundary = e647228.
-- [ ] T4 Full-spec snapshot test guarding component shapes (review R3-schema-shape-unasserted, WARNING); mergePaths duplicate check limited to HTTP methods (review R3-merge-pathlevel-keys); migrate product, category, user/auth, report — route: delegated writer
-- [ ] T5 Cleanup: remove swagger-jsdoc, JSDoc blocks, swagger-schemas.ts, swagger-inventory.ts; add spec test — route: delegated writer
+- [x] T4 Full-spec snapshot test guarding component shapes (review R3-schema-shape-unasserted, WARNING); mergePaths duplicate check limited to HTTP methods (review R3-merge-pathlevel-keys); migrate product, category, user/auth, report — route: delegated writer — commits a661612, eb1c53a, 1239024, 4c603b4 — tsc ok, vitest 7 known only, spec tests 9/9, no `@swagger` left (parent spot check)
+  - Review of e647228..4c603b4 refused: `lens_context_budget_exceeded` (4.3k-line generated snapshot). Split: a661612..4c603b4 (high, auth hot path) granted → 4 lenses → approved, acknowledged (lineage review-6cdf625c15305831). Snapshot commit a661612 alone left unreviewed (generated JSON + test; would exceed budget).
+  - Findings → T5: R2-product-get-by-id-inconsistent (WARNING, align GET /product/{id} with file pattern), R2-money-schema-duplicated, R2-empty-transition-module, R2-errors-naming-inconsistent.
+  - Findings → user decision: R2-coerce-nullable-doc + R3-001 (WARNING): `z.coerce.number()` accepts `null` → saved as 0 (reproduced: `createProductSchema.safeParse({ name, salePrice: null, minStock: null })` → success, 0/0); docs now show `nullable: true`.
+- [ ] T5 Cleanup: remove swagger-jsdoc, merge plumbing, swagger-schemas.ts; T4 readability findings — route: delegated writer
 
 ## Acceptance criteria
 
@@ -72,4 +75,4 @@ exist only in Swagger, not in Zod.
 
 ## Next step
 
-T4.
+T5 (pending user decision on null price validation).

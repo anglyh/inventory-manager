@@ -36,7 +36,7 @@ exist only in Swagger, not in Zod.
   - Decision: no `extendZodWithOpenApi`; schemas named via Zod 4 `.meta({ id })`, which zod-to-openapi v9 reads. Unreferenced schemas registered via `registerSchema()` (`{ type: 'schema', schema }`).
   - Gotchas: library drops `.multipleOf()` → documented via `.meta({ multipleOf })`; query param docs via `.meta({ param: { description } })`.
   - Shared error responses now in `src/openapi/responses.ts` (`errorRef(name)` typed helper); `ApiError` lives there (T5 may move it).
-- [ ] T3 Migrate cash-register, supplier, store-user — route: delegated writer
+- [ ] T3 Spec guard test (operation inventory fixture + every $ref resolves) moved here from T5 (review R3-merged-spec-unasserted); mergePaths fails on duplicate path+method (review R3-silent-path-override); migrate cash-register, supplier, store-user — route: delegated writer
 - [ ] T4 Migrate product, category, user/auth, report — route: delegated writer
 - [ ] T5 Cleanup: remove swagger-jsdoc, JSDoc blocks, swagger-schemas.ts, swagger-inventory.ts; add spec test — route: delegated writer
 
@@ -61,6 +61,8 @@ exist only in Swagger, not in Zod.
 
 - 2026-10-08: pending work committed on main (7558e57); branch created; T1 done.
 - 2026-10-08: T2 done (8517522). Generated content diff vs baseline: equivalent; `notes` now shows maxLength 500, `quantity` shows max — drift fixed.
+
+- 2026-10-08: native review of main..a723844 (medium, slice_budget_reached): granted → approved, acknowledged (lineage review-aefdd18e95f8733a). Reviewed boundary = a723844. Findings: 1 WARNING (no spec guard test) + 1 SUGGESTION (silent path override) → folded into T3. `.atl/` added to local `.git/info/exclude`.
 
 ## Next step
 

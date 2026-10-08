@@ -3461,7 +3461,6 @@
                     "default": 0,
                     "example": 10,
                     "minimum": 0,
-                    "nullable": true,
                     "type": "integer"
                   },
                   "name": {
@@ -3475,7 +3474,6 @@
                     "maximum": 99999999.99,
                     "minimum": 0,
                     "multipleOf": 0.01,
-                    "nullable": true,
                     "type": "number"
                   }
                 },
@@ -3769,7 +3767,6 @@
                   "minStock": {
                     "example": 10,
                     "minimum": 0,
-                    "nullable": true,
                     "type": "integer"
                   },
                   "name": {
@@ -3783,7 +3780,6 @@
                     "maximum": 99999999.99,
                     "minimum": 0,
                     "multipleOf": 0.01,
-                    "nullable": true,
                     "type": "number"
                   }
                 },

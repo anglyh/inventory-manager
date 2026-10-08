@@ -2,12 +2,13 @@ import z from 'zod';
 
 const nameSchema = z.string('Nombre requerido').trim().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres')
   .meta({ example: 'Agua mineral 500ml' });
-const salePriceSchema = z.coerce.number('Precio de venta requerido').nonnegative('Precio no puede ser negativo')
+// JSON bodies carry real numbers: coercion would turn null, '' or false into 0.
+const salePriceSchema = z.number('Precio de venta requerido').nonnegative('Precio no puede ser negativo')
   .max(99999999.99, 'Precio fuera de rango')
   .multipleOf(0.01, 'Precio debe tener como máximo 2 decimales')
   // zod-to-openapi does not emit Zod's multipleOf check, so it is documented explicitly.
   .meta({ multipleOf: 0.01, example: 2.5 });
-const minStockSchema = z.coerce.number().int('Debe ser un número entero').nonnegative('No puede ser negativo')
+const minStockSchema = z.number('Stock mínimo debe ser un número').int('Debe ser un número entero').nonnegative('No puede ser negativo')
   .meta({ example: 10 });
 const barcodeSchema = z.string().max(50, 'Máximo 50 caracteres').meta({ example: '7501030300050' });
 const categoryIdSchema = z.uuid('ID de categoría inválido').nullable().optional()

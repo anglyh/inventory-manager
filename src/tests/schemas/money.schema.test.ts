@@ -13,10 +13,10 @@ describe('Monetary input precision', () => {
     for (const schema of schemas) expect(schema.safeParse(value).success).toBe(false);
   });
 
-  it('checks precision after coercing product form values', () => {
+  it('checks precision on product bodies', () => {
     for (const schema of [createProductSchema, updateProductSchema]) {
-      expect(schema.safeParse({ name: 'Agua', salePrice: '1.234' }).success).toBe(false);
-      expect(schema.parse({ name: 'Agua', salePrice: '1.23' }).salePrice).toBe(1.23);
+      expect(schema.safeParse({ name: 'Agua', salePrice: 1.234 }).success).toBe(false);
+      expect(schema.parse({ name: 'Agua', salePrice: 1.23 }).salePrice).toBe(1.23);
     }
   });
 });

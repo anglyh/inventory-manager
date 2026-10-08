@@ -3359,20 +3359,11 @@
             "description": "Número de página para la paginación",
             "in": "query",
             "name": "page",
+            "required": false,
             "schema": {
               "default": 1,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Cantidad de productos a devolver por página",
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "default": 12,
-              "maximum": 100,
-              "minimum": 1,
+              "exclusiveMinimum": true,
+              "minimum": 0,
               "type": "integer"
             }
           },
@@ -3380,7 +3371,9 @@
             "description": "Término opcional para buscar productos por nombre",
             "in": "query",
             "name": "searchTerm",
+            "required": false,
             "schema": {
+              "nullable": true,
               "type": "string"
             }
           },
@@ -3388,8 +3381,23 @@
             "description": "Filtra por nombre de categoría. Acepta uno o varios nombres separados por coma (ej. \"Bebidas\" o \"Bebidas,Snacks\"). Comparación insensible a mayúsculas/acentos. Si no se envía, retorna productos de todas las categorías.",
             "in": "query",
             "name": "category",
+            "required": false,
             "schema": {
+              "nullable": true,
               "type": "string"
+            }
+          },
+          {
+            "description": "Cantidad de productos a devolver por página",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
             }
           }
         ],
@@ -3451,6 +3459,7 @@
                     "default": 0,
                     "example": 10,
                     "minimum": 0,
+                    "nullable": true,
                     "type": "integer"
                   },
                   "name": {
@@ -3464,6 +3473,7 @@
                     "maximum": 99999999.99,
                     "minimum": 0,
                     "multipleOf": 0.01,
+                    "nullable": true,
                     "type": "number"
                   }
                 },
@@ -3757,6 +3767,7 @@
                   "minStock": {
                     "example": 10,
                     "minimum": 0,
+                    "nullable": true,
                     "type": "integer"
                   },
                   "name": {
@@ -3770,6 +3781,7 @@
                     "maximum": 99999999.99,
                     "minimum": 0,
                     "multipleOf": 0.01,
+                    "nullable": true,
                     "type": "number"
                   }
                 },

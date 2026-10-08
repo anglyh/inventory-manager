@@ -3,6 +3,7 @@ import { registry, standaloneSchemas, bearerAuth } from './registry.js';
 import './responses.js';
 import { cashRegisterTag } from './paths/cash-register.openapi.js';
 import { inventoryMovementTag } from './paths/inventory-movement.openapi.js';
+import { productTag } from './paths/product.openapi.js';
 import './paths/store-user.openapi.js';
 import './paths/supplier.openapi.js';
 
@@ -23,5 +24,5 @@ export const generateOpenApiDocument = () => new OpenApiGeneratorV3([...registry
     info: openApiInfo,
     servers: openApiServers,
     security: bearerAuth,
-    tags: [cashRegisterTag, inventoryMovementTag],
+    tags: [cashRegisterTag, inventoryMovementTag, productTag],
   });

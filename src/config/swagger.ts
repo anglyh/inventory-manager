@@ -3,7 +3,6 @@ import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import type { Application } from 'express';
 import { responseSchemas } from './swagger-schemas.js';
-import { inventoryPaths } from './swagger-inventory.js';
 import { generateOpenApiDocument, openApiInfo, openApiServers } from '../openapi/document.js';
 
 // Transition: modules not yet migrated to Zod are still documented with JSDoc.
@@ -62,7 +61,7 @@ export const mergePaths = (...sources: Paths[]): Paths => {
 const legacySpec = swaggerJSDoc(options) as Spec;
 const generated = generateOpenApiDocument() as unknown as Spec & Record<string, unknown>;
 
-const paths = mergePaths(legacySpec.paths, inventoryPaths, generated.paths);
+const paths = mergePaths(legacySpec.paths, generated.paths);
 
 // Generated components (security schemes, shared responses, Zod schemas) take precedence.
 for (const [type, entries] of Object.entries(generated.components)) {

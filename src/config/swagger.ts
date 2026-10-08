@@ -21,23 +21,39 @@ const options: swaggerJSDoc.Options = {
     apis: ['./src/routes/*.ts', './src/controllers/*.ts'],
 };
 
+export type Paths = Record<string, Record<string, unknown>>;
+
 type Spec = {
-    paths: Record<string, Record<string, unknown>>;
+    paths: Paths;
     components: Record<string, Record<string, unknown>>;
     tags?: { name: string }[];
+};
+
+/**
+ * Merges the path maps of every documentation source into a new object. Operations on the same
+ * path are combined, but two sources documenting the same path and method would silently
+ * override each other, so that case fails fast instead.
+ */
+export const mergePaths = (...sources: Paths[]): Paths => {
+    const merged: Paths = {};
+    for (const source of sources) {
+        for (const [path, operations] of Object.entries(source)) {
+            const current = merged[path] ?? {};
+            const duplicated = Object.keys(operations).filter(method => method in current);
+            if (duplicated.length > 0) {
+                const names = duplicated.map(method => `${method.toUpperCase()} ${path}`).join(', ');
+                throw new Error(`OpenAPI operation documented by more than one source: ${names}`);
+            }
+            merged[path] = { ...current, ...operations };
+        }
+    }
+    return merged;
 };
 
 const legacySpec = swaggerJSDoc(options) as Spec;
 const generated = generateOpenApiDocument() as unknown as Spec & Record<string, unknown>;
 
-// Añadir operaciones sin reemplazar los PUT/DELETE ya documentados en las mismas rutas.
-const mergePaths = (target: Spec['paths'], source: Spec['paths']) => {
-    for (const [path, operations] of Object.entries(source)) {
-        target[path] = { ...target[path], ...operations };
-    }
-};
-mergePaths(legacySpec.paths, inventoryPaths);
-mergePaths(legacySpec.paths, generated.paths);
+const paths = mergePaths(legacySpec.paths, inventoryPaths, generated.paths);
 
 // Generated components (security schemes, shared responses, Zod schemas) take precedence.
 for (const [type, entries] of Object.entries(generated.components)) {
@@ -54,7 +70,7 @@ export const swaggerSpec: object = {
     servers: generated.servers,
     components: legacySpec.components,
     security: generated.security,
-    paths: legacySpec.paths,
+    paths,
     tags,
 };
 

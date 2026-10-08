@@ -1,7 +1,7 @@
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import type { Application } from 'express';
-import { cashRegisterParameters, responseSchemas } from './swagger-schemas.js';
+import { responseSchemas } from './swagger-schemas.js';
 import { inventorySchemas, inventoryPaths } from './swagger-inventory.js';
 import { generateOpenApiDocument, openApiInfo, openApiServers } from '../openapi/document.js';
 
@@ -13,7 +13,6 @@ const options: swaggerJSDoc.Options = {
         info: openApiInfo,
         servers: openApiServers,
         components: {
-            parameters: cashRegisterParameters,
             schemas: { ...responseSchemas, ...inventorySchemas },
         },
     },

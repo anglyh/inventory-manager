@@ -1,6 +1,7 @@
 import { OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { registry, standaloneSchemas, bearerAuth } from './registry.js';
 import './responses.js';
+import { cashRegisterTag } from './paths/cash-register.openapi.js';
 import { inventoryMovementTag } from './paths/inventory-movement.openapi.js';
 
 export const openApiInfo = {
@@ -20,5 +21,5 @@ export const generateOpenApiDocument = () => new OpenApiGeneratorV3([...registry
     info: openApiInfo,
     servers: openApiServers,
     security: bearerAuth,
-    tags: [inventoryMovementTag],
+    tags: [cashRegisterTag, inventoryMovementTag],
   });

@@ -44,6 +44,9 @@ exist only in Swagger, not in Zod.
   - Findings → T5: R2-product-get-by-id-inconsistent (WARNING, align GET /product/{id} with file pattern), R2-money-schema-duplicated, R2-empty-transition-module, R2-errors-naming-inconsistent.
   - Findings → user decision: R2-coerce-nullable-doc + R3-001 (WARNING): `z.coerce.number()` accepts `null` → saved as 0 (reproduced: `createProductSchema.safeParse({ name, salePrice: null, minStock: null })` → success, 0/0); docs now show `nullable: true`.
 - [x] T4b fix(product): body salePrice/minStock use z.number() (no coercion of null/""/booleans) — route: inline (1 schema + tests) — commit df34af0 — RED 9 failing → GREEN; snapshot drops 4 `nullable: true`; old test asserting string coercion updated (frontend sends numbers via type=number, verified) — assess: medium, under_budget
+- [x] T4c fix(auth): login/register/check-status return the same { token, user: SessionUser {id,name,email,role} } — route: delegated writer (5 files + tests) — commit 284439b — RED 3 failing → GREEN; snapshot: SessionUser added, AuthStatusResponse removed — review 4c603b4..284439b (high, auth hot path) granted → 4 lenses → approved, acknowledged (lineage review-9c342bf572352f1e). Reviewed boundary = 284439b.
+  - WARNINGs R4-check-status-contract-break / R3-check-status-contract-narrowed: verified the only client (Angular frontend) never reads user.userId/storeId/exp from the session → safe.
+  - Suggestions → T5: shared roleSchema; toSessionUser param as Pick<User,...> + explicit mapping in getSession; drop '' token fallback; remove redundant .strict() in tests; controller-level test for check-status.
 - [ ] T5 Cleanup: remove swagger-jsdoc, merge plumbing, swagger-schemas.ts; T4 readability findings — route: delegated writer
 
 ## Acceptance criteria

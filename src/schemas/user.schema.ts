@@ -48,35 +48,18 @@ export const storeUserSchema = z.object({
   role: z.enum(['ADMIN', 'GUEST']),
 }).strict().meta({ id: 'StoreUser' });
 
+/** User of the current session, shared by login, register and check-status. */
+export const sessionUserSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  email: z.email(),
+  role: z.enum(['ADMIN', 'GUEST']),
+}).strict().meta({ id: 'SessionUser' });
+
 export const authResponseSchema = z.object({
   token: z.string(),
-  user: z.object({
-    id: z.uuid(),
-    name: z.string(),
-    email: z.email(),
-  }),
+  user: sessionUserSchema,
 }).meta({ id: 'AuthResponse' });
 
-export const authStatusResponseSchema = z.object({
-  token: z.string(),
-  user: z.object({
-    userId: z.uuid(),
-    storeId: z.uuid(),
-    name: z.string(),
-    email: z.email(),
-    role: z.enum(['ADMIN', 'GUEST']),
-    iat: z.number().int(),
-    exp: z.number().int(),
-  }),
-}).meta({ id: 'AuthStatusResponse' });
-
-export interface UserResponse {
-  id: string;
-  name: string;
-  email: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: UserResponse;
-}
+export type SessionUser = z.infer<typeof sessionUserSchema>;
+export type AuthResponse = z.infer<typeof authResponseSchema>;

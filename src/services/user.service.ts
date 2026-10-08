@@ -3,12 +3,11 @@ import type {
   CreateUserInput,
   LoginInput,
   AuthResponse,
-  UserResponse
+  SessionUser
 } from '../schemas/user.schema.js';
-import type { User } from '../models/user.model.js';
 import { ConflictError, UnauthorizedError } from '../errors/app.error.js';
 import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
-import JWT from '../lib/jwt.js';
+import JWT, { type TokenPayload } from '../lib/jwt.js';
 import type { IUserService } from '../interfaces/services/user.service.interface.js';
 
 export default class UserService implements IUserService {
@@ -45,7 +44,7 @@ export default class UserService implements IUserService {
 
     return {
       token,
-      user: this.toUserResponse(user),
+      user: this.toSessionUser(user),
     };
   }
 
@@ -66,15 +65,24 @@ export default class UserService implements IUserService {
 
     return {
       token,
-      user: this.toUserResponse(user),
+      user: this.toSessionUser(user),
     };
   }
 
-  private toUserResponse(user: User): UserResponse {
+  getSession(payload: TokenPayload, token: string): AuthResponse {
+    // The JWT payload names the user id `userId`; expose it as `id` like login/register.
+    return {
+      token,
+      user: this.toSessionUser({ ...payload, id: payload.userId }),
+    };
+  }
+
+  private toSessionUser(user: SessionUser): SessionUser {
     return {
       id: user.id,
       name: user.name,
       email: user.email,
+      role: user.role,
     };
   }
 }

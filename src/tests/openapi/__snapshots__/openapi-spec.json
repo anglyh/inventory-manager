@@ -553,79 +553,7 @@
             "type": "string"
           },
           "user": {
-            "properties": {
-              "email": {
-                "format": "email",
-                "type": "string"
-              },
-              "id": {
-                "format": "uuid",
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "name",
-              "email"
-            ],
-            "type": "object"
-          }
-        },
-        "required": [
-          "token",
-          "user"
-        ],
-        "type": "object"
-      },
-      "AuthStatusResponse": {
-        "properties": {
-          "token": {
-            "type": "string"
-          },
-          "user": {
-            "properties": {
-              "email": {
-                "format": "email",
-                "type": "string"
-              },
-              "exp": {
-                "type": "integer"
-              },
-              "iat": {
-                "type": "integer"
-              },
-              "name": {
-                "type": "string"
-              },
-              "role": {
-                "enum": [
-                  "ADMIN",
-                  "GUEST"
-                ],
-                "type": "string"
-              },
-              "storeId": {
-                "format": "uuid",
-                "type": "string"
-              },
-              "userId": {
-                "format": "uuid",
-                "type": "string"
-              }
-            },
-            "required": [
-              "userId",
-              "storeId",
-              "name",
-              "email",
-              "role",
-              "iat",
-              "exp"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/SessionUser"
           }
         },
         "required": [
@@ -1701,6 +1629,36 @@
         "minItems": 1,
         "type": "array"
       },
+      "SessionUser": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "ADMIN",
+              "GUEST"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role"
+        ],
+        "type": "object"
+      },
       "StockCount": {
         "additionalProperties": false,
         "properties": {
@@ -1819,11 +1777,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthStatusResponse"
+                  "$ref": "#/components/schemas/AuthResponse"
                 }
               }
             },
-            "description": "Token actual y sus datos de usuario autenticado."
+            "description": "Sesión vigente; retorna token y usuario."
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"

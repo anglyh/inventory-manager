@@ -1,6 +1,5 @@
 import {
   authResponseSchema,
-  authStatusResponseSchema,
   createUserSchema,
   loginSchema,
 } from '../../schemas/user.schema.js';
@@ -61,7 +60,7 @@ registry.registerPath({
   tags,
   security: bearerAuth,
   responses: {
-    200: jsonResponse('Token actual y sus datos de usuario autenticado.', authStatusResponseSchema),
+    200: jsonResponse('Sesión vigente; retorna token y usuario.', authResponseSchema),
     ...commonErrors,
     401: errorRef('Unauthorized'),
   },

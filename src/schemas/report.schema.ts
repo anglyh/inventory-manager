@@ -14,3 +14,35 @@ export const profitByProductQuerySchema = dateRangeSchema.extend({
 
 export type ProfitSummaryQueryDTO = z.infer<typeof profitSummaryQuerySchema>;
 export type ProfitByProductQueryDTO = z.infer<typeof profitByProductQuerySchema>;
+
+// Response schemas. NUMERIC amounts from PostgreSQL are serialized as strings.
+const moneySchema = z.string().meta({ example: '20.00' });
+
+const rangeFields = {
+  from: z.iso.datetime(),
+  to: z.iso.datetime(),
+};
+
+const profitFields = {
+  revenue: moneySchema,
+  cogs: moneySchema,
+  profit: moneySchema,
+  marginPct: moneySchema,
+};
+
+export const profitSummarySchema = z.object({
+  ...rangeFields,
+  ...profitFields,
+  salesCount: z.number().int(),
+  avgTicket: moneySchema,
+}).meta({ id: 'ProfitSummary' });
+
+export const profitByProductSchema = z.object({
+  ...rangeFields,
+  products: z.array(z.object({
+    productId: z.uuid(),
+    productName: z.string(),
+    quantitySold: z.number().int(),
+    ...profitFields,
+  })),
+}).meta({ id: 'ProfitByProduct' });

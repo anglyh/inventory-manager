@@ -3845,25 +3845,32 @@
           {
             "in": "query",
             "name": "from",
+            "required": false,
             "schema": {
               "format": "date-time",
+              "nullable": true,
               "type": "string"
             }
           },
           {
             "in": "query",
             "name": "to",
+            "required": false,
             "schema": {
               "format": "date-time",
+              "nullable": true,
               "type": "string"
             }
           },
           {
             "in": "query",
             "name": "limit",
+            "required": false,
             "schema": {
               "default": 10,
+              "exclusiveMinimum": true,
               "maximum": 100,
+              "minimum": 0,
               "type": "integer"
             }
           }
@@ -3913,16 +3920,20 @@
           {
             "in": "query",
             "name": "from",
+            "required": false,
             "schema": {
               "format": "date-time",
+              "nullable": true,
               "type": "string"
             }
           },
           {
             "in": "query",
             "name": "to",
+            "required": false,
             "schema": {
               "format": "date-time",
+              "nullable": true,
               "type": "string"
             }
           }

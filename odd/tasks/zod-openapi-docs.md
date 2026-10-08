@@ -36,8 +36,10 @@ exist only in Swagger, not in Zod.
   - Decision: no `extendZodWithOpenApi`; schemas named via Zod 4 `.meta({ id })`, which zod-to-openapi v9 reads. Unreferenced schemas registered via `registerSchema()` (`{ type: 'schema', schema }`).
   - Gotchas: library drops `.multipleOf()` → documented via `.meta({ multipleOf })`; query param docs via `.meta({ param: { description } })`.
   - Shared error responses now in `src/openapi/responses.ts` (`errorRef(name)` typed helper); `ApiError` lives there (T5 may move it).
-- [ ] T3 Spec guard test (operation inventory fixture + every $ref resolves) moved here from T5 (review R3-merged-spec-unasserted); mergePaths fails on duplicate path+method (review R3-silent-path-override); migrate cash-register, supplier, store-user — route: delegated writer
-- [ ] T4 Migrate product, category, user/auth, report — route: delegated writer
+- [x] T3 Spec guard test (operation inventory fixture + every $ref resolves) moved here from T5 (review R3-merged-spec-unasserted); mergePaths fails on duplicate path+method (review R3-silent-path-override); migrate cash-register, supplier, store-user — route: delegated writer (writer trigger: 15+ files) — commits e4687f9, 0febe0d, e647228 — tsc ok, vitest 7 known only, spec test 6/6 (parent spot check)
+  - Cash-register `components.parameters` replaced by inline params (zod-to-openapi `.meta({id})` would collide with schema ids). `createStoreUserSchema = createUserSchema.strict()`.
+  - Review main..e647228 slice (a723844..e647228): granted → approved, acknowledged (lineage review-4c0b693aed089458). Reviewed boundary = e647228.
+- [ ] T4 Full-spec snapshot test guarding component shapes (review R3-schema-shape-unasserted, WARNING); mergePaths duplicate check limited to HTTP methods (review R3-merge-pathlevel-keys); migrate product, category, user/auth, report — route: delegated writer
 - [ ] T5 Cleanup: remove swagger-jsdoc, JSDoc blocks, swagger-schemas.ts, swagger-inventory.ts; add spec test — route: delegated writer
 
 ## Acceptance criteria
@@ -64,6 +66,10 @@ exist only in Swagger, not in Zod.
 
 - 2026-10-08: native review of main..a723844 (medium, slice_budget_reached): granted → approved, acknowledged (lineage review-aefdd18e95f8733a). Reviewed boundary = a723844. Findings: 1 WARNING (no spec guard test) + 1 SUGGESTION (silent path override) → folded into T3. `.atl/` added to local `.git/info/exclude`.
 
+## Follow-ups (out of scope, faithful migration)
+
+- Read-only list ops (`GET /api/supplier`, `GET /api/store-user`) document 404/409/422 they cannot return (pre-existing in baseline; review R3-list-ops-conflict-errors).
+
 ## Next step
 
-T3.
+T4.

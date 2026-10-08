@@ -3,6 +3,8 @@ import { registry, standaloneSchemas, bearerAuth } from './registry.js';
 import './responses.js';
 import { cashRegisterTag } from './paths/cash-register.openapi.js';
 import { inventoryMovementTag } from './paths/inventory-movement.openapi.js';
+import './paths/store-user.openapi.js';
+import './paths/supplier.openapi.js';
 
 export const openApiInfo = {
   title: 'Hostal API',

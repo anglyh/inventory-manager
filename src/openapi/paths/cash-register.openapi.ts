@@ -1,4 +1,3 @@
-import type { ZodType } from 'zod';
 import {
   cashMovementHistorySchema,
   cashMovementPageSchema,
@@ -13,6 +12,7 @@ import {
   nullableCashRegisterSchema,
   openCashRegisterSchema,
 } from '../../schemas/cash-register.schema.js';
+import { jsonBody, jsonResponse } from '../content.js';
 import { registry } from '../registry.js';
 import { errorRef } from '../responses.js';
 
@@ -24,16 +24,6 @@ export const cashRegisterTag = {
 };
 
 const tags = [cashRegisterTag.name];
-
-const jsonBody = (schema: ZodType) => ({
-  required: true,
-  content: { 'application/json': { schema } },
-});
-
-const jsonResponse = (description: string, schema: ZodType) => ({
-  description,
-  content: { 'application/json': { schema } },
-});
 
 // Errors returned by every cash register operation.
 const commonErrors = {

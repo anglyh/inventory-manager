@@ -137,3 +137,14 @@ for (const [name, response] of Object.entries(errorResponses)) {
 
 /** Reference to a shared error response; the name is checked at compile time. */
 export const errorRef = (name: ErrorResponseName) => ({ $ref: `#/components/responses/${name}` });
+
+/** Error responses documented by every write-style operation; only the 409 response varies. */
+export const standardErrors = (conflict: ErrorResponseName = 'OperationConflict') => ({
+  400: errorRef('BadRequest'),
+  401: errorRef('Unauthorized'),
+  404: errorRef('NotFound'),
+  409: errorRef(conflict),
+  422: errorRef('ValidationError'),
+  500: errorRef('InternalError'),
+  503: errorRef('DatabaseUnavailable'),
+});

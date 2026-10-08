@@ -1,4 +1,3 @@
-import type { ZodType } from 'zod';
 import {
   adjustmentSchema,
   initialLoadSchema,
@@ -13,7 +12,8 @@ import {
   voidMovementSchema,
 } from '../../schemas/inventory-movement.schema.js';
 import { bearerAuth, registry } from '../registry.js';
-import { errorRef, type ErrorResponseName } from '../responses.js';
+import { jsonBody, jsonResponse } from '../content.js';
+import { errorRef, standardErrors } from '../responses.js';
 
 const basePath = '/api/inventory-movement';
 
@@ -23,22 +23,6 @@ export const inventoryMovementTag = {
 };
 
 const tags = [inventoryMovementTag.name];
-
-const jsonBody = (schema: ZodType) => ({
-  required: true,
-  content: { 'application/json': { schema } },
-});
-
-/** Error responses shared by write operations; only the 409 response varies. */
-const writeErrors = (conflict: ErrorResponseName) => ({
-  400: errorRef('BadRequest'),
-  401: errorRef('Unauthorized'),
-  404: errorRef('NotFound'),
-  409: errorRef(conflict),
-  422: errorRef('ValidationError'),
-  500: errorRef('InternalError'),
-  503: errorRef('DatabaseUnavailable'),
-});
 
 registry.registerPath({
   method: 'post',
@@ -50,7 +34,7 @@ registry.registerPath({
   request: { body: jsonBody(saleSchema) },
   responses: {
     204: { description: 'Venta registrada. Sin cuerpo de respuesta; consultar el historial para obtener el detalle.' },
-    ...writeErrors('SaleConflict'),
+    ...standardErrors('SaleConflict'),
   },
 });
 
@@ -64,7 +48,7 @@ registry.registerPath({
   request: { body: jsonBody(purchaseSchema) },
   responses: {
     204: { description: 'Compra registrada. Sin cuerpo de respuesta; consultar el historial para obtener el detalle.' },
-    ...writeErrors('InventoryEntryConflict'),
+    ...standardErrors('InventoryEntryConflict'),
   },
 });
 
@@ -77,7 +61,7 @@ registry.registerPath({
   request: { body: jsonBody(lossSchema) },
   responses: {
     204: { description: 'Pérdida registrada. Sin cuerpo de respuesta.' },
-    ...writeErrors('InventoryExitConflict'),
+    ...standardErrors('InventoryExitConflict'),
   },
 });
 
@@ -91,7 +75,7 @@ registry.registerPath({
   request: { body: jsonBody(initialLoadSchema) },
   responses: {
     204: { description: 'Carga inicial registrada. Sin cuerpo de respuesta.' },
-    ...writeErrors('InventoryEntryConflict'),
+    ...standardErrors('InventoryEntryConflict'),
   },
 });
 
@@ -105,7 +89,7 @@ registry.registerPath({
   request: { body: jsonBody(adjustmentSchema) },
   responses: {
     204: { description: 'Ajuste registrado. Sin cuerpo de respuesta.' },
-    ...writeErrors('InventoryExitConflict'),
+    ...standardErrors('InventoryExitConflict'),
   },
 });
 
@@ -119,7 +103,7 @@ registry.registerPath({
   request: { body: jsonBody(stockCountSchema) },
   responses: {
     204: { description: 'Conteo aplicado, sin cuerpo. Actualizar productos e historial.' },
-    ...writeErrors('OperationConflict'),
+    ...standardErrors('OperationConflict'),
   },
 });
 
@@ -133,7 +117,7 @@ registry.registerPath({
   request: { params: inventoryMovementIdSchema, body: jsonBody(voidMovementSchema) },
   responses: {
     204: { description: 'Movimiento anulado, sin cuerpo. Actualizar inventario, reportes y caja si corresponde.' },
-    ...writeErrors('OperationConflict'),
+    ...standardErrors('OperationConflict'),
   },
 });
 
@@ -145,11 +129,8 @@ registry.registerPath({
   security: bearerAuth,
   request: { params: inventoryMovementIdSchema },
   responses: {
-    200: {
-      description: 'Movimiento de la tienda con sus artículos.',
-      content: { 'application/json': { schema: inventoryMovementSchema } },
-    },
-    ...writeErrors('OperationConflict'),
+    200: jsonResponse('Movimiento de la tienda con sus artículos.', inventoryMovementSchema),
+    ...standardErrors('OperationConflict'),
   },
 });
 
@@ -168,10 +149,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { query: inventoryMovementsCursorQuerySchema },
   responses: {
-    200: {
-      description: 'Historial de movimientos y cursor de la siguiente página (null si no hay más).',
-      content: { 'application/json': { schema: inventoryMovementsPageSchema } },
-    },
+    200: jsonResponse('Historial de movimientos y cursor de la siguiente página (null si no hay más).', inventoryMovementsPageSchema),
     400: errorRef('BadRequest'),
     401: errorRef('Unauthorized'),
     404: errorRef('CashRegisterNotFound'),

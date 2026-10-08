@@ -5,8 +5,12 @@ export const createUserSchema = z.object({
   email: z.email('Email inválido').max(100),
   password: z.string('Contraseña requerida')
   .min(12, 'La contraseña debe tener al menos 12 caracteres')
-  .regex(/[A-Z]/, "Debe contener al menos una mayúscula"),
+  .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
+  .meta({ writeOnly: true }),
 });
+
+/** Body for adding a worker to the current store; unknown fields are rejected. */
+export const createStoreUserSchema = createUserSchema.strict();
 
 export const loginSchema = z.object({
   email: z.email('Email inválido'),
@@ -34,6 +38,14 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+// Response schemas; .strict() documents additionalProperties: false.
+export const storeUserSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  email: z.email(),
+  role: z.enum(['ADMIN', 'GUEST']),
+}).strict().meta({ id: 'StoreUser' });
 
 export interface UserResponse {
   id: string;

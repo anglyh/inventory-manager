@@ -2,7 +2,7 @@ import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import type { Application } from 'express';
 import { responseSchemas } from './swagger-schemas.js';
-import { inventorySchemas, inventoryPaths } from './swagger-inventory.js';
+import { inventoryPaths } from './swagger-inventory.js';
 import { generateOpenApiDocument, openApiInfo, openApiServers } from '../openapi/document.js';
 
 // Transition: modules not yet migrated to Zod are still documented with JSDoc.
@@ -13,7 +13,7 @@ const options: swaggerJSDoc.Options = {
         info: openApiInfo,
         servers: openApiServers,
         components: {
-            schemas: { ...responseSchemas, ...inventorySchemas },
+            schemas: responseSchemas,
         },
     },
     // Rutas donde Swagger buscará los comentarios de documentación

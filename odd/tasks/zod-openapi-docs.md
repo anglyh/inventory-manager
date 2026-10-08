@@ -43,6 +43,7 @@ exist only in Swagger, not in Zod.
   - Review of e647228..4c603b4 refused: `lens_context_budget_exceeded` (4.3k-line generated snapshot). Split: a661612..4c603b4 (high, auth hot path) granted → 4 lenses → approved, acknowledged (lineage review-6cdf625c15305831). Snapshot commit a661612 alone left unreviewed (generated JSON + test; would exceed budget).
   - Findings → T5: R2-product-get-by-id-inconsistent (WARNING, align GET /product/{id} with file pattern), R2-money-schema-duplicated, R2-empty-transition-module, R2-errors-naming-inconsistent.
   - Findings → user decision: R2-coerce-nullable-doc + R3-001 (WARNING): `z.coerce.number()` accepts `null` → saved as 0 (reproduced: `createProductSchema.safeParse({ name, salePrice: null, minStock: null })` → success, 0/0); docs now show `nullable: true`.
+- [x] T4b fix(product): body salePrice/minStock use z.number() (no coercion of null/""/booleans) — route: inline (1 schema + tests) — commit df34af0 — RED 9 failing → GREEN; snapshot drops 4 `nullable: true`; old test asserting string coercion updated (frontend sends numbers via type=number, verified) — assess: medium, under_budget
 - [ ] T5 Cleanup: remove swagger-jsdoc, merge plumbing, swagger-schemas.ts; T4 readability findings — route: delegated writer
 
 ## Acceptance criteria
@@ -75,4 +76,4 @@ exist only in Swagger, not in Zod.
 
 ## Next step
 
-T5 (pending user decision on null price validation).
+T5.

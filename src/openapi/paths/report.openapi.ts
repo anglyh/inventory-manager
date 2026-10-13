@@ -1,9 +1,4 @@
-import {
-  profitByProductQuerySchema,
-  profitByProductSchema,
-  profitSummaryQuerySchema,
-  profitSummarySchema,
-} from '../../schemas/report.schema.js';
+import { reportOverviewQuerySchema, reportOverviewSchema } from '../../schemas/report.schema.js';
 import { jsonResponse } from '../content.js';
 import { bearerAuth, registry } from '../registry.js';
 import { errorRef } from '../responses.js';
@@ -12,7 +7,7 @@ const basePath = '/api/report';
 
 export const reportTag = {
   name: 'Reports',
-  description: 'Reportes de ganancias basados en movimientos OUT (ventas)',
+  description: 'Reportes de ventas, ganancias, pérdidas y cuadre de caja',
 };
 
 const tags = [reportTag.name];
@@ -28,27 +23,14 @@ const errors = {
 
 registry.registerPath({
   method: 'get',
-  path: `${basePath}/profit/summary`,
-  summary: 'Resumen de ganancias del periodo',
-  description: 'Totales del rango: ingresos, COGS, ganancia, margen %, # ventas y ticket promedio.\nSi no se envían `from` y `to`, se asumen los últimos 30 días.\n',
+  path: `${basePath}/overview`,
+  summary: 'Resumen del periodo',
+  description: 'Ventas, ganancia neta (bruta − mermas y faltantes de conteo), cobros por método, descuadres de caja, serie diaria (día Lima) y rankings de productos.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n',
   tags,
   security: bearerAuth,
-  request: { query: profitSummaryQuerySchema },
+  request: { query: reportOverviewQuerySchema },
   responses: {
-    200: jsonResponse('Totales y rango efectivo del periodo.', profitSummarySchema),
-    ...errors,
-  },
-});
-
-registry.registerPath({
-  method: 'get',
-  path: `${basePath}/profit/by-product`,
-  summary: 'Top productos por ganancia',
-  tags,
-  security: bearerAuth,
-  request: { query: profitByProductQuerySchema },
-  responses: {
-    200: jsonResponse('Ranking de productos y rango efectivo del periodo.', profitByProductSchema),
+    200: jsonResponse('Resumen y rango efectivo del periodo.', reportOverviewSchema),
     ...errors,
   },
 });

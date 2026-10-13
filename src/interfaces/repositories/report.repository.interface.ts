@@ -1,21 +1,29 @@
-export interface ProfitSummaryRow {
+import type { ReportOverview } from '../../schemas/report.schema.js';
+
+/** Totales de ventas y pérdidas del rango en una sola fila. */
+export interface ReportTotalsRow {
   revenue: string;
   cogs: string;
-  profit: string;
+  grossProfit: string;
+  losses: string;
+  netProfit: string;
   marginPct: string;
   salesCount: number;
   avgTicket: string;
+  cashSales: string;
+  yapeSales: string;
+  expired: string;
+  damaged: string;
+  countShortage: string;
+  countSurplus: string;
 }
 
-export interface ProfitByProductRow {
-  productId: string;
-  productName: string;
-  quantitySold: number;
-  revenue: string;
-  cogs: string;
-  profit: string;
-  marginPct: string;
-}
+export type CashDifferencesRow = ReportOverview['cash'];
+export type DailySalesRow = ReportOverview['daily'][number];
+export type ProductRankingRow = ReportOverview['topSold'][number];
+export type ProductLossRow = ReportOverview['topLosses'][number];
+
+export type ProductRankingOrder = 'quantity' | 'profit';
 
 /** Filtros comunes: rango de fechas ya resuelto por el service. */
 export interface ReportDateRange {
@@ -25,9 +33,15 @@ export interface ReportDateRange {
 }
 
 export interface IReportRepository {
-  getProfitSummary(filters: ReportDateRange): Promise<ProfitSummaryRow>;
+  getTotals(filters: ReportDateRange): Promise<ReportTotalsRow>;
 
-  getProfitByProduct(
-    filters: ReportDateRange & { limit: number }
-  ): Promise<ProfitByProductRow[]>;
+  getCashDifferences(filters: ReportDateRange): Promise<CashDifferencesRow>;
+
+  getDailySales(filters: ReportDateRange): Promise<DailySalesRow[]>;
+
+  getProductRanking(
+    filters: ReportDateRange & { orderBy: ProductRankingOrder; limit: number }
+  ): Promise<ProductRankingRow[]>;
+
+  getTopLosses(filters: ReportDateRange & { limit: number }): Promise<ProductLossRow[]>;
 }

@@ -1,5 +1,4 @@
 import {
-  adjustmentSchema,
   initialLoadSchema,
   inventoryMovementIdSchema,
   inventoryMovementSchema,
@@ -19,7 +18,7 @@ const basePath = '/api/inventory-movement';
 
 export const inventoryMovementTag = {
   name: 'InventoryMovements',
-  description: 'Registro e historial de ventas, compras, pérdidas, cargas iniciales y ajustes de inventario',
+  description: 'Registro e historial de ventas, compras, pérdidas, cargas iniciales y conteos físicos de inventario',
 };
 
 const tags = [inventoryMovementTag.name];
@@ -56,6 +55,7 @@ registry.registerPath({
   method: 'post',
   path: `${basePath}/losses`,
   summary: 'Registrar merma o pérdida (OUT)',
+  description: 'No enviar precio por item: el costo se toma del costo promedio vigente del producto.',
   tags,
   security: bearerAuth,
   request: { body: jsonBody(lossSchema) },
@@ -76,20 +76,6 @@ registry.registerPath({
   responses: {
     204: { description: 'Carga inicial registrada. Sin cuerpo de respuesta.' },
     ...standardErrors('InventoryEntryConflict'),
-  },
-});
-
-registry.registerPath({
-  method: 'post',
-  path: `${basePath}/adjustments`,
-  summary: 'Ajuste de inventario',
-  description: 'Corrección manual de un error conocido (MANUAL_CORRECTION). movementType IN agrega stock y OUT lo descuenta. Las cantidades son unidades a agregar o retirar, no el stock final. Las diferencias de conteo físico se registran con /stock-counts.',
-  tags,
-  security: bearerAuth,
-  request: { body: jsonBody(adjustmentSchema) },
-  responses: {
-    204: { description: 'Ajuste registrado. Sin cuerpo de respuesta.' },
-    ...standardErrors('InventoryExitConflict'),
   },
 });
 

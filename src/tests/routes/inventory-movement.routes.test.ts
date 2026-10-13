@@ -14,18 +14,18 @@ const postResponses = (path: string) => swaggerSpec.paths![path]!.post!.response
 vi.mock('../../container.js', () => ({
   inventoryMovementService: {
     registerSale: vi.fn(), registerPurchase: vi.fn(), registerLoss: vi.fn(),
-    registerInitialLoad: vi.fn(), registerAdjustment: vi.fn(), listMovementsByCursor: vi.fn(),
+    registerInitialLoad: vi.fn(),listMovementsByCursor: vi.fn(),
   },
 }));
 
 const productId = '00000000-0000-4000-8000-000000000001';
 const items = [{ productId, quantity: 2, unitPrice: 10 }];
+const costlessItems = [{ productId, quantity: 2 }];
 const operations = [
   { path: 'sales', method: 'registerSale', body: { paymentMethod: 'CASH', items: [{ productId, quantity: 2, salePrice: 10 }] } },
   { path: 'purchases', method: 'registerPurchase', body: { items: [{ productId, quantity: 2, unitCost: 10 }] } },
-  { path: 'losses', method: 'registerLoss', body: { reason: 'LOSS_DAMAGED', items } },
+  { path: 'losses', method: 'registerLoss', body: { reason: 'LOSS_DAMAGED', items: costlessItems } },
   { path: 'initial-loads', method: 'registerInitialLoad', body: { items } },
-  { path: 'adjustments', method: 'registerAdjustment', body: { reason: 'MANUAL_CORRECTION', movementType: 'IN', items } },
 ] as const;
 
 describe('Inventory movement HTTP contracts', () => {
@@ -74,7 +74,7 @@ describe('Inventory movement HTTP contracts', () => {
     expect(response.status).toBe(204);
     expect(await response.text()).toBe('');
     expect(response.headers.get('content-type')).toBeNull();
-    expect(inventoryMovementService[method]).toHaveBeenCalledWith('store', body);
+    expect(inventoryMovementService[method]).toHaveBeenCalledWith('store', body, 'user');
     const documented = postResponses(`/api/inventory-movement/${path}`);
     expect(documented['204']).toBeDefined();
     expect(documented['204']).not.toHaveProperty('content');
@@ -153,8 +153,9 @@ describe('Inventory movement HTTP contracts', () => {
   });
 
   it.each(['entries', 'exits'])('removes the old /%s route and its Swagger documentation', async path => {
+    // Sin ruta propia, cae en GET /:id y se rechaza por no ser un UUID.
     const response = await fetch(`${baseUrl}/${path}`);
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(422);
     expect(inventoryMovementService.listMovementsByCursor).not.toHaveBeenCalled();
     expect(swaggerSpec.paths).not.toHaveProperty(`/api/inventory-movement/${path}`);
   });

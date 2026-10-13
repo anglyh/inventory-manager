@@ -300,7 +300,7 @@
                 "value": {
                   "error": {
                     "code": "CONFLICT",
-                    "message": "El producto ya tiene movimientos; utilice una compra o un ajuste"
+                    "message": "El producto ya tiene movimientos; utilice una compra o un conteo físico"
                   },
                   "success": false
                 }
@@ -875,36 +875,29 @@
         ],
         "type": "object"
       },
-      "CreateAdjustment": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "$ref": "#/components/schemas/MovementItems"
+      "CostlessMovementItems": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "productId": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "quantity": {
+              "exclusiveMinimum": true,
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            }
           },
-          "movementType": {
-            "enum": [
-              "IN",
-              "OUT"
-            ],
-            "type": "string"
-          },
-          "notes": {
-            "maxLength": 500,
-            "type": "string"
-          },
-          "reason": {
-            "enum": [
-              "MANUAL_CORRECTION"
-            ],
-            "type": "string"
-          }
+          "required": [
+            "productId",
+            "quantity"
+          ],
+          "type": "object"
         },
-        "required": [
-          "items",
-          "reason",
-          "movementType"
-        ],
-        "type": "object"
+        "minItems": 1,
+        "type": "array"
       },
       "CreateCashMovement": {
         "additionalProperties": false,
@@ -973,7 +966,7 @@
         "additionalProperties": false,
         "properties": {
           "items": {
-            "$ref": "#/components/schemas/MovementItems"
+            "$ref": "#/components/schemas/CostlessMovementItems"
           },
           "notes": {
             "maxLength": 500,
@@ -1196,8 +1189,7 @@
               "LOSS_DAMAGED",
               "COUNT_SURPLUS",
               "COUNT_SHORTAGE",
-              "INITIAL_LOAD",
-              "MANUAL_CORRECTION"
+              "INITIAL_LOAD"
             ],
             "type": "string"
           },
@@ -2887,7 +2879,7 @@
         "description": "Sin filtros devuelve todos los movimientos completados. movementType filtra la dirección y group el grupo; si se envían ambos, se aplican juntos. Una combinación sin coincidencias devuelve data vacío.\ngroup=voids consulta anulados; los demás grupos consultan completados.\nOrden descendente por fecha de creación e id. La primera petición no envía cursor.\nPara la siguiente página, envía cursorDate y cursorId de nextCursor juntos y conserva los filtros. Al cambiar filtros, reinicia la paginación sin cursor.\n",
         "parameters": [
           {
-            "description": "IN incluye compras, cargas iniciales y ajustes de entrada. OUT incluye ventas, pérdidas y ajustes de salida. Sin este filtro incluye ambas direcciones.",
+            "description": "IN incluye compras, cargas iniciales y sobrantes de conteo. OUT incluye ventas, pérdidas y faltantes de conteo. Sin este filtro incluye ambas direcciones.",
             "in": "query",
             "name": "movementType",
             "required": false,
@@ -2912,8 +2904,7 @@
                 "LOSS_DAMAGED",
                 "COUNT_SURPLUS",
                 "COUNT_SHORTAGE",
-                "INITIAL_LOAD",
-                "MANUAL_CORRECTION"
+                "INITIAL_LOAD"
               ],
               "type": "string"
             }
@@ -3047,56 +3038,6 @@
         ]
       }
     },
-    "/api/inventory-movement/adjustments": {
-      "post": {
-        "description": "Corrección manual de un error conocido (MANUAL_CORRECTION). movementType IN agrega stock y OUT lo descuenta. Las cantidades son unidades a agregar o retirar, no el stock final. Las diferencias de conteo físico se registran con /stock-counts.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAdjustment"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Ajuste registrado. Sin cuerpo de respuesta."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/InventoryExitConflict"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalError"
-          },
-          "503": {
-            "$ref": "#/components/responses/DatabaseUnavailable"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "Ajuste de inventario",
-        "tags": [
-          "InventoryMovements"
-        ]
-      }
-    },
     "/api/inventory-movement/initial-loads": {
       "post": {
         "description": "El servicio asigna INITIAL_LOAD e IN. Solo admite productos sin movimientos previos, incluso anulados. unitPrice representa el costo inicial por unidad. No afecta caja.",
@@ -3149,6 +3090,7 @@
     },
     "/api/inventory-movement/losses": {
       "post": {
+        "description": "No enviar precio por item: el costo se toma del costo promedio vigente del producto.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4337,7 +4279,7 @@
       "name": "Categories"
     },
     {
-      "description": "Registro e historial de ventas, compras, pérdidas, cargas iniciales y ajustes de inventario",
+      "description": "Registro e historial de ventas, compras, pérdidas, cargas iniciales y conteos físicos de inventario",
       "name": "InventoryMovements"
     },
     {

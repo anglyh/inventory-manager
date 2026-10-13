@@ -1,7 +1,7 @@
 import type { Supplier } from './supplier.model.js';
 
 export type MovementType = "IN" | "OUT";
-export type MovementReason = "PURCHASE" | "SALE" | "LOSS_EXPIRED" | "LOSS_DAMAGED" | "COUNT_SURPLUS" | "COUNT_SHORTAGE" | "INITIAL_LOAD" | "MANUAL_CORRECTION";
+export type MovementReason = "PURCHASE" | "SALE" | "LOSS_EXPIRED" | "LOSS_DAMAGED" | "COUNT_SURPLUS" | "COUNT_SHORTAGE" | "INITIAL_LOAD";
 export type PaymentMethod = "CASH" | "YAPE";
 export type MovementStatus = "COMPLETED" | "VOIDED";
 
@@ -9,7 +9,6 @@ export const movementDirections: Record<MovementReason, readonly MovementType[]>
   PURCHASE: ['IN'], SALE: ['OUT'],
   LOSS_EXPIRED: ['OUT'], LOSS_DAMAGED: ['OUT'],
   COUNT_SURPLUS: ['IN'], COUNT_SHORTAGE: ['OUT'], INITIAL_LOAD: ['IN'],
-  MANUAL_CORRECTION: ['IN', 'OUT'],
 };
 
 export const movementGroupReasons = {

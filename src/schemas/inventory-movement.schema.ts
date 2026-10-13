@@ -20,6 +20,9 @@ export const purchaseItemSchema = movementItemSchema.omit({ unitPrice: true }).e
   unitCost: movementItemSchema.shape.unitPrice.meta({ description: 'Costo pagado por unidad en esta compra.', example: 2 }),
 }).strict();
 
+// Las pérdidas no reciben precio: el servidor usa el costo promedio vigente del producto.
+export const costlessMovementItemSchema = movementItemSchema.omit({ unitPrice: true }).strict();
+
 // Item lists are named with .meta({ id }) so the OpenAPI document references them as components.
 const movementItemsSchema = z.array(movementItemSchema, 'Items requeridos').min(1, 'Debe incluir al menos un producto')
   .meta({ id: 'MovementItems' });
@@ -27,8 +30,10 @@ const saleItemsSchema = z.array(saleItemSchema, 'Items requeridos').min(1, 'Debe
   .meta({ id: 'SaleItems' });
 const purchaseItemsSchema = z.array(purchaseItemSchema, 'Items requeridos').min(1, 'Debe incluir al menos un producto')
   .meta({ id: 'PurchaseItems' });
+const costlessMovementItemsSchema = z.array(costlessMovementItemSchema, 'Items requeridos').min(1, 'Debe incluir al menos un producto')
+  .meta({ id: 'CostlessMovementItems' });
 
-export const movementReasonSchema = z.enum(['PURCHASE', 'SALE', 'LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SURPLUS', 'COUNT_SHORTAGE', 'INITIAL_LOAD', 'MANUAL_CORRECTION']);
+export const movementReasonSchema = z.enum(['PURCHASE', 'SALE', 'LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SURPLUS', 'COUNT_SHORTAGE', 'INITIAL_LOAD']);
 export const paymentMethodSchema = z.enum(['CASH', 'YAPE']);
 
 const movementBaseSchema = z.object({
@@ -49,23 +54,18 @@ export const purchaseSchema = movementBaseSchema.extend({
 }).strict().meta({ id: 'CreatePurchase' });
 
 export const lossSchema = movementBaseSchema.extend({
+  items: costlessMovementItemsSchema,
   reason: z.enum(['LOSS_EXPIRED', 'LOSS_DAMAGED',]),
 }).strict().meta({ id: 'CreateLoss' });
 
 export const initialLoadSchema = movementBaseSchema.strict().meta({ id: 'CreateInitialLoad' });
 
-// Las diferencias de conteo (COUNT_*) solo se registran vía /stock-counts.
-export const adjustmentSchema = movementBaseSchema.extend({
-  reason: z.literal('MANUAL_CORRECTION'),
-  movementType: movementTypeSchema,
-}).strict().meta({ id: 'CreateAdjustment' });
-
 export type MovementItemDTO = z.infer<typeof movementItemSchema>;
+export type CostlessMovementItemDTO = z.infer<typeof costlessMovementItemSchema>;
 export type SaleDTO = z.infer<typeof saleSchema>;
 export type PurchaseDTO = z.infer<typeof purchaseSchema>;
 export type LossDTO = z.infer<typeof lossSchema>;
 export type InitialLoadDTO = z.infer<typeof initialLoadSchema>;
-export type AdjustmentDTO = z.infer<typeof adjustmentSchema>;
 
 export const stockCountSchema = z.object({
   notes: z.string().trim().min(1, 'Explique el motivo del conteo').max(500),
@@ -89,7 +89,7 @@ const paramDoc = (description: string) => ({ param: { description } });
 export const inventoryMovementsCursorQuerySchema = z
   .object({
     movementType: movementTypeSchema.optional().meta(paramDoc(
-      'IN incluye compras, cargas iniciales y ajustes de entrada. OUT incluye ventas, pérdidas y ajustes de salida. Sin este filtro incluye ambas direcciones.',
+      'IN incluye compras, cargas iniciales y sobrantes de conteo. OUT incluye ventas, pérdidas y faltantes de conteo. Sin este filtro incluye ambas direcciones.',
     )),
     reason: movementReasonSchema.optional().meta(paramDoc('Motivo exacto; se combina con group y movementType.')),
     productId: z.uuid('ID de producto inválido').optional()

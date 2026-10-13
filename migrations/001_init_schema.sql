@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 
 DO $$ BEGIN CREATE TYPE user_role AS ENUM ('ADMIN', 'GUEST'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE movement_type AS ENUM ('IN', 'OUT'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-DO $$ BEGIN CREATE TYPE movement_reason AS ENUM ('PURCHASE', 'SALE', 'LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SURPLUS', 'COUNT_SHORTAGE', 'INITIAL_LOAD', 'MANUAL_CORRECTION'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE movement_reason AS ENUM ('PURCHASE', 'SALE', 'LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SURPLUS', 'COUNT_SHORTAGE', 'INITIAL_LOAD'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE payment_method AS ENUM ('CASH', 'YAPE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE movement_status AS ENUM ('COMPLETED', 'VOIDED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
@@ -125,8 +125,7 @@ CREATE TABLE IF NOT EXISTS inventory_movement (
             (reason = 'LOSS_DAMAGED'     AND movement_type = 'OUT') OR
             (reason = 'COUNT_SURPLUS'    AND movement_type = 'IN')  OR
             (reason = 'COUNT_SHORTAGE'   AND movement_type = 'OUT') OR
-            (reason = 'INITIAL_LOAD'     AND movement_type = 'IN')  OR
-            (reason = 'MANUAL_CORRECTION'     AND movement_type IN ('IN', 'OUT'))
+            (reason = 'INITIAL_LOAD'     AND movement_type = 'IN')
         ),
 
     -- Toda venta debe estar vinculada a una caja.

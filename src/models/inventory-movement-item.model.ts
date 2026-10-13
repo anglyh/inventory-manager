@@ -5,7 +5,7 @@ export interface InventoryMovementItem {
   id: string;
   movementId: InventoryMovement['id'];
   productId: Product['id'];
-  /** Precio de venta en SALE, costo declarado en PURCHASE/INITIAL_LOAD y valor de referencia en ajustes. */
+  /** Precio de venta en SALE, costo declarado en PURCHASE/INITIAL_LOAD y costo promedio vigente en pérdidas y conteos. */
   unitPrice: string;
   /** Snapshot del costo unitario congelado al momento del movimiento.
    * - PURCHASE/INITIAL_LOAD: costo declarado.

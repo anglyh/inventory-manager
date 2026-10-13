@@ -51,14 +51,6 @@ export default class InventoryMovementController {
     }
   }
 
-  static async registerAdjustment(req: Request, res: Response, next: NextFunction) {
-    try {
-      await inventoryMovementService.registerAdjustment(req.user!.storeId, req.body, req.user!.userId);
-      res.status(204).end();
-    } catch (err) {
-      next(err);
-    }
-  }
   static async getById(req: Request, res: Response, next: NextFunction) {
     try {
       res.json(await inventoryMovementService.getById(req.user!.storeId, req.params.id as string));

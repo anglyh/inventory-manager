@@ -4,7 +4,7 @@ import InventoryMovementRepository from '../../repositories/inventory-movement.r
 import ProductRepository from '../../repositories/product.repository.js';
 import CashRegisterRepository from '../../repositories/cash-register.repository.js';
 import SupplierRepository from '../../repositories/supplier.repository.js';
-import { saleSchema, purchaseSchema, lossSchema, initialLoadSchema, adjustmentSchema } from '../../schemas/inventory-movement.schema.js';
+import { saleSchema, purchaseSchema, lossSchema } from '../../schemas/inventory-movement.schema.js';
 import { query } from '../../db/index.js';
 
 vi.mock('../../db/index.js', () => ({ query: vi.fn() }));
@@ -12,6 +12,7 @@ vi.mock('../../db/transactions.js', () => ({ withTransaction: (fn: (client: unkn
 
 const productId = '00000000-0000-4000-8000-000000000001';
 const items = [{ productId, quantity: 2, unitPrice: 10 }];
+const costlessItems = [{ productId, quantity: 2 }];
 const saleItems = [{ productId, quantity: 2, salePrice: 10 }];
 const purchaseItems = [{ productId, quantity: 2, unitCost: 10 }];
 
@@ -58,29 +59,7 @@ describe('Inventory movements', () => {
     }
   });
 
-  // it('validates returns, initial loads and adjustment-specific fields', () => {
-  //   for (const schema of [customerReturnSchema, supplierReturnSchema, initialLoadSchema]) {
-  //     expect(schema.safeParse({ items }).success).toBe(true);
-  //     expect(schema.safeParse({ items, reason: 'SALE' }).success).toBe(false);
-  //     expect(schema.safeParse({ items, movementType: 'OUT' }).success).toBe(false);
-  //     expect(schema.safeParse({ items, cashRegisterId: productId }).success).toBe(false);
-  //   }
-  //   expect(customerReturnSchema.safeParse({ items, supplierId: productId }).success).toBe(false);
-  //   expect(adjustmentSchema.safeParse({ reason: 'MANUAL_CORRECTION', items }).success).toBe(false);
-  //   expect(adjustmentSchema.safeParse({ reason: 'COUNT_SURPLUS', movementType: 'OUT', items }).success).toBe(false);
-  //   expect(adjustmentSchema.safeParse({ reason: 'PURCHASE', items }).success).toBe(false);
-  // });
-
-  it('rejects count differences and missing direction in adjustments', () => {
-    expect(adjustmentSchema.safeParse({ reason: 'COUNT_SURPLUS', items }).success).toBe(false);
-    expect(adjustmentSchema.safeParse({ reason: 'COUNT_SHORTAGE', items }).success).toBe(false);
-    expect(adjustmentSchema.safeParse({ reason: 'MANUAL_CORRECTION', items }).success).toBe(false);
-  });
-
-  it.each([
-    ['INITIAL_LOAD', 'IN'],
-    ['MANUAL_CORRECTION', 'IN'], ['MANUAL_CORRECTION', 'OUT'],
-  ] as const)('registers %s in direction %s', async (reason, movementType) => {
+  it('registers INITIAL_LOAD in direction IN with the declared cost', async () => {
     vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, unitCostAvg: '3.00' } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
     vi.spyOn(products, 'getStock').mockResolvedValue(10);
     const update = vi.spyOn(products, 'updateUnitCostAvg').mockResolvedValue();
@@ -88,15 +67,13 @@ describe('Inventory movements', () => {
       ...data, id: 'movement', status: 'COMPLETED', voidedAt: null, voidedBy: null, voidReason: null, createdAt: new Date(),
     }));
     const insert = vi.spyOn(repo, 'createMovementItems').mockImplementation(async (_id, rows) => rows.map(row => ({ ...row, unitPrice: row.unitPrice.toFixed(2), unitCost: row.unitCost.toFixed(2) })));
-    if (reason === 'INITIAL_LOAD') await service.registerInitialLoad('store', { items });
-    else await service.registerAdjustment('store', { items, reason, movementType });
+    await service.registerInitialLoad('store', { items });
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
-      storeId: 'store', reason, movementType,
+      storeId: 'store', reason: 'INITIAL_LOAD', movementType: 'IN',
       supplierId: null,
     }), {});
-    expect(insert).toHaveBeenCalledWith('movement', [expect.objectContaining({ ...items[0], unitCost: reason === 'INITIAL_LOAD' ? 10 : 3 })], {});
-    if (reason === 'INITIAL_LOAD') expect(update).toHaveBeenCalledWith(productId, 4.17, {});
-    else expect(update).not.toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledWith('movement', [expect.objectContaining({ ...costlessItems[0], unitPrice: 10, unitCost: 10 })], {});
+    expect(update).toHaveBeenCalledWith(productId, 4.17, {});
   });
 
   it.each(['sale', 'purchase', 'loss'] as const)('registers a %s with the correct direction and cost', async operation => {
@@ -111,7 +88,7 @@ describe('Inventory movements', () => {
       ? await service.registerSale('store', { paymentMethod: 'CASH', cashRegisterId: productId, items: saleItems })
       : operation === 'purchase'
         ? await service.registerPurchase('store', { supplierId: productId, items: purchaseItems })
-        : await service.registerLoss('store', { reason: 'LOSS_DAMAGED', items });
+        : await service.registerLoss('store', { reason: 'LOSS_DAMAGED', items: costlessItems });
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
       storeId: 'store',
       reason: operation === 'sale' ? 'SALE' : operation === 'purchase' ? 'PURCHASE' : 'LOSS_DAMAGED',
@@ -120,9 +97,9 @@ describe('Inventory movements', () => {
       supplierId: operation === 'purchase' ? productId : null,
       cashRegisterId: operation === 'sale' ? productId : null,
     }), {});
-    expect(insert).toHaveBeenCalledWith('movement', [expect.objectContaining({ ...items[0], unitCost: operation === 'purchase' ? 10 : 3 })], {});
-    expect(result.totalAmount).toBe('20.00');
-    expect(result.items[0]).toMatchObject({ unitPrice: '10.00', unitCost: operation === 'purchase' ? '10.00' : '3.00' });
+    expect(insert).toHaveBeenCalledWith('movement', [expect.objectContaining({ ...costlessItems[0], unitPrice: operation === 'loss' ? 3 : 10, unitCost: operation === 'purchase' ? 10 : 3 })], {});
+    expect(result.totalAmount).toBe(operation === 'loss' ? '6.00' : '20.00');
+    expect(result.items[0]).toMatchObject({ unitPrice: operation === 'loss' ? '3.00' : '10.00', unitCost: operation === 'purchase' ? '10.00' : '3.00' });
     expect(result.reason).toBe(operation === 'sale' ? 'SALE' : operation === 'purchase' ? 'PURCHASE' : 'LOSS_DAMAGED');
     if (operation === 'purchase') expect(update).toHaveBeenCalledWith(productId, 4.17, {});
     else expect(update).not.toHaveBeenCalled();
@@ -187,6 +164,6 @@ describe('Inventory movements', () => {
   it('checks total quantity across duplicate products for stock shortages', async () => {
     vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, unitCostAvg: '3.00' } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
     vi.spyOn(products, 'getStock').mockResolvedValue(3);
-    await expect(service.registerLoss('store', { reason: 'LOSS_DAMAGED', items: [...items, ...items] })).rejects.toThrow('Stock insuficiente');
+    await expect(service.registerLoss('store', { reason: 'LOSS_DAMAGED', items: [...costlessItems, ...costlessItems] })).rejects.toThrow('Stock insuficiente');
   });
 });

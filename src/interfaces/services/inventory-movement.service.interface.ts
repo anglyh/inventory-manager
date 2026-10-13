@@ -1,5 +1,5 @@
 import type { MovementType, MovementReason, MovementStatus } from '../../models/inventory-movement.model.js';
-import type { SaleDTO, PurchaseDTO, LossDTO, InitialLoadDTO, AdjustmentDTO, StockCountDTO } from '../../schemas/inventory-movement.schema.js';
+import type { SaleDTO, PurchaseDTO, LossDTO, InitialLoadDTO, StockCountDTO } from '../../schemas/inventory-movement.schema.js';
 import type { InventoryMovementsByCursorParams, InventoryMovementListItem, CreatedInventoryMovementItem } from '../repositories/inventory-movement.repository.interface.js';
 
 import type { CursorPage } from '../../types/api.types.js';
@@ -25,7 +25,6 @@ export interface IInventoryMovementService {
   registerLoss(storeId: string, data: LossDTO, userId?: string): Promise<RegisterInventoryMovementResult>;
 
   registerInitialLoad(storeId: string, data: InitialLoadDTO, userId?: string): Promise<RegisterInventoryMovementResult>;
-  registerAdjustment(storeId: string, data: AdjustmentDTO, userId?: string): Promise<RegisterInventoryMovementResult>;
 
   listMovementsByCursor(
     filters: InventoryMovementsByCursorParams

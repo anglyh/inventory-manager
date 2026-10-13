@@ -38,7 +38,7 @@ const movementConflictResponse = (includeStockError: boolean) => ({
         ...(!includeStockError ? {
           alreadyInitialized: {
             summary: 'Solo carga inicial: producto con historial',
-            value: { success: false, error: { code: 'CONFLICT', message: 'El producto ya tiene movimientos; utilice una compra o un ajuste' } },
+            value: { success: false, error: { code: 'CONFLICT', message: 'El producto ya tiene movimientos; utilice una compra o un conteo físico' } },
           },
         } : {}),
         ...(includeStockError ? {

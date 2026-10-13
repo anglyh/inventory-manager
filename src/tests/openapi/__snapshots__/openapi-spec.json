@@ -1546,6 +1546,10 @@
             "nullable": true,
             "type": "string"
           },
+          "hasMovements": {
+            "description": "true si el producto ya tiene movimientos (incluso anulados); no admite carga inicial.",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
@@ -1567,7 +1571,8 @@
           "salePrice",
           "barcode",
           "stock",
-          "categoryName"
+          "categoryName",
+          "hasMovements"
         ],
         "type": "object"
       },

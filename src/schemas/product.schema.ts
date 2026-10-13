@@ -109,4 +109,6 @@ export const productOptionSchema = z.object({
   barcode: z.string().nullable(),
   stock: z.number().int(),
   categoryName: z.string().nullable(),
+  hasMovements: z.boolean()
+    .meta({ description: 'true si el producto ya tiene movimientos (incluso anulados); no admite carga inicial.' }),
 }).meta({ id: 'ProductOption' });

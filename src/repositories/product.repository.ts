@@ -152,7 +152,11 @@ export default class ProductRepository implements IProductRepository {
       p.sale_price,
       p.barcode,
       p.stock,
-      c.name AS category_name
+      c.name AS category_name,
+      -- Mismo criterio que la carga inicial: incluye movimientos anulados.
+      EXISTS (
+        SELECT 1 FROM ${TABLES.INVENTORY_MOVEMENT_ITEM} AS mi WHERE mi.product_id = p.id
+      ) AS has_movements
     FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
     LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
     WHERE p.store_id = $1 AND p.is_active = true

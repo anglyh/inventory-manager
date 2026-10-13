@@ -24,4 +24,5 @@ export type ProductListItem = Omit<ProductWithStock, 'storeId'> & {
 export type ProductSearchItem = Pick<Product, 'id' | 'name' | 'salePrice'>;
 export type ProductOption = ProductSearchItem & Pick<ProductWithStock, 'barcode' | 'stock'> & {
   categoryName: string | null;
+  hasMovements: boolean;
 };

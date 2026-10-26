@@ -274,6 +274,23 @@
         },
         "description": "Base de datos no disponible."
       },
+      "Forbidden": {
+        "content": {
+          "application/json": {
+            "example": {
+              "error": {
+                "code": "FORBIDDEN",
+                "message": "Acceso denegado. Se requiere ser Administrador"
+              },
+              "success": false
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "El rol del usuario no tiene permiso para esta operación."
+      },
       "InternalError": {
         "content": {
           "application/json": {
@@ -440,6 +457,68 @@
           }
         },
         "description": "Sin caja abierta, caja cerrada, producto desactivado o stock insuficiente."
+      },
+      "StayConflict": {
+        "content": {
+          "application/json": {
+            "examples": {
+              "closed": {
+                "summary": "Estadía cerrada",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "La estadía ya está cerrada"
+                  },
+                  "success": false
+                }
+              },
+              "noOpenRegister": {
+                "summary": "Se requiere abrir caja para cobrar",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "Debe abrir una caja antes de cobrar una estadía"
+                  },
+                  "success": false
+                }
+              },
+              "occupied": {
+                "summary": "Habitación ocupada",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "La habitación 201 está ocupada"
+                  },
+                  "success": false
+                }
+              },
+              "overpayment": {
+                "summary": "Pago mayor al saldo",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "El pago supera el saldo pendiente (S/ 20.00)"
+                  },
+                  "success": false
+                }
+              },
+              "pendingBalance": {
+                "summary": "Check-out con saldo",
+                "value": {
+                  "error": {
+                    "code": "CONFLICT",
+                    "message": "No se puede hacer el check-out con saldo pendiente (S/ 20.00)"
+                  },
+                  "success": false
+                }
+              }
+            },
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        },
+        "description": "Habitación no disponible, estadía cerrada, sin caja abierta para cobrar, pago mayor al saldo o check-out con saldo pendiente."
       },
       "Unauthorized": {
         "content": {
@@ -719,6 +798,11 @@
                 "example": "20.00",
                 "type": "string"
               },
+              "cashStays": {
+                "description": "Cobros de estadías en efectivo; forman parte del efectivo esperado.",
+                "example": "20.00",
+                "type": "string"
+              },
               "difference": {
                 "example": "20.00",
                 "nullable": true,
@@ -739,6 +823,11 @@
               "yapeSales": {
                 "example": "20.00",
                 "type": "string"
+              },
+              "yapeStays": {
+                "description": "Cobros de estadías por Yape.",
+                "example": "20.00",
+                "type": "string"
               }
             },
             "required": [
@@ -746,6 +835,8 @@
               "yapeSales",
               "totalSales",
               "salesCount",
+              "cashStays",
+              "yapeStays",
               "cashIn",
               "cashOut",
               "difference"
@@ -853,6 +944,216 @@
         ],
         "type": "object"
       },
+      "CheckIn": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Tarifa cobrada. La de referencia (horas × precio por hora, o precio por noche) se guarda aparte.",
+            "example": 30,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "expectedCheckOut": {
+            "description": "Salida prevista. Si se omite, se usa la sugerida (por horas: ingreso + horas; noche: día siguiente a la hora de salida).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "guests": {
+            "items": {
+              "properties": {
+                "birthDate": {
+                  "example": "1990-05-14",
+                  "format": "date",
+                  "type": "string"
+                },
+                "documentNumber": {
+                  "example": "45781236",
+                  "maxLength": 20,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "documentType": {
+                  "$ref": "#/components/schemas/DocumentType"
+                },
+                "fullName": {
+                  "example": "Juan Pérez Rojas",
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "isHolder": {
+                  "description": "Exactamente un huésped es el titular de la estadía.",
+                  "type": "boolean"
+                },
+                "nationality": {
+                  "example": "Peruana",
+                  "maxLength": 60,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "phone": {
+                  "maxLength": 20,
+                  "nullable": true,
+                  "type": "string"
+                },
+                "residence": {
+                  "example": "Arequipa",
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sex": {
+                  "enum": [
+                    "M",
+                    "F"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "documentType",
+                "documentNumber",
+                "fullName",
+                "birthDate",
+                "sex",
+                "nationality",
+                "residence",
+                "isHolder"
+              ],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "hours": {
+            "description": "Horas contratadas. Obligatorio en tarifa por horas; no se envía en tarifa por noche.",
+            "example": 3,
+            "maximum": 48,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minors": {
+            "items": {
+              "properties": {
+                "accreditation": {
+                  "description": "Documento que acredita la relación (p. ej. partida de nacimiento o autorización notarial).",
+                  "maxLength": 500,
+                  "nullable": true,
+                  "type": "string"
+                },
+                "birthDate": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "documentNumber": {
+                  "maxLength": 20,
+                  "minLength": 1,
+                  "nullable": true,
+                  "type": "string"
+                },
+                "documentType": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DocumentType"
+                    },
+                    {
+                      "nullable": true
+                    }
+                  ]
+                },
+                "fullName": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "guardianRelation": {
+                  "$ref": "#/components/schemas/GuardianRelation"
+                }
+              },
+              "required": [
+                "fullName",
+                "birthDate",
+                "guardianRelation"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "notes": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "paymentMethod": {
+            "description": "Medio de pago. La tarifa se cobra completa al ingresar; requiere una caja abierta.",
+            "enum": [
+              "CASH",
+              "YAPE"
+            ],
+            "type": "string"
+          },
+          "rateKind": {
+            "$ref": "#/components/schemas/RateKind"
+          },
+          "roomId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "travelReason": {
+            "example": "Turismo",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "roomId",
+          "rateKind",
+          "amount",
+          "guests",
+          "paymentMethod"
+        ],
+        "type": "object"
+      },
+      "CheckOut": {
+        "additionalProperties": false,
+        "properties": {
+          "extraAmount": {
+            "description": "Adicional cobrado por salir tarde. Si se omite se usa el sugerido por el servidor; 0 lo condona. Se guarda junto al sugerido.",
+            "example": 20,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "payment": {
+            "description": "Cobro del saldo en el mismo paso; requiere una caja abierta.",
+            "properties": {
+              "amount": {
+                "example": 50,
+                "exclusiveMinimum": true,
+                "maximum": 99999999.99,
+                "minimum": 0,
+                "multipleOf": 0.01,
+                "type": "number"
+              },
+              "paymentMethod": {
+                "enum": [
+                  "CASH",
+                  "YAPE"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "paymentMethod",
+              "amount"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
       "CloseCashRegister": {
         "additionalProperties": false,
         "properties": {
@@ -943,6 +1244,63 @@
         },
         "required": [
           "name"
+        ],
+        "type": "object"
+      },
+      "CreateExpense": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "example": 35.5,
+            "exclusiveMinimum": true,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "description": {
+            "example": "Papel higiénico y jabón",
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExpenseSource"
+          },
+          "spentOn": {
+            "description": "Día de Lima al que corresponde el gasto. Por defecto, hoy.",
+            "example": "2026-10-20",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "categoryId",
+          "amount",
+          "source"
+        ],
+        "type": "object"
+      },
+      "CreateExpenseCategory": {
+        "additionalProperties": false,
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/ExpenseGroup"
+          },
+          "name": {
+            "example": "Útiles de aseo",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "group"
         ],
         "type": "object"
       },
@@ -1045,6 +1403,87 @@
         ],
         "type": "object"
       },
+      "CreateRoom": {
+        "additionalProperties": false,
+        "properties": {
+          "floor": {
+            "example": 2,
+            "maximum": 200,
+            "minimum": -5,
+            "nullable": true,
+            "type": "integer"
+          },
+          "number": {
+            "example": "201",
+            "maxLength": 10,
+            "minLength": 1,
+            "type": "string"
+          },
+          "roomTypeId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "roomTypeId"
+        ],
+        "type": "object"
+      },
+      "CreateRoomType": {
+        "additionalProperties": false,
+        "properties": {
+          "capacity": {
+            "description": "Huéspedes adultos permitidos. Los menores no cuentan.",
+            "example": 2,
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "description": {
+            "example": "Cama de 2 plazas, baño compartido",
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "extraHourPrice": {
+            "example": 10,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "hourPrice": {
+            "description": "Precio de referencia por hora: la tarifa por horas sugiere horas × este precio.",
+            "example": 10,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "name": {
+            "example": "Estándar",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "nightPrice": {
+            "example": 50,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "capacity",
+          "hourPrice",
+          "nightPrice",
+          "extraHourPrice"
+        ],
+        "type": "object"
+      },
       "CreateSale": {
         "additionalProperties": false,
         "properties": {
@@ -1071,6 +1510,70 @@
         "required": [
           "items",
           "paymentMethod"
+        ],
+        "type": "object"
+      },
+      "CreateStayCharge": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "example": 10,
+            "exclusiveMinimum": true,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "description": {
+            "example": "Lavandería",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "EXTRA_HOURS",
+              "OTHER"
+            ],
+            "type": "string"
+          },
+          "suggestedAmount": {
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "description",
+          "amount"
+        ],
+        "type": "object"
+      },
+      "CreateStayPayment": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "example": 50,
+            "exclusiveMinimum": true,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "paymentMethod": {
+            "enum": [
+              "CASH",
+              "YAPE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "paymentMethod",
+          "amount"
         ],
         "type": "object"
       },
@@ -1103,6 +1606,190 @@
           "password"
         ],
         "type": "object"
+      },
+      "DocumentType": {
+        "enum": [
+          "DNI",
+          "CE",
+          "PASSPORT",
+          "PTP",
+          "OTHER"
+        ],
+        "type": "string"
+      },
+      "Expense": {
+        "properties": {
+          "amount": {
+            "example": "35.50",
+            "type": "string"
+          },
+          "canDelete": {
+            "description": "false si salió de una caja ya cerrada.",
+            "type": "boolean"
+          },
+          "cashRegisterId": {
+            "description": "Caja de la que salió el dinero (solo CASH_REGISTER).",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "group": {
+            "$ref": "#/components/schemas/ExpenseGroup"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExpenseSource"
+          },
+          "spentOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "categoryId",
+          "categoryName",
+          "group",
+          "amount",
+          "spentOn",
+          "description",
+          "source",
+          "cashRegisterId",
+          "canDelete",
+          "createdBy",
+          "createdByName",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "ExpenseCategory": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expenseCount": {
+            "description": "Gastos registrados con esta categoría.",
+            "type": "integer"
+          },
+          "group": {
+            "$ref": "#/components/schemas/ExpenseGroup"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "group",
+          "isActive",
+          "expenseCount",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "ExpenseGroup": {
+        "description": "LODGING: costo del hospedaje (resta del resultado del hospedaje). GENERAL: gasto compartido (resta de la ganancia neta).",
+        "enum": [
+          "LODGING",
+          "GENERAL"
+        ],
+        "type": "string"
+      },
+      "ExpensePage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/Expense"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "properties": {
+              "limit": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "totalPages"
+            ],
+            "type": "object"
+          },
+          "totalAmount": {
+            "description": "Suma de todos los gastos que cumplen los filtros (no solo la página).",
+            "example": "35.50",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "meta",
+          "totalAmount"
+        ],
+        "type": "object"
+      },
+      "ExpenseSource": {
+        "description": "CASH_REGISTER: sale de la caja abierta (crea un retiro). OUTSIDE: Yape, banco o bolsillo del dueño; no toca la caja.",
+        "enum": [
+          "CASH_REGISTER",
+          "OUTSIDE"
+        ],
+        "type": "string"
+      },
+      "GuardianRelation": {
+        "enum": [
+          "PARENT",
+          "TUTOR",
+          "RESPONSIBLE"
+        ],
+        "type": "string"
       },
       "InventoryMovement": {
         "properties": {
@@ -1409,6 +2096,11 @@
                 "example": "20.00",
                 "type": "string"
               },
+              "cashStays": {
+                "description": "Cobros de estadías en efectivo; forman parte del efectivo esperado.",
+                "example": "20.00",
+                "type": "string"
+              },
               "difference": {
                 "example": "20.00",
                 "nullable": true,
@@ -1429,6 +2121,11 @@
               "yapeSales": {
                 "example": "20.00",
                 "type": "string"
+              },
+              "yapeStays": {
+                "description": "Cobros de estadías por Yape.",
+                "example": "20.00",
+                "type": "string"
               }
             },
             "required": [
@@ -1436,6 +2133,8 @@
               "yapeSales",
               "totalSales",
               "salesCount",
+              "cashStays",
+              "yapeStays",
               "cashIn",
               "cashOut",
               "difference"
@@ -1457,6 +2156,57 @@
           "closedByName",
           "closingNotes",
           "summary"
+        ],
+        "type": "object"
+      },
+      "NullableGuest": {
+        "nullable": true,
+        "properties": {
+          "birthDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "documentNumber": {
+            "type": "string"
+          },
+          "documentType": {
+            "$ref": "#/components/schemas/DocumentType"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "nationality": {
+            "type": "string"
+          },
+          "phone": {
+            "nullable": true,
+            "type": "string"
+          },
+          "residence": {
+            "type": "string"
+          },
+          "sex": {
+            "enum": [
+              "M",
+              "F"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "documentType",
+          "documentNumber",
+          "fullName",
+          "birthDate",
+          "sex",
+          "nationality",
+          "residence",
+          "phone"
         ],
         "type": "object"
       },
@@ -1542,6 +2292,11 @@
             "nullable": true,
             "type": "string"
           },
+          "categoryId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "categoryName": {
             "nullable": true,
             "type": "string"
@@ -1571,6 +2326,7 @@
           "salePrice",
           "barcode",
           "stock",
+          "categoryId",
           "categoryName",
           "hasMovements"
         ],
@@ -1708,6 +2464,13 @@
         "minItems": 1,
         "type": "array"
       },
+      "RateKind": {
+        "enum": [
+          "HOURLY",
+          "NIGHT"
+        ],
+        "type": "string"
+      },
       "RegisterUser": {
         "properties": {
           "email": {
@@ -1779,6 +2542,12 @@
                   "type": "string"
                 },
                 "revenue": {
+                  "description": "Ventas de la tienda del día.",
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "rooms": {
+                  "description": "Cobros de habitaciones del día.",
                   "example": "20.00",
                   "type": "string"
                 }
@@ -1786,18 +2555,116 @@
               "required": [
                 "date",
                 "revenue",
-                "profit"
+                "profit",
+                "rooms"
               ],
               "type": "object"
             },
             "type": "array"
           },
+          "expensesByCategory": {
+            "description": "Gastos del período por categoría, de mayor a menor. Solo categorías con gastos.",
+            "items": {
+              "properties": {
+                "amount": {
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "categoryId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "group": {
+                  "$ref": "#/components/schemas/ExpenseGroup"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "categoryId",
+                "name",
+                "group",
+                "amount"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "flows": {
+            "properties": {
+              "ownerWithdrawals": {
+                "description": "Retiros de caja en el rango. No restan ganancia. Excluye los gastos pagados con la caja (ya restan como gasto).",
+                "example": "20.00",
+                "type": "string"
+              },
+              "purchases": {
+                "description": "Mercadería comprada en el rango (a costo). No resta ganancia.",
+                "example": "20.00",
+                "type": "string"
+              }
+            },
+            "required": [
+              "purchases",
+              "ownerWithdrawals"
+            ],
+            "type": "object"
+          },
           "from": {
             "format": "date-time",
             "type": "string"
           },
+          "inventory": {
+            "description": "Foto actual del inventario: no depende del rango.",
+            "properties": {
+              "lowStockCount": {
+                "description": "Productos activos con stock en o bajo el mínimo.",
+                "type": "integer"
+              },
+              "value": {
+                "description": "Stock actual × costo promedio.",
+                "example": "20.00",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "lowStockCount"
+            ],
+            "type": "object"
+          },
+          "lodging": {
+            "description": "Resultado del hospedaje.",
+            "properties": {
+              "costs": {
+                "description": "Gastos del grupo LODGING del período.",
+                "example": "20.00",
+                "type": "string"
+              },
+              "result": {
+                "description": "revenue − costs.",
+                "example": "20.00",
+                "type": "string"
+              },
+              "revenue": {
+                "description": "Cobros de estadías del período (por fecha de pago).",
+                "example": "20.00",
+                "type": "string"
+              }
+            },
+            "required": [
+              "revenue",
+              "costs",
+              "result"
+            ],
+            "type": "object"
+          },
           "losses": {
             "properties": {
+              "cashShortage": {
+                "example": "20.00",
+                "type": "string"
+              },
               "countShortage": {
                 "example": "20.00",
                 "type": "string"
@@ -1819,11 +2686,13 @@
               "expired",
               "damaged",
               "countShortage",
-              "countSurplus"
+              "countSurplus",
+              "cashShortage"
             ],
             "type": "object"
           },
           "payments": {
+            "description": "Cobros por método: ventas de la tienda más habitaciones.",
             "properties": {
               "cash": {
                 "example": "20.00",
@@ -1837,6 +2706,156 @@
             "required": [
               "cash",
               "yape"
+            ],
+            "type": "object"
+          },
+          "previous": {
+            "description": "Período de comparación: compareFrom/compareTo o, si faltan, el mismo largo justo antes de `from`.",
+            "properties": {
+              "from": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "generalExpenses": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "grossProfit": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "lodgingResult": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "netProfit": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "revenue": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "roomsRevenue": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "salesCount": {
+                "type": "integer"
+              },
+              "storeResult": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "to": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "revenue",
+              "grossProfit",
+              "netProfit",
+              "salesCount",
+              "roomsRevenue",
+              "storeResult",
+              "lodgingResult",
+              "generalExpenses"
+            ],
+            "type": "object"
+          },
+          "products": {
+            "description": "Productos vendidos en el rango, ordenados por ventas. El cliente decide cómo ordenarlos.",
+            "items": {
+              "properties": {
+                "productId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "productName": {
+                  "type": "string"
+                },
+                "profit": {
+                  "example": "20.00",
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                },
+                "revenue": {
+                  "example": "20.00",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "productId",
+                "productName",
+                "quantity",
+                "revenue",
+                "profit"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "rooms": {
+            "properties": {
+              "occupancyPct": {
+                "description": "Horas ocupadas / (habitaciones activas × horas transcurridas del período) × 100, máximo 100.",
+                "example": "20.00",
+                "type": "string"
+              },
+              "revenue": {
+                "description": "Cobros de estadías del período (por fecha de pago).",
+                "example": "20.00",
+                "type": "string"
+              },
+              "stays": {
+                "description": "Estadías con ingreso en el período.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "revenue",
+              "stays",
+              "occupancyPct"
+            ],
+            "type": "object"
+          },
+          "store": {
+            "description": "Resultado de la tienda.",
+            "properties": {
+              "cogs": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "grossProfit": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "losses": {
+                "description": "Solo mercadería: mermas + faltantes de conteo − sobrantes (a costo).",
+                "example": "20.00",
+                "type": "string"
+              },
+              "result": {
+                "description": "grossProfit − losses.",
+                "example": "20.00",
+                "type": "string"
+              },
+              "revenue": {
+                "example": "20.00",
+                "type": "string"
+              }
+            },
+            "required": [
+              "revenue",
+              "cogs",
+              "grossProfit",
+              "losses",
+              "result"
             ],
             "type": "object"
           },
@@ -1855,21 +2874,22 @@
                 "type": "string"
               },
               "losses": {
-                "description": "Mermas y faltantes de conteo, menos sobrantes (a costo).",
+                "description": "Mermas y faltantes de conteo menos sobrantes (a costo), más faltantes de caja. Se mantiene por compatibilidad; store.losses no incluye la caja.",
                 "example": "20.00",
                 "type": "string"
               },
               "marginPct": {
-                "description": "netProfit / revenue × 100.",
+                "description": "netProfit / (revenue + rooms.revenue) × 100.",
                 "example": "20.00",
                 "type": "string"
               },
               "netProfit": {
-                "description": "grossProfit − losses.",
+                "description": "store.result + lodging.result − total.cashShortage − total.generalExpenses. Sin gastos equivale a grossProfit − losses + rooms.revenue.",
                 "example": "20.00",
                 "type": "string"
               },
               "revenue": {
+                "description": "Ventas de la tienda. No incluye habitaciones (ver rooms.revenue).",
                 "example": "20.00",
                 "type": "string"
               },
@@ -1921,71 +2941,40 @@
             },
             "type": "array"
           },
-          "topProfit": {
-            "items": {
-              "properties": {
-                "productId": {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                "productName": {
-                  "type": "string"
-                },
-                "profit": {
-                  "example": "20.00",
-                  "type": "string"
-                },
-                "quantity": {
-                  "type": "integer"
-                },
-                "revenue": {
-                  "example": "20.00",
-                  "type": "string"
-                }
+          "total": {
+            "properties": {
+              "cashShortage": {
+                "description": "Faltantes de las cajas cerradas en el período.",
+                "example": "20.00",
+                "type": "string"
               },
-              "required": [
-                "productId",
-                "productName",
-                "quantity",
-                "revenue",
-                "profit"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "topSold": {
-            "items": {
-              "properties": {
-                "productId": {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                "productName": {
-                  "type": "string"
-                },
-                "profit": {
-                  "example": "20.00",
-                  "type": "string"
-                },
-                "quantity": {
-                  "type": "integer"
-                },
-                "revenue": {
-                  "example": "20.00",
-                  "type": "string"
-                }
+              "generalExpenses": {
+                "description": "Gastos del grupo GENERAL del período.",
+                "example": "20.00",
+                "type": "string"
               },
-              "required": [
-                "productId",
-                "productName",
-                "quantity",
-                "revenue",
-                "profit"
-              ],
-              "type": "object"
+              "lodgingResult": {
+                "example": "20.00",
+                "type": "string"
+              },
+              "netProfit": {
+                "description": "storeResult + lodgingResult − cashShortage − generalExpenses (igual a summary.netProfit).",
+                "example": "20.00",
+                "type": "string"
+              },
+              "storeResult": {
+                "example": "20.00",
+                "type": "string"
+              }
             },
-            "type": "array"
+            "required": [
+              "storeResult",
+              "lodgingResult",
+              "cashShortage",
+              "generalExpenses",
+              "netProfit"
+            ],
+            "type": "object"
           }
         },
         "required": [
@@ -1993,12 +2982,172 @@
           "to",
           "summary",
           "payments",
+          "rooms",
+          "store",
+          "lodging",
+          "total",
+          "expensesByCategory",
           "cash",
           "losses",
           "daily",
-          "topSold",
-          "topProfit",
-          "topLosses"
+          "products",
+          "topLosses",
+          "previous",
+          "flows",
+          "inventory"
+        ],
+        "type": "object"
+      },
+      "Room": {
+        "properties": {
+          "activeStay": {
+            "nullable": true,
+            "properties": {
+              "balance": {
+                "example": "30.00",
+                "type": "string"
+              },
+              "checkInAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "expectedCheckOut": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "holderName": {
+                "nullable": true,
+                "type": "string"
+              },
+              "hours": {
+                "nullable": true,
+                "type": "integer"
+              },
+              "rateKind": {
+                "enum": [
+                  "HOURLY",
+                  "NIGHT"
+                ],
+                "type": "string"
+              },
+              "stayId": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "stayId",
+              "holderName",
+              "rateKind",
+              "hours",
+              "checkInAt",
+              "expectedCheckOut",
+              "balance"
+            ],
+            "type": "object"
+          },
+          "capacity": {
+            "type": "integer"
+          },
+          "floor": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "needsCleaning": {
+            "type": "boolean"
+          },
+          "number": {
+            "type": "string"
+          },
+          "roomTypeId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "roomTypeName": {
+            "type": "string"
+          },
+          "status": {
+            "description": "Calculado: OCCUPIED si hay estadía activa; si no, CLEANING si falta limpiar; si no, FREE.",
+            "enum": [
+              "FREE",
+              "OCCUPIED",
+              "CLEANING"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "floor",
+          "roomTypeId",
+          "roomTypeName",
+          "capacity",
+          "needsCleaning",
+          "isActive",
+          "status",
+          "activeStay"
+        ],
+        "type": "object"
+      },
+      "RoomType": {
+        "properties": {
+          "capacity": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "extraHourPrice": {
+            "example": "30.00",
+            "type": "string"
+          },
+          "hourPrice": {
+            "example": "30.00",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nightPrice": {
+            "example": "30.00",
+            "type": "string"
+          },
+          "roomCount": {
+            "description": "Habitaciones asignadas a este tipo.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "capacity",
+          "description",
+          "hourPrice",
+          "nightPrice",
+          "extraHourPrice",
+          "isActive",
+          "roomCount",
+          "createdAt"
         ],
         "type": "object"
       },
@@ -2065,6 +3214,621 @@
         ],
         "type": "object"
       },
+      "StayChargeKind": {
+        "enum": [
+          "RATE",
+          "EXTRA_HOURS",
+          "OTHER"
+        ],
+        "type": "string"
+      },
+      "StayDetail": {
+        "properties": {
+          "actualCheckOut": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "balance": {
+            "example": "50.00",
+            "type": "string"
+          },
+          "charges": {
+            "items": {
+              "properties": {
+                "amount": {
+                  "example": "50.00",
+                  "type": "string"
+                },
+                "createdAt": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "createdBy": {
+                  "format": "uuid",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "createdByName": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "kind": {
+                  "$ref": "#/components/schemas/StayChargeKind"
+                },
+                "suggestedAmount": {
+                  "example": "50.00",
+                  "nullable": true,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "description",
+                "suggestedAmount",
+                "amount",
+                "createdBy",
+                "createdByName",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "chargesTotal": {
+            "example": "50.00",
+            "type": "string"
+          },
+          "checkInAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "closedBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "closedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "expectedCheckOut": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "extraHourPrice": {
+            "example": "50.00",
+            "type": "string"
+          },
+          "guests": {
+            "items": {
+              "properties": {
+                "birthDate": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "documentNumber": {
+                  "type": "string"
+                },
+                "documentType": {
+                  "$ref": "#/components/schemas/DocumentType"
+                },
+                "fullName": {
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "isHolder": {
+                  "type": "boolean"
+                },
+                "nationality": {
+                  "type": "string"
+                },
+                "phone": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "residence": {
+                  "type": "string"
+                },
+                "sex": {
+                  "enum": [
+                    "M",
+                    "F"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "documentType",
+                "documentNumber",
+                "fullName",
+                "birthDate",
+                "sex",
+                "nationality",
+                "residence",
+                "phone",
+                "isHolder"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "hasForeignGuests": {
+            "description": "Algún huésped con CE, pasaporte o PTP: debe reportarse a Migraciones.",
+            "type": "boolean"
+          },
+          "hours": {
+            "description": "Horas contratadas en tarifa por horas; null en tarifa por noche.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "migrationsReportedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "minors": {
+            "items": {
+              "properties": {
+                "accreditation": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "birthDate": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "documentNumber": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "documentType": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DocumentType"
+                    },
+                    {
+                      "nullable": true
+                    }
+                  ]
+                },
+                "fullName": {
+                  "type": "string"
+                },
+                "guardianRelation": {
+                  "$ref": "#/components/schemas/GuardianRelation"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "fullName",
+                "documentType",
+                "documentNumber",
+                "birthDate",
+                "guardianRelation",
+                "accreditation"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "payments": {
+            "items": {
+              "properties": {
+                "amount": {
+                  "example": "50.00",
+                  "type": "string"
+                },
+                "cashRegisterId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "createdAt": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "createdBy": {
+                  "format": "uuid",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "createdByName": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "paymentMethod": {
+                  "enum": [
+                    "CASH",
+                    "YAPE"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "cashRegisterId",
+                "paymentMethod",
+                "amount",
+                "createdBy",
+                "createdByName",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "paymentsTotal": {
+            "example": "50.00",
+            "type": "string"
+          },
+          "rateKind": {
+            "$ref": "#/components/schemas/RateKind"
+          },
+          "roomId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "roomNumber": {
+            "type": "string"
+          },
+          "roomTypeName": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "suggestedExtra": {
+            "description": "Adicional sugerido al momento de la consulta; null si la estadía está cerrada.",
+            "nullable": true,
+            "properties": {
+              "amount": {
+                "example": "50.00",
+                "type": "string"
+              },
+              "hours": {
+                "type": "integer"
+              },
+              "overdueMinutes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "overdueMinutes",
+              "hours",
+              "amount"
+            ],
+            "type": "object"
+          },
+          "travelReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "roomId",
+          "roomNumber",
+          "roomTypeName",
+          "rateKind",
+          "hours",
+          "checkInAt",
+          "expectedCheckOut",
+          "actualCheckOut",
+          "travelReason",
+          "notes",
+          "migrationsReportedAt",
+          "hasForeignGuests",
+          "chargesTotal",
+          "paymentsTotal",
+          "balance",
+          "guests",
+          "minors",
+          "extraHourPrice",
+          "createdBy",
+          "createdByName",
+          "closedBy",
+          "closedByName",
+          "charges",
+          "payments",
+          "suggestedExtra"
+        ],
+        "type": "object"
+      },
+      "StayListItem": {
+        "properties": {
+          "actualCheckOut": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "balance": {
+            "example": "50.00",
+            "type": "string"
+          },
+          "chargesTotal": {
+            "example": "50.00",
+            "type": "string"
+          },
+          "checkInAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expectedCheckOut": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "guests": {
+            "items": {
+              "properties": {
+                "birthDate": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "documentNumber": {
+                  "type": "string"
+                },
+                "documentType": {
+                  "$ref": "#/components/schemas/DocumentType"
+                },
+                "fullName": {
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "isHolder": {
+                  "type": "boolean"
+                },
+                "nationality": {
+                  "type": "string"
+                },
+                "phone": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "residence": {
+                  "type": "string"
+                },
+                "sex": {
+                  "enum": [
+                    "M",
+                    "F"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "documentType",
+                "documentNumber",
+                "fullName",
+                "birthDate",
+                "sex",
+                "nationality",
+                "residence",
+                "phone",
+                "isHolder"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "hasForeignGuests": {
+            "description": "Algún huésped con CE, pasaporte o PTP: debe reportarse a Migraciones.",
+            "type": "boolean"
+          },
+          "hours": {
+            "description": "Horas contratadas en tarifa por horas; null en tarifa por noche.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "migrationsReportedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "minors": {
+            "items": {
+              "properties": {
+                "accreditation": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "birthDate": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "documentNumber": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "documentType": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DocumentType"
+                    },
+                    {
+                      "nullable": true
+                    }
+                  ]
+                },
+                "fullName": {
+                  "type": "string"
+                },
+                "guardianRelation": {
+                  "$ref": "#/components/schemas/GuardianRelation"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "fullName",
+                "documentType",
+                "documentNumber",
+                "birthDate",
+                "guardianRelation",
+                "accreditation"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "notes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "paymentsTotal": {
+            "example": "50.00",
+            "type": "string"
+          },
+          "rateKind": {
+            "$ref": "#/components/schemas/RateKind"
+          },
+          "roomId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "roomNumber": {
+            "type": "string"
+          },
+          "roomTypeName": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "CLOSED"
+            ],
+            "type": "string"
+          },
+          "travelReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "roomId",
+          "roomNumber",
+          "roomTypeName",
+          "rateKind",
+          "hours",
+          "checkInAt",
+          "expectedCheckOut",
+          "actualCheckOut",
+          "travelReason",
+          "notes",
+          "migrationsReportedAt",
+          "hasForeignGuests",
+          "chargesTotal",
+          "paymentsTotal",
+          "balance",
+          "guests",
+          "minors"
+        ],
+        "type": "object"
+      },
+      "StayMigrations": {
+        "additionalProperties": false,
+        "properties": {
+          "reported": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reported"
+        ],
+        "type": "object"
+      },
+      "StayPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/StayListItem"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "properties": {
+              "limit": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "totalPages"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
       "StockCount": {
         "additionalProperties": false,
         "properties": {
@@ -2103,9 +3867,28 @@
         ],
         "type": "object"
       },
+      "StoreSettings": {
+        "properties": {
+          "checkoutTime": {
+            "example": "12:00",
+            "type": "string"
+          },
+          "extraToleranceMinutes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "checkoutTime",
+          "extraToleranceMinutes"
+        ],
+        "type": "object"
+      },
       "StoreUser": {
         "additionalProperties": false,
         "properties": {
+          "active": {
+            "type": "boolean"
+          },
           "email": {
             "format": "email",
             "type": "string"
@@ -2129,7 +3912,8 @@
           "id",
           "name",
           "email",
-          "role"
+          "role",
+          "active"
         ],
         "type": "object"
       },
@@ -2188,6 +3972,24 @@
         ],
         "type": "object"
       },
+      "UpdateExpenseCategory": {
+        "additionalProperties": false,
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/ExpenseGroup"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "example": "Útiles de aseo",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UpdateProduct": {
         "properties": {
           "barcode": {
@@ -2224,6 +4026,116 @@
         "required": [
           "name",
           "salePrice"
+        ],
+        "type": "object"
+      },
+      "UpdateRoom": {
+        "additionalProperties": false,
+        "properties": {
+          "floor": {
+            "example": 2,
+            "maximum": 200,
+            "minimum": -5,
+            "nullable": true,
+            "type": "integer"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "needsCleaning": {
+            "type": "boolean"
+          },
+          "number": {
+            "example": "201",
+            "maxLength": 10,
+            "minLength": 1,
+            "type": "string"
+          },
+          "roomTypeId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateRoomType": {
+        "additionalProperties": false,
+        "properties": {
+          "capacity": {
+            "description": "Huéspedes adultos permitidos. Los menores no cuentan.",
+            "example": 2,
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "description": {
+            "example": "Cama de 2 plazas, baño compartido",
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "extraHourPrice": {
+            "example": 10,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "hourPrice": {
+            "description": "Precio de referencia por hora: la tarifa por horas sugiere horas × este precio.",
+            "example": 10,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "example": "Estándar",
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "nightPrice": {
+            "example": 50,
+            "maximum": 99999999.99,
+            "minimum": 0,
+            "multipleOf": 0.01,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateStoreSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "checkoutTime": {
+            "description": "Hora de salida de las estadías por noche (hora de Lima).",
+            "example": "12:00",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "type": "string"
+          },
+          "extraToleranceMinutes": {
+            "description": "Minutos de gracia antes de sugerir horas adicionales.",
+            "example": 15,
+            "maximum": 240,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateStoreUser": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active"
         ],
         "type": "object"
       },
@@ -2442,6 +4354,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "422": {
             "$ref": "#/components/responses/CashRegisterQueryValidation"
           },
@@ -2630,6 +4545,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/CashRegisterNotFound"
           },
@@ -2757,6 +4675,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "404": {
             "$ref": "#/components/responses/CashRegisterNotFound"
@@ -2898,6 +4819,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
@@ -2946,6 +4870,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -3010,6 +4937,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -3034,6 +4964,477 @@
         "summary": "Actualizar una categoría existente",
         "tags": [
           "Categories"
+        ]
+      }
+    },
+    "/api/expense": {
+      "get": {
+        "description": "Ordenados por día (más recientes primero). `from`/`to` se comparan con el día Lima del gasto, como la serie diaria del reporte.",
+        "parameters": [
+          {
+            "description": "Inicio del rango (inclusive), ISO con zona horaria. Se compara con el día Lima del gasto.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "description": "Inicio del rango (inclusive), ISO con zona horaria. Se compara con el día Lima del gasto.",
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fin del rango (exclusivo), ISO con zona horaria.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "description": "Fin del rango (exclusivo), ISO con zona horaria.",
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "categoryId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "LODGING: costo del hospedaje (resta del resultado del hospedaje). GENERAL: gasto compartido (resta de la ganancia neta).",
+            "in": "query",
+            "name": "group",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ExpenseGroup"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensePage"
+                }
+              }
+            },
+            "description": "Página de gastos con el total del filtro."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Listar gastos",
+        "tags": [
+          "Expenses"
+        ]
+      },
+      "post": {
+        "description": "Con source = CASH_REGISTER registra además un retiro (CASH_OUT) en la caja abierta, en la misma transacción. Sin caja abierta, con efectivo insuficiente o con la categoría desactivada responde 409.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpense"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              }
+            },
+            "description": "Gasto registrado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Registrar gasto",
+        "tags": [
+          "Expenses"
+        ]
+      }
+    },
+    "/api/expense-category": {
+      "get": {
+        "description": "Incluye las desactivadas (isActive = false); las activas primero.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ExpenseCategory"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Categorías de gasto."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Listar categorías de gasto",
+        "tags": [
+          "Expenses"
+        ]
+      },
+      "post": {
+        "description": "El nombre es único por tienda (sin distinguir mayúsculas): un duplicado responde 409.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseCategory"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseCategory"
+                }
+              }
+            },
+            "description": "Categoría creada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Crear categoría de gasto",
+        "tags": [
+          "Expenses"
+        ]
+      }
+    },
+    "/api/expense-category/{id}": {
+      "delete": {
+        "description": "Si la categoría tiene gastos registrados responde 409: hay que desactivarla.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Categoría eliminada, sin cuerpo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Eliminar categoría de gasto sin gastos",
+        "tags": [
+          "Expenses"
+        ]
+      },
+      "patch": {
+        "description": "Solo cambia los campos enviados. Cambiar el grupo reclasifica también los gastos ya registrados.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseCategory"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseCategory"
+                }
+              }
+            },
+            "description": "Categoría actualizada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Editar o desactivar categoría de gasto",
+        "tags": [
+          "Expenses"
+        ]
+      }
+    },
+    "/api/expense/{id}": {
+      "delete": {
+        "description": "Un gasto pagado con la caja solo se elimina mientras esa caja siga abierta (se borra también su retiro); si la caja ya cerró responde 409.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Gasto eliminado, sin cuerpo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Eliminar gasto",
+        "tags": [
+          "Expenses"
+        ]
+      }
+    },
+    "/api/guest": {
+      "get": {
+        "description": "Para autocompletar el check-in de un huésped que ya vino. Devuelve null si no existe.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "documentType",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/DocumentType"
+            }
+          },
+          {
+            "in": "query",
+            "name": "documentNumber",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NullableGuest"
+                }
+              }
+            },
+            "description": "Huésped o null."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Buscar huésped por documento",
+        "tags": [
+          "Stays"
         ]
       }
     },
@@ -3224,6 +5625,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -3324,6 +5728,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -3423,6 +5830,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -3542,6 +5952,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -3595,12 +6008,11 @@
             }
           },
           {
-            "description": "Filtra por nombre de categoría. Acepta uno o varios nombres separados por coma (ej. \"Bebidas\" o \"Bebidas,Snacks\"). Comparación insensible a mayúsculas/acentos. Si no se envía, retorna productos de todas las categorías.",
+            "description": "Filtra por ID de categoría. Acepta uno o varios UUID separados por coma; \"none\" incluye los productos sin categoría (ej. \"<uuid>,none\"). Si no se envía, retorna productos de todas las categorías.",
             "in": "query",
-            "name": "category",
+            "name": "categoryId",
             "required": false,
             "schema": {
-              "nullable": true,
               "type": "string"
             }
           },
@@ -3682,6 +6094,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
@@ -3825,6 +6240,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -3953,6 +6371,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -3982,7 +6403,7 @@
     },
     "/api/report/overview": {
       "get": {
-        "description": "Ventas, ganancia neta (bruta − mermas y faltantes de conteo), cobros por método, descuadres de caja, serie diaria (día Lima) y rankings de productos.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n",
+        "description": "Ventas, ganancia neta (bruta − mermas, faltantes de conteo y de caja), cobros por método, descuadres de caja, serie diaria (día Lima), productos vendidos, comparación con el período anterior, compras y retiros del rango, y una foto actual del inventario.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n",
         "parameters": [
           {
             "in": "query",
@@ -3997,6 +6418,28 @@
           {
             "in": "query",
             "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inicio del período de comparación. Sin compareFrom/compareTo se usa el mismo largo justo antes de from.",
+            "in": "query",
+            "name": "compareFrom",
+            "required": false,
+            "schema": {
+              "description": "Inicio del período de comparación. Sin compareFrom/compareTo se usa el mismo largo justo antes de from.",
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "compareTo",
             "required": false,
             "schema": {
               "format": "date-time",
@@ -4022,6 +6465,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "422": {
             "$ref": "#/components/responses/ValidationError"
           },
@@ -4040,6 +6486,900 @@
         "summary": "Resumen del periodo",
         "tags": [
           "Reports"
+        ]
+      }
+    },
+    "/api/room": {
+      "get": {
+        "description": "Todas las habitaciones (también las desactivadas) ordenadas por piso y número, con su tipo, estado calculado y la estadía activa resumida.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Room"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Habitaciones con su estado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Tablero de habitaciones",
+        "tags": [
+          "Rooms"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoom"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Room"
+                }
+              }
+            },
+            "description": "Habitación creada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Crear habitación",
+        "tags": [
+          "Rooms"
+        ]
+      }
+    },
+    "/api/room-type": {
+      "get": {
+        "description": "Incluye los desactivados (isActive = false); los activos primero.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoomType"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Tipos de habitación con sus tarifas."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Listar tipos de habitación",
+        "tags": [
+          "Rooms"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoomType"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomType"
+                }
+              }
+            },
+            "description": "Tipo creado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Crear tipo de habitación",
+        "tags": [
+          "Rooms"
+        ]
+      }
+    },
+    "/api/room-type/{id}": {
+      "delete": {
+        "description": "Si alguna habitación usa el tipo, responde 409: hay que cambiarlas de tipo o eliminarlas primero.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tipo eliminado, sin cuerpo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Eliminar tipo de habitación sin habitaciones",
+        "tags": [
+          "Rooms"
+        ]
+      },
+      "patch": {
+        "description": "Solo cambia los campos enviados. Las estadías activas conservan la tarifa de hora extra copiada al ingresar.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoomType"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomType"
+                }
+              }
+            },
+            "description": "Tipo actualizado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Editar o desactivar tipo de habitación",
+        "tags": [
+          "Rooms"
+        ]
+      }
+    },
+    "/api/room/{id}": {
+      "delete": {
+        "description": "Las estadías son el registro de huéspedes y no se borran: si la habitación tiene alguna, responde 409 y hay que desactivarla.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Habitación eliminada, sin cuerpo."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Eliminar habitación sin estadías",
+        "tags": [
+          "Rooms"
+        ]
+      },
+      "patch": {
+        "description": "Solo cambia los campos enviados. No se puede desactivar una habitación ocupada.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoom"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Room"
+                }
+              }
+            },
+            "description": "Habitación actualizada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Editar o desactivar habitación",
+        "tags": [
+          "Rooms"
+        ]
+      }
+    },
+    "/api/room/{id}/clean": {
+      "post": {
+        "description": "Disponible para el personal. Quita el estado de limpieza que deja el check-out.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Room"
+                }
+              }
+            },
+            "description": "Habitación actualizada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Marcar habitación como limpia",
+        "tags": [
+          "Rooms"
+        ]
+      }
+    },
+    "/api/stay": {
+      "get": {
+        "description": "Estadías por fecha de ingreso [from, to), con los datos legales de los huéspedes. Orden descendente por ingreso. Usa page (predeterminado 1) y limit (predeterminado 20, máximo 100).",
+        "parameters": [
+          {
+            "description": "Ingresos desde esta fecha (inclusive).",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "description": "Ingresos desde esta fecha (inclusive).",
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Ingresos antes de esta fecha (exclusivo).",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "description": "Ingresos antes de esta fecha (exclusivo).",
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "roomId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "exclusiveMinimum": true,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayPage"
+                }
+              }
+            },
+            "description": "Página de estadías."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Registro de Huéspedes",
+        "tags": [
+          "Stays"
+        ]
+      },
+      "post": {
+        "description": "En una transacción: registra o actualiza los huéspedes por documento, crea la estadía, sus menores, el cargo de la tarifa (sugerida desde el tipo de habitación y monto elegido) y el adelanto opcional en la caja abierta. La habitación debe estar libre; los huéspedes adultos no pueden superar su capacidad (los menores no cuentan).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayDetail"
+                }
+              }
+            },
+            "description": "Estadía creada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/StayConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Check-in",
+        "tags": [
+          "Stays"
+        ]
+      }
+    },
+    "/api/stay/{id}": {
+      "get": {
+        "description": "Huéspedes, menores, cargos, pagos, saldo y el adicional sugerido al momento de la consulta.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayDetail"
+                }
+              }
+            },
+            "description": "Estadía."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Detalle de estadía",
+        "tags": [
+          "Stays"
+        ]
+      }
+    },
+    "/api/stay/{id}/charge": {
+      "post": {
+        "description": "Horas adicionales u otro cargo. Solo en estadías activas.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStayCharge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayDetail"
+                }
+              }
+            },
+            "description": "Estadía actualizada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/StayConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Agregar cargo a la estadía",
+        "tags": [
+          "Stays"
+        ]
+      }
+    },
+    "/api/stay/{id}/check-out": {
+      "post": {
+        "description": "En una transacción: agrega el adicional por horas (sugerido por el servidor; extraAmount lo reemplaza y 0 lo condona), cobra el pago opcional y cierra solo si el saldo queda en 0. La habitación pasa a limpieza.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckOut"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayDetail"
+                }
+              }
+            },
+            "description": "Estadía cerrada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/StayConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Check-out",
+        "tags": [
+          "Stays"
+        ]
+      }
+    },
+    "/api/stay/{id}/migrations": {
+      "patch": {
+        "description": "reported = true guarda la fecha del reporte (se conserva la primera); false la borra.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StayMigrations"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayDetail"
+                }
+              }
+            },
+            "description": "Estadía actualizada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Marcar reporte a Migraciones",
+        "tags": [
+          "Stays"
+        ]
+      }
+    },
+    "/api/stay/{id}/payment": {
+      "post": {
+        "description": "Entra a la caja abierta (el efectivo suma al efectivo esperado). No puede superar el saldo pendiente.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStayPayment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayDetail"
+                }
+              }
+            },
+            "description": "Estadía actualizada."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/StayConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Cobrar a la estadía",
+        "tags": [
+          "Stays"
         ]
       }
     },
@@ -4064,6 +7404,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -4147,6 +7490,157 @@
         ]
       }
     },
+    "/api/store-user/{id}": {
+      "patch": {
+        "description": "Solo ADMIN y solo usuarios GUEST de la misma tienda. Un empleado desactivado no puede iniciar sesión y su token deja de servir en la siguiente petición.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStoreUser"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreUser"
+                }
+              }
+            },
+            "description": "Empleado actualizado."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/OperationConflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Activar o desactivar un empleado",
+        "tags": [
+          "StoreUsers"
+        ]
+      }
+    },
+    "/api/store/settings": {
+      "get": {
+        "description": "Hora de salida de las estadías por noche y tolerancia antes de sugerir horas adicionales.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSettings"
+                }
+              }
+            },
+            "description": "Ajustes actuales."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Consultar ajustes del hostal",
+        "tags": [
+          "Store"
+        ]
+      },
+      "patch": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStoreSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSettings"
+                }
+              }
+            },
+            "description": "Ajustes actualizados."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "summary": "Editar ajustes del hostal",
+        "tags": [
+          "Store"
+        ]
+      }
+    },
     "/api/supplier": {
       "get": {
         "responses": {
@@ -4168,6 +7662,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -4218,6 +7715,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -4263,6 +7763,9 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -4324,6 +7827,9 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -4368,6 +7874,10 @@
       "name": "Categories"
     },
     {
+      "description": "Gastos del negocio y su catálogo de categorías (solo ADMIN)",
+      "name": "Expenses"
+    },
+    {
       "description": "Registro e historial de ventas, compras, pérdidas, cargas iniciales y conteos físicos de inventario",
       "name": "InventoryMovements"
     },
@@ -4378,6 +7888,18 @@
     {
       "description": "Reportes de ventas, ganancias, pérdidas y cuadre de caja",
       "name": "Reports"
+    },
+    {
+      "description": "Tipos de habitación, habitaciones y tablero de estados del hostal",
+      "name": "Rooms"
+    },
+    {
+      "description": "Estadías del hostal: check-in, cuenta (cargos y pagos), check-out y Registro de Huéspedes. Las opera el personal.",
+      "name": "Stays"
+    },
+    {
+      "description": "Ajustes de la tienda y del hostal",
+      "name": "Store"
     },
     {
       "description": "Endpoints para gestión de usuarios y autenticación",

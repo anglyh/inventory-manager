@@ -7,6 +7,8 @@ export interface CashRegisterSummary {
   yapeSales: string;
   totalSales: string;
   salesCount: number;
+  cashStays: string;
+  yapeStays: string;
   cashIn: string;
   cashOut: string;
   expectedCash?: string;

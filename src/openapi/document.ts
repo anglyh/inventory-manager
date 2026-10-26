@@ -4,9 +4,13 @@ import './responses.js';
 import { userTag } from './paths/auth.openapi.js';
 import { cashRegisterTag } from './paths/cash-register.openapi.js';
 import { categoryTag } from './paths/category.openapi.js';
+import { expenseTag } from './paths/expense.openapi.js';
 import { inventoryMovementTag } from './paths/inventory-movement.openapi.js';
 import { productTag } from './paths/product.openapi.js';
 import { reportTag } from './paths/report.openapi.js';
+import { roomTag } from './paths/room.openapi.js';
+import { stayTag } from './paths/stay.openapi.js';
+import { storeTag } from './paths/store.openapi.js';
 import './paths/store-user.openapi.js';
 import './paths/supplier.openapi.js';
 
@@ -27,5 +31,5 @@ export const generateOpenApiDocument = () => new OpenApiGeneratorV3([...registry
     info: openApiInfo,
     servers: openApiServers,
     security: bearerAuth,
-    tags: [cashRegisterTag, categoryTag, inventoryMovementTag, productTag, reportTag, userTag],
+    tags: [cashRegisterTag, categoryTag, expenseTag, inventoryMovementTag, productTag, reportTag, roomTag, stayTag, storeTag, userTag],
   });

@@ -22,6 +22,8 @@ const summaryJson = (difference: string, view: CashRegisterView = 'full') => `js
   'yapeSales', t.yape_sales::text,
   'totalSales', t.total_sales::text,
   'salesCount', t.sales_count,
+  'cashStays', t.cash_stays::text,
+  'yapeStays', t.yape_stays::text,
   'cashIn', t.cash_in::text,
   'cashOut', t.cash_out::text,
   ${view === 'full' ? "'expectedCash', t.expected_cash::text," : ''}
@@ -90,6 +92,7 @@ export default class CashRegisterRepository implements ICashRegisterRepository {
     storeId: string,
     id: string | undefined,
     client: PoolClient,
+    missingMessage = 'Debe abrir una caja antes de registrar una venta',
   ): Promise<string> {
     const registerCondition = id ? 'id = $2' : 'closed_at IS NULL';
     const sql = `
@@ -110,7 +113,7 @@ export default class CashRegisterRepository implements ICashRegisterRepository {
         throw new NotFoundError('La caja no existe');
       }
 
-      throw new ConflictError('Debe abrir una caja antes de registrar una venta');
+      throw new ConflictError(missingMessage);
     }
     if (row.closed_at) {
       throw new ConflictError('La caja está cerrada');
@@ -235,7 +238,7 @@ export default class CashRegisterRepository implements ICashRegisterRepository {
     userId: string,
     data: CashMovementDTO,
     client: PoolClient,
-  ): Promise<void> {
+  ): Promise<string> {
     const sql = `
       INSERT INTO cash_register_movement (
         cash_register_id,
@@ -245,10 +248,12 @@ export default class CashRegisterRepository implements ICashRegisterRepository {
         created_by
       )
       VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
     `;
     const params = [id, data.type, data.amount, data.reason, userId];
 
-    await client.query(sql, params);
+    const result = await client.query<{ id: string }>(sql, params);
+    return result.rows[0]!.id;
   }
 
   async canWithdraw(

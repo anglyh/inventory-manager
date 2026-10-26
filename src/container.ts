@@ -16,6 +16,14 @@ import CashRegisterRepository from './repositories/cash-register.repository.js';
 import CashRegisterService from './services/cash-register.service.js';
 import SupplierRepository from './repositories/supplier.repository.js';
 import SupplierService from './services/supplier.service.js';
+import RoomRepository from './repositories/room.repository.js';
+import RoomService from './services/room.service.js';
+import StoreRepository from './repositories/store.repository.js';
+import StoreService from './services/store.service.js';
+import StayRepository from './repositories/stay.repository.js';
+import StayService from './services/stay.service.js';
+import ExpenseRepository from './repositories/expense.repository.js';
+import ExpenseService from './services/expense.service.js';
 
 // Instancias de repositorios
 const productRepo = new ProductRepository();
@@ -25,6 +33,10 @@ const categoryRepo = new CategoryRepository();
 const reportRepo = new ReportRepository();
 const cashRegisterRepo = new CashRegisterRepository();
 const supplierRepo = new SupplierRepository();
+const roomRepo = new RoomRepository();
+const storeRepo = new StoreRepository();
+const stayRepo = new StayRepository();
+const expenseRepo = new ExpenseRepository();
 
 // Instancias de servicios con sus dependencias inyectadas
 export const productService = new ProductService(productRepo);
@@ -39,3 +51,7 @@ export const categoryService = new CategoryService(categoryRepo);
 export const reportService = new ReportService(reportRepo);
 export const cashRegisterService = new CashRegisterService(cashRegisterRepo);
 export const supplierService = new SupplierService(supplierRepo);
+export const roomService = new RoomService(roomRepo);
+export const storeService = new StoreService(storeRepo);
+export const stayService = new StayService(stayRepo, cashRegisterRepo, storeRepo);
+export const expenseService = new ExpenseService(expenseRepo, cashRegisterRepo);

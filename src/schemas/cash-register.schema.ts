@@ -61,6 +61,8 @@ const cashSummarySchema = z.object({
   yapeSales: moneySchema,
   totalSales: moneySchema,
   salesCount: z.number().int(),
+  cashStays: moneySchema.meta({ description: 'Cobros de estadías en efectivo; forman parte del efectivo esperado.' }),
+  yapeStays: moneySchema.meta({ description: 'Cobros de estadías por Yape.' }),
   cashIn: moneySchema,
   cashOut: moneySchema,
   expectedCash: moneySchema.optional().meta({ description: 'Solo se envía a ADMIN; se omite por completo para GUEST.' }),

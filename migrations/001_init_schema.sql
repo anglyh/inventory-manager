@@ -14,6 +14,13 @@ DO $$ BEGIN CREATE TYPE movement_type AS ENUM ('IN', 'OUT'); EXCEPTION WHEN dupl
 DO $$ BEGIN CREATE TYPE movement_reason AS ENUM ('PURCHASE', 'SALE', 'LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SURPLUS', 'COUNT_SHORTAGE', 'INITIAL_LOAD'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE payment_method AS ENUM ('CASH', 'YAPE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE movement_status AS ENUM ('COMPLETED', 'VOIDED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE document_type AS ENUM ('DNI', 'CE', 'PASSPORT', 'PTP', 'OTHER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE guest_sex AS ENUM ('M', 'F'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE rate_kind AS ENUM ('HOURLY', 'NIGHT'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE guardian_relation AS ENUM ('PARENT', 'TUTOR', 'RESPONSIBLE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE stay_charge_kind AS ENUM ('RATE', 'EXTRA_HOURS', 'OTHER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE expense_group AS ENUM ('LODGING', 'GENERAL'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE expense_source AS ENUM ('CASH_REGISTER', 'OUTSIDE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ---------------------------------------------------------
 -- 2. TABLAS PRINCIPALES (Core Domain)
@@ -21,6 +28,9 @@ DO $$ BEGIN CREATE TYPE movement_status AS ENUM ('COMPLETED', 'VOIDED'); EXCEPTI
 CREATE TABLE IF NOT EXISTS store (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name varchar(50) NOT NULL,
+    -- Hora de salida de las estadías por noche (hora de Lima) y minutos de gracia antes de cobrar horas extra.
+    checkout_time time NOT NULL DEFAULT '12:00',
+    extra_tolerance_minutes integer NOT NULL DEFAULT 15 CHECK (extra_tolerance_minutes BETWEEN 0 AND 240),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -31,6 +41,8 @@ CREATE TABLE IF NOT EXISTS app_user (
     email varchar(100) NOT NULL UNIQUE,
     password varchar(255) NOT NULL,
     role user_role NOT NULL DEFAULT 'ADMIN',
+    -- Desactivado: conserva su historial pero no puede iniciar sesión ni usar su token.
+    active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -80,6 +92,59 @@ CREATE TABLE IF NOT EXISTS cash_register (
     
     CONSTRAINT chk_close_fields_together
         CHECK ((closed_at IS NULL) = (closing_amount IS NULL))
+);
+
+-- Gastos: catálogo editable. LODGING resta del resultado del hospedaje; GENERAL, de la ganancia neta.
+CREATE TABLE IF NOT EXISTS expense_category (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id uuid NOT NULL REFERENCES store(id) ON DELETE CASCADE,
+    name varchar(50) NOT NULL,
+    expense_group expense_group NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Hostal: catálogo de tipos de habitación con sus tarifas sugeridas.
+CREATE TABLE IF NOT EXISTS room_type (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id uuid NOT NULL REFERENCES store(id) ON DELETE CASCADE,
+    name varchar(50) NOT NULL,
+    capacity integer NOT NULL CHECK (capacity > 0),
+    description text,
+    hour_price numeric(10, 2) NOT NULL CHECK (hour_price >= 0),
+    night_price numeric(10, 2) NOT NULL CHECK (night_price >= 0),
+    extra_hour_price numeric(10, 2) NOT NULL CHECK (extra_hour_price >= 0),
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- "Ocupada" no se guarda: se calcula a partir de la estadía activa.
+CREATE TABLE IF NOT EXISTS room (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id uuid NOT NULL REFERENCES store(id) ON DELETE CASCADE,
+    number varchar(10) NOT NULL,
+    floor integer,
+    room_type_id uuid NOT NULL REFERENCES room_type(id) ON DELETE RESTRICT,
+    needs_cleaning boolean NOT NULL DEFAULT false,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(store_id, number)
+);
+
+-- Registro de Huéspedes (DS 001-2015-MINCETUR): un huésped por documento y tienda.
+CREATE TABLE IF NOT EXISTS guest (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id uuid NOT NULL REFERENCES store(id) ON DELETE CASCADE,
+    document_type document_type NOT NULL,
+    document_number varchar(20) NOT NULL,
+    full_name varchar(120) NOT NULL,
+    birth_date date NOT NULL,
+    sex guest_sex NOT NULL,
+    nationality varchar(60) NOT NULL,
+    residence varchar(120) NOT NULL,
+    phone varchar(20),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(store_id, document_type, document_number)
 );
 
 -- ---------------------------------------------------------
@@ -147,6 +212,103 @@ CREATE TABLE IF NOT EXISTS inventory_movement_item (
     unit_cost_before numeric(10, 2) CHECK (unit_cost_before IS NULL OR unit_cost_before >= 0)
 );
 
+-- Estadía: activa mientras actual_check_out es NULL.
+CREATE TABLE IF NOT EXISTS stay (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id uuid NOT NULL REFERENCES store(id) ON DELETE CASCADE,
+    room_id uuid NOT NULL REFERENCES room(id) ON DELETE RESTRICT,
+    rate_kind rate_kind NOT NULL,
+    -- Horas contratadas (solo tarifa por horas): salida esperada = ingreso + horas.
+    hours integer CHECK (hours > 0),
+    check_in_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    expected_check_out timestamptz NOT NULL,
+    actual_check_out timestamptz,
+    travel_reason text,
+    -- Copia de la tarifa al ingresar: cambiar el tipo después no altera el adicional.
+    extra_hour_price numeric(10, 2) NOT NULL CHECK (extra_hour_price >= 0),
+    migrations_reported_at timestamptz,
+    created_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    closed_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    notes text,
+
+    CONSTRAINT chk_stay_hours_match_rate_kind
+        CHECK ((rate_kind = 'HOURLY') = (hours IS NOT NULL)),
+    CONSTRAINT chk_stay_expected_after_check_in
+        CHECK (expected_check_out > check_in_at),
+    CONSTRAINT chk_stay_actual_after_check_in
+        CHECK (actual_check_out IS NULL OR actual_check_out >= check_in_at)
+);
+
+-- Registro legal: copia los datos del huésped al ingresar. `guest` se actualiza en cada visita
+-- (sirve para autocompletar); las estadías pasadas conservan los datos tal como se registraron.
+CREATE TABLE IF NOT EXISTS stay_guest (
+    stay_id uuid NOT NULL REFERENCES stay(id) ON DELETE CASCADE,
+    guest_id uuid NOT NULL REFERENCES guest(id) ON DELETE RESTRICT,
+    is_holder boolean NOT NULL DEFAULT false,
+    document_type document_type NOT NULL,
+    document_number varchar(20) NOT NULL,
+    full_name varchar(120) NOT NULL,
+    birth_date date NOT NULL,
+    sex guest_sex NOT NULL,
+    nationality varchar(60) NOT NULL,
+    residence varchar(120) NOT NULL,
+    phone varchar(20),
+    PRIMARY KEY (stay_id, guest_id)
+);
+
+-- Menores de edad: se registran con su relación con el adulto responsable.
+CREATE TABLE IF NOT EXISTS stay_minor (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    stay_id uuid NOT NULL REFERENCES stay(id) ON DELETE CASCADE,
+    full_name varchar(120) NOT NULL,
+    document_type document_type,
+    document_number varchar(20),
+    birth_date date NOT NULL,
+    guardian_relation guardian_relation NOT NULL,
+    accreditation text
+);
+
+-- Se guardan lo sugerido y lo cobrado: el precio final lo decide quien atiende.
+CREATE TABLE IF NOT EXISTS stay_charge (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    stay_id uuid NOT NULL REFERENCES stay(id) ON DELETE CASCADE,
+    kind stay_charge_kind NOT NULL,
+    description varchar(200) NOT NULL,
+    suggested_amount numeric(10, 2) CHECK (suggested_amount IS NULL OR suggested_amount >= 0),
+    amount numeric(10, 2) NOT NULL CHECK (amount >= 0),
+    created_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+-- Los cobros de habitaciones entran a la caja abierta, igual que las ventas.
+CREATE TABLE IF NOT EXISTS stay_payment (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    stay_id uuid NOT NULL REFERENCES stay(id) ON DELETE CASCADE,
+    cash_register_id uuid NOT NULL REFERENCES cash_register(id) ON DELETE RESTRICT,
+    payment_method payment_method NOT NULL,
+    amount numeric(10, 2) NOT NULL CHECK (amount > 0),
+    created_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+-- Gasto del negocio. Si se pagó con la caja abierta, se enlaza a la salida (CASH_OUT) que lo descuenta.
+CREATE TABLE IF NOT EXISTS expense (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id uuid NOT NULL REFERENCES store(id) ON DELETE CASCADE,
+    category_id uuid NOT NULL REFERENCES expense_category(id) ON DELETE RESTRICT,
+    amount numeric(10, 2) NOT NULL CHECK (amount > 0),
+    -- Día de Lima al que corresponde el gasto.
+    spent_on date NOT NULL,
+    description text CHECK (description IS NULL OR length(description) <= 500),
+    source expense_source NOT NULL,
+    cash_movement_id uuid UNIQUE REFERENCES cash_register_movement(id) ON DELETE RESTRICT,
+    created_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+
+    CONSTRAINT chk_expense_source_matches_movement
+        CHECK ((source = 'CASH_REGISTER') = (cash_movement_id IS NOT NULL))
+);
+
 -- ---------------------------------------------------------
 -- 5. ÍNDICES (Optimización de búsquedas y unicidad)
 -- ---------------------------------------------------------
@@ -172,6 +334,26 @@ CREATE INDEX IF NOT EXISTS idx_inventory_movement_store_id ON inventory_movement
 CREATE INDEX IF NOT EXISTS idx_inventory_movement_created_at ON inventory_movement(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_movement_item_movement_id ON inventory_movement_item(movement_id);
 CREATE INDEX IF NOT EXISTS idx_movement_item_product_id ON inventory_movement_item(product_id);
+
+-- Hostal
+CREATE UNIQUE INDEX IF NOT EXISTS room_type_store_name_unique ON room_type (store_id, lower(name));
+-- Una sola estadía activa por habitación.
+CREATE UNIQUE INDEX IF NOT EXISTS stay_one_active_per_room ON stay(room_id) WHERE actual_check_out IS NULL;
+-- Un solo titular por estadía.
+CREATE UNIQUE INDEX IF NOT EXISTS stay_guest_one_holder ON stay_guest(stay_id) WHERE is_holder;
+CREATE INDEX IF NOT EXISTS idx_room_room_type_id ON room(room_type_id);
+CREATE INDEX IF NOT EXISTS idx_stay_store_check_in ON stay(store_id, check_in_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_stay_guest_guest_id ON stay_guest(guest_id);
+CREATE INDEX IF NOT EXISTS idx_stay_minor_stay_id ON stay_minor(stay_id);
+CREATE INDEX IF NOT EXISTS idx_stay_charge_stay_id ON stay_charge(stay_id);
+CREATE INDEX IF NOT EXISTS idx_stay_payment_stay_id ON stay_payment(stay_id);
+CREATE INDEX IF NOT EXISTS idx_stay_payment_cash_register_id ON stay_payment(cash_register_id);
+CREATE INDEX IF NOT EXISTS idx_stay_payment_created_at ON stay_payment(created_at DESC);
+
+-- Gastos
+CREATE UNIQUE INDEX IF NOT EXISTS expense_category_store_name_unique ON expense_category (store_id, lower(name));
+CREATE INDEX IF NOT EXISTS idx_expense_store_spent_on ON expense(store_id, spent_on DESC);
+CREATE INDEX IF NOT EXISTS idx_expense_category_id ON expense(category_id);
 
 -- ---------------------------------------------------------
 -- 6. FUNCIONES Y TRIGGERS (Reglas de negocio estrictas)
@@ -268,7 +450,9 @@ SELECT
     s.sales_count,
     cm.cash_in,
     cm.cash_out,
-    cr.opening_amount + s.cash_sales + cm.cash_in - cm.cash_out AS expected_cash
+    cr.opening_amount + s.cash_sales + sp.cash_stays + cm.cash_in - cm.cash_out AS expected_cash,
+    sp.cash_stays,
+    sp.yape_stays
 FROM cash_register cr
 CROSS JOIN LATERAL (
     SELECT
@@ -295,7 +479,35 @@ CROSS JOIN LATERAL (
         COALESCE(SUM(amount) FILTER (WHERE type = 'CASH_OUT'), 0.00) AS cash_out
     FROM cash_register_movement
     WHERE cash_register_id = cr.id
-) cm;
+) cm
+-- Cobros de estadías: el efectivo entra al cuadre de la caja igual que una venta.
+CROSS JOIN LATERAL (
+    SELECT
+        COALESCE(SUM(amount) FILTER (WHERE payment_method = 'CASH'), 0.00) AS cash_stays,
+        COALESCE(SUM(amount) FILTER (WHERE payment_method = 'YAPE'), 0.00) AS yape_stays
+    FROM stay_payment
+    WHERE cash_register_id = cr.id
+) sp;
+
+-- Vista: cuenta de cada estadía (cargos, pagos y saldo pendiente).
+CREATE OR REPLACE VIEW vw_stay_balance AS
+SELECT
+    st.id AS stay_id,
+    st.store_id,
+    c.charges_total,
+    p.payments_total,
+    c.charges_total - p.payments_total AS balance
+FROM stay st
+CROSS JOIN LATERAL (
+    SELECT COALESCE(SUM(amount), 0.00) AS charges_total
+    FROM stay_charge
+    WHERE stay_id = st.id
+) c
+CROSS JOIN LATERAL (
+    SELECT COALESCE(SUM(amount), 0.00) AS payments_total
+    FROM stay_payment
+    WHERE stay_id = st.id
+) p;
 
 -- Vista: efectivo esperado de la caja abierta y arqueo guardado al cerrar.
 CREATE OR REPLACE VIEW vw_cash_register_summary AS

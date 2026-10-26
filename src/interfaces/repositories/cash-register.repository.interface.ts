@@ -16,7 +16,8 @@ export interface ICashRegisterRepository {
     client: PoolClient,
   ): Promise<string>;
 
-  lockOpen(storeId: string, id: string | undefined, client: PoolClient): Promise<string>;
+  /** missingMessage: conflict message when the store has no open register (defaults to the sale message). */
+  lockOpen(storeId: string, id: string | undefined, client: PoolClient, missingMessage?: string): Promise<string>;
 
   findCurrent(storeId: string, view?: CashRegisterView): Promise<CashRegister | null>;
 
@@ -34,12 +35,13 @@ export interface ICashRegisterRepository {
     query: CashMovementHistoryDTO,
   ): Promise<{ data: CashRegisterMovement[]; total: number }>;
 
+  /** Returns the id of the inserted movement. */
   addMovement(
     id: string,
     userId: string,
     data: CashMovementDTO,
     client: PoolClient,
-  ): Promise<void>;
+  ): Promise<string>;
 
   canWithdraw(id: string, amount: number, client: PoolClient): Promise<boolean>;
 

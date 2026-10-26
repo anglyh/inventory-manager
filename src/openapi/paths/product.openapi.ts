@@ -12,7 +12,7 @@ import {
 } from '../../schemas/product.schema.js';
 import { jsonBody, jsonResponse } from '../content.js';
 import { bearerAuth, registry } from '../registry.js';
-import { errorRef, standardErrors } from '../responses.js';
+import { errorRef, standardErrors, adminOnly } from '../responses.js';
 
 const basePath = '/api/product';
 
@@ -51,6 +51,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { body: jsonBody(createProductSchema) },
   responses: {
+    ...adminOnly,
     201: jsonResponse('Producto creado.', productResponseSchema),
     ...commonErrors,
     409: errorRef('Conflict'),
@@ -105,6 +106,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { params: idParams('ID UUID del producto a actualizar'), body: jsonBody(updateProductSchema) },
   responses: {
+    ...adminOnly,
     200: jsonResponse('Producto actualizado.', productResponseSchema),
     ...commonErrors,
     404: errorRef('NotFound'),
@@ -121,6 +123,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { params: idParams('ID UUID del producto a eliminar') },
   responses: {
+    ...adminOnly,
     204: { description: 'Producto desactivado. Sin cuerpo de respuesta.' },
     ...commonErrors,
     404: errorRef('NotFound'),

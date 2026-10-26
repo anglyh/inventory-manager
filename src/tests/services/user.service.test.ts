@@ -21,6 +21,7 @@ const storedUser: User = {
   email: 'juan@example.com',
   password: 'hashed-password',
   role: 'ADMIN',
+  active: true,
   createdAt: new Date('2026-01-01T00:00:00Z'),
 };
 
@@ -32,7 +33,7 @@ const expectedUser = {
 };
 
 const repository = {
-  listStoreUsers: vi.fn(), createStoreUser: vi.fn(),
+  listStoreUsers: vi.fn(), createStoreUser: vi.fn(), setStoreUserActive: vi.fn(),
   create: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(),
 } as unknown as IUserRepository;
 const service = new UserService(repository);

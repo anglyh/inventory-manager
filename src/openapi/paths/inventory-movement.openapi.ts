@@ -12,7 +12,7 @@ import {
 } from '../../schemas/inventory-movement.schema.js';
 import { bearerAuth, registry } from '../registry.js';
 import { jsonBody, jsonResponse } from '../content.js';
-import { errorRef, standardErrors } from '../responses.js';
+import { errorRef, standardErrors, adminOnly } from '../responses.js';
 
 const basePath = '/api/inventory-movement';
 
@@ -46,6 +46,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { body: jsonBody(purchaseSchema) },
   responses: {
+    ...adminOnly,
     204: { description: 'Compra registrada. Sin cuerpo de respuesta; consultar el historial para obtener el detalle.' },
     ...standardErrors('InventoryEntryConflict'),
   },
@@ -74,6 +75,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { body: jsonBody(initialLoadSchema) },
   responses: {
+    ...adminOnly,
     204: { description: 'Carga inicial registrada. Sin cuerpo de respuesta.' },
     ...standardErrors('InventoryEntryConflict'),
   },
@@ -88,6 +90,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { body: jsonBody(stockCountSchema) },
   responses: {
+    ...adminOnly,
     204: { description: 'Conteo aplicado, sin cuerpo. Actualizar productos e historial.' },
     ...standardErrors('OperationConflict'),
   },
@@ -102,6 +105,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { params: inventoryMovementIdSchema, body: jsonBody(voidMovementSchema) },
   responses: {
+    ...adminOnly,
     204: { description: 'Movimiento anulado, sin cuerpo. Actualizar inventario, reportes y caja si corresponde.' },
     ...standardErrors('OperationConflict'),
   },

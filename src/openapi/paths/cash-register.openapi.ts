@@ -14,7 +14,7 @@ import {
 } from '../../schemas/cash-register.schema.js';
 import { jsonBody, jsonResponse } from '../content.js';
 import { registry } from '../registry.js';
-import { errorRef } from '../responses.js';
+import { errorRef, adminOnly } from '../responses.js';
 
 const basePath = '/api/cash-register';
 
@@ -81,6 +81,7 @@ registry.registerPath({
   tags,
   request: { query: cashRegisterHistorySchema },
   responses: {
+    ...adminOnly,
     200: jsonResponse('Página de cajas de la tienda.', cashRegisterPageSchema),
     ...commonErrors,
     422: errorRef('CashRegisterQueryValidation'),
@@ -95,6 +96,7 @@ registry.registerPath({
   tags,
   request: { params: cashRegisterIdSchema },
   responses: {
+    ...adminOnly,
     200: jsonResponse('Datos y resumen de la caja.', cashRegisterSchema),
     ...commonErrors,
     404: errorRef('CashRegisterNotFound'),
@@ -110,6 +112,7 @@ registry.registerPath({
   tags,
   request: { params: cashRegisterIdSchema, query: cashMovementHistorySchema },
   responses: {
+    ...adminOnly,
     200: jsonResponse('Página de movimientos manuales de efectivo.', cashMovementPageSchema),
     ...commonErrors,
     404: errorRef('CashRegisterNotFound'),

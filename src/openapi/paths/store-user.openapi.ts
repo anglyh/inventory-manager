@@ -1,7 +1,7 @@
-import { createStoreUserSchema, storeUserSchema } from '../../schemas/user.schema.js';
+import { createStoreUserSchema, storeUserIdSchema, storeUserSchema, updateStoreUserSchema } from '../../schemas/user.schema.js';
 import { jsonBody, jsonResponse } from '../content.js';
 import { registry } from '../registry.js';
-import { apiErrorSchema, standardErrors } from '../responses.js';
+import { adminOnly, apiErrorSchema, standardErrors } from '../responses.js';
 
 const basePath = '/api/store-user';
 const tags = ['StoreUsers'];
@@ -16,6 +16,7 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Usuarios de esta tienda, sin contraseñas.', storeUserSchema.array()),
     ...errors,
+    ...adminOnly,
   },
 });
 
@@ -30,5 +31,19 @@ registry.registerPath({
     201: jsonResponse('Trabajador creado.', storeUserSchema),
     ...errors,
     403: jsonResponse('Solo administradores.', apiErrorSchema),
+  },
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: `${basePath}/{id}`,
+  summary: 'Activar o desactivar un empleado',
+  description: 'Solo ADMIN y solo usuarios GUEST de la misma tienda. Un empleado desactivado no puede iniciar sesión y su token deja de servir en la siguiente petición.',
+  tags,
+  request: { params: storeUserIdSchema, body: jsonBody(updateStoreUserSchema) },
+  responses: {
+    200: jsonResponse('Empleado actualizado.', storeUserSchema),
+    ...errors,
+    ...adminOnly,
   },
 });

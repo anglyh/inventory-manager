@@ -14,6 +14,12 @@ export default class UserController {
     } catch (err) { next(err); }
   }
 
+  static async setStoreUserActive(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await userService.setStoreUserActive(req.user!.storeId, req.params.id as string, req.body.active));
+    } catch (err) { next(err); }
+  }
+
   static async signUp(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await userService.register(req.body);

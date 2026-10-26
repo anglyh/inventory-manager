@@ -13,6 +13,12 @@ export const createUserSchema = z.object({
 /** Body for adding a worker to the current store; unknown fields are rejected. */
 export const createStoreUserSchema = createUserSchema.strict().meta({ id: 'CreateStoreUser' });
 
+export const storeUserIdSchema = z.object({ id: z.uuid('ID inválido') });
+
+export const updateStoreUserSchema = z.object({
+  active: z.boolean('Indica si el empleado está activo'),
+}).strict().meta({ id: 'UpdateStoreUser' });
+
 export const loginSchema = z.object({
   email: z.email('Email inválido').meta({ example: 'juan@example.com' }),
   password: z.string('Contraseña requerida').min(1, 'Contraseña requerida').meta({ example: 'Secret1234567' }),
@@ -46,6 +52,7 @@ export const storeUserSchema = z.object({
   name: z.string(),
   email: z.email(),
   role: z.enum(['ADMIN', 'GUEST']),
+  active: z.boolean(),
 }).strict().meta({ id: 'StoreUser' });
 
 /** User of the current session, shared by login, register and check-status. */

@@ -84,17 +84,15 @@ describe('Cash register authenticated read views', () => {
     expect(sql).toContain("cr.closing_summary - 'expectedCash'");
   });
 
-  it('keeps difference visible but removes expectedCash from a closed blind-view JSON response', async () => {
+  it('rejects GUEST from register history before running queries', async () => {
     role = 'GUEST';
-    vi.mocked(query).mockResolvedValueOnce({
-      rows: [{ ...registerRow({ difference: '-5.00' }), status: 'CLOSED', closed_at: '2026-10-05T12:00:00.000Z', closing_amount: '115.00' }],
-    } as never);
-    const response = await fetch(`${baseUrl}/00000000-0000-4000-8000-000000000001`);
-    expect(response.status).toBe(200);
-    const json = await response.json() as { summary: Record<string, unknown> };
-    expect(json.summary).toEqual({ difference: '-5.00' });
-    expect(json.summary).not.toHaveProperty('expectedCash');
-    expect(vi.mocked(query).mock.calls[0]?.[0]).toContain("cr.closing_summary - 'expectedCash'");
+    const responses = await Promise.all([
+      fetch(baseUrl),
+      fetch(`${baseUrl}/00000000-0000-4000-8000-000000000001`),
+      fetch(`${baseUrl}/00000000-0000-4000-8000-000000000001/movements`),
+    ]);
+    expect(responses.map(response => response.status)).toEqual([403, 403, 403]);
+    expect(vi.mocked(query)).not.toHaveBeenCalled();
   });
 
   it('returns movement page metadata and creator name without total_count', async () => {

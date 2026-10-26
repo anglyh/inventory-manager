@@ -7,7 +7,7 @@ import {
 } from '../../schemas/category.schema.js';
 import { jsonBody, jsonResponse } from '../content.js';
 import { bearerAuth, registry } from '../registry.js';
-import { errorRef } from '../responses.js';
+import { errorRef, adminOnly } from '../responses.js';
 
 const basePath = '/api/category';
 
@@ -39,6 +39,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { body: jsonBody(createCategorySchema) },
   responses: {
+    ...adminOnly,
     201: jsonResponse('Categoría creada.', categoryResponseSchema),
     ...commonErrors,
     409: errorRef('Conflict'),
@@ -66,6 +67,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { params: idParams('ID UUID de la categoría a actualizar'), body: jsonBody(updateCategorySchema) },
   responses: {
+    ...adminOnly,
     200: jsonResponse('Categoría actualizada.', categoryResponseSchema),
     ...commonErrors,
     404: errorRef('NotFound'),
@@ -83,6 +85,7 @@ registry.registerPath({
   security: bearerAuth,
   request: { params: idParams('ID UUID de la categoría a eliminar') },
   responses: {
+    ...adminOnly,
     204: { description: 'Categoría eliminada. Sin cuerpo de respuesta.' },
     ...commonErrors,
     404: errorRef('NotFound'),

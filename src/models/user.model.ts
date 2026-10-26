@@ -7,7 +7,8 @@ export interface User {
   email: string;
   password: string;
   role: UserRole;
+  active: boolean;
   createdAt: Date;
 }
 
-export type StoreUser = Pick<User, 'id' | 'name' | 'email' | 'role'>;
+export type StoreUser = Pick<User, 'id' | 'name' | 'email' | 'role' | 'active'>;

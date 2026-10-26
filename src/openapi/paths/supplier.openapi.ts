@@ -1,7 +1,7 @@
 import { supplierIdSchema, supplierResponseSchema, supplierSchema } from '../../schemas/supplier.schema.js';
 import { jsonBody, jsonResponse } from '../content.js';
 import { registry } from '../registry.js';
-import { standardErrors } from '../responses.js';
+import { standardErrors, adminOnly } from '../responses.js';
 
 const basePath = '/api/supplier';
 const tags = ['Suppliers'];
@@ -16,6 +16,7 @@ registry.registerPath({
   responses: {
     200: jsonResponse('Proveedores disponibles para compras.', supplierResponseSchema.array()),
     ...errors,
+    ...adminOnly,
   },
 });
 
@@ -26,6 +27,7 @@ registry.registerPath({
   tags,
   request: { body: jsonBody(supplierSchema) },
   responses: {
+    ...adminOnly,
     201: jsonResponse('Proveedor creado.', supplierResponseSchema),
     ...errors,
   },
@@ -38,6 +40,7 @@ registry.registerPath({
   tags,
   request: { params: supplierIdSchema, body: jsonBody(supplierSchema) },
   responses: {
+    ...adminOnly,
     200: jsonResponse('Proveedor actualizado.', supplierResponseSchema),
     ...errors,
   },
@@ -51,6 +54,7 @@ registry.registerPath({
   tags,
   request: { params: supplierIdSchema },
   responses: {
+    ...adminOnly,
     204: { description: 'Proveedor eliminado, sin cuerpo.' },
     ...errors,
   },

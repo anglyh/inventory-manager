@@ -97,6 +97,19 @@ const errorResponses = {
       },
     } },
   },
+  StayConflict: {
+    description: 'Habitación no disponible, estadía cerrada, sin caja abierta para cobrar, pago mayor al saldo o check-out con saldo pendiente.',
+    content: { 'application/json': {
+      schema: apiErrorRef,
+      examples: {
+        occupied: { summary: 'Habitación ocupada', value: { success: false, error: { code: 'CONFLICT', message: 'La habitación 201 está ocupada' } } },
+        noOpenRegister: { summary: 'Se requiere abrir caja para cobrar', value: { success: false, error: { code: 'CONFLICT', message: 'Debe abrir una caja antes de cobrar una estadía' } } },
+        overpayment: { summary: 'Pago mayor al saldo', value: { success: false, error: { code: 'CONFLICT', message: 'El pago supera el saldo pendiente (S/ 20.00)' } } },
+        pendingBalance: { summary: 'Check-out con saldo', value: { success: false, error: { code: 'CONFLICT', message: 'No se puede hacer el check-out con saldo pendiente (S/ 20.00)' } } },
+        closed: { summary: 'Estadía cerrada', value: { success: false, error: { code: 'CONFLICT', message: 'La estadía ya está cerrada' } } },
+      },
+    } },
+  },
   InventoryEntryConflict: movementConflictResponse(false),
   InventoryExitConflict: movementConflictResponse(true),
   DatabaseUnavailable: errorResponse('Base de datos no disponible.', { code: 'DB_ERROR', message: 'Base de datos no disponible' }),
@@ -107,6 +120,10 @@ const errorResponses = {
   Unauthorized: errorResponse(
     'Credenciales incorrectas o usuario no autorizado.',
     { code: 'UNAUTHORIZED', message: 'No autorizado' },
+  ),
+  Forbidden: errorResponse(
+    'El rol del usuario no tiene permiso para esta operación.',
+    { code: 'FORBIDDEN', message: 'Acceso denegado. Se requiere ser Administrador' },
   ),
   NotFound: errorResponse(
     'Recurso no encontrado.',
@@ -137,6 +154,9 @@ for (const [name, response] of Object.entries(errorResponses)) {
 
 /** Reference to a shared error response; the name is checked at compile time. */
 export const errorRef = (name: ErrorResponseName) => ({ $ref: `#/components/responses/${name}` });
+
+/** Operaciones exclusivas de ADMIN: GUEST recibe 403. */
+export const adminOnly = { 403: errorRef('Forbidden') };
 
 /** Error responses documented by every write-style operation; only the 409 response varies. */
 export const standardErrors = (conflict: ErrorResponseName = 'OperationConflict') => ({

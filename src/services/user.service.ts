@@ -5,7 +5,7 @@ import type {
   AuthResponse,
   SessionUser
 } from '../schemas/user.schema.js';
-import { ConflictError, UnauthorizedError } from '../errors/app.error.js';
+import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/app.error.js';
 import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 import JWT, { type TokenPayload } from '../lib/jwt.js';
 import type { IUserService } from '../interfaces/services/user.service.interface.js';
@@ -23,6 +23,13 @@ export default class UserService implements IUserService {
     if (await this.userRepo.findByEmail(data.email)) throw new ConflictError('El email ya está registrado');
     const password = await hash(data.password, UserService.COST);
     return this.userRepo.createStoreUser(storeId, data.name, data.email, password);
+  }
+
+  async setStoreUserActive(storeId: string, id: string, active: boolean) {
+    const user = await this.userRepo.setStoreUserActive(storeId, id, active);
+    // Same answer for another store's user or an admin: nothing is revealed about them.
+    if (!user) throw new NotFoundError('Empleado no encontrado');
+    return user;
   }
 
   async register(input: CreateUserInput): Promise<AuthResponse> {
@@ -54,6 +61,8 @@ export default class UserService implements IUserService {
 
     const validPassword = await compare(input.password, user.password);
     if (!validPassword) throw new UnauthorizedError("Correo electrónico o contraseña incorrectos");
+    // Checked after the password so the account status is only revealed to its owner.
+    if (!user.active) throw new UnauthorizedError("Tu usuario está desactivado. Consulta con el administrador.");
 
     const token = JWT.signAccessToken({
       userId: user.id,

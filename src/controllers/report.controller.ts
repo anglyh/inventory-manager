@@ -5,8 +5,8 @@ import { reportOverviewQuerySchema } from '../schemas/report.schema.js';
 export default class ReportController {
   static async getOverview(req: Request, res: Response, next: NextFunction) {
     try {
-      const { from, to } = reportOverviewQuerySchema.parse(req.query);
-      const result = await reportService.getOverview(req.user!.storeId, { from, to });
+      const params = reportOverviewQuerySchema.parse(req.query);
+      const result = await reportService.getOverview(req.user!.storeId, params);
       res.status(200).json(result);
     } catch (err) {
       next(err);

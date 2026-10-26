@@ -16,14 +16,28 @@ export interface ReportTotalsRow {
   damaged: string;
   countShortage: string;
   countSurplus: string;
+  cashShortage: string;
+  /** Cobros en efectivo / Yape: ventas de la tienda más habitaciones. */
+  cashPayments: string;
+  yapePayments: string;
+  roomsRevenue: string;
+  /** Mermas de mercadería sin el faltante de caja (losses sí lo incluye, por compatibilidad). */
+  storeLosses: string;
+  storeResult: string;
+  lodgingCosts: string;
+  lodgingResult: string;
+  generalExpenses: string;
+  staysCount: number;
+  occupancyPct: string;
 }
 
 export type CashDifferencesRow = ReportOverview['cash'];
 export type DailySalesRow = ReportOverview['daily'][number];
-export type ProductRankingRow = ReportOverview['topSold'][number];
+export type ProductRankingRow = ReportOverview['products'][number];
 export type ProductLossRow = ReportOverview['topLosses'][number];
-
-export type ProductRankingOrder = 'quantity' | 'profit';
+export type FlowsRow = ReportOverview['flows'];
+export type ExpenseByCategoryRow = ReportOverview['expensesByCategory'][number];
+export type InventorySnapshotRow = ReportOverview['inventory'];
 
 /** Filtros comunes: rango de fechas ya resuelto por el service. */
 export interface ReportDateRange {
@@ -39,9 +53,13 @@ export interface IReportRepository {
 
   getDailySales(filters: ReportDateRange): Promise<DailySalesRow[]>;
 
-  getProductRanking(
-    filters: ReportDateRange & { orderBy: ProductRankingOrder; limit: number }
-  ): Promise<ProductRankingRow[]>;
+  getProducts(filters: ReportDateRange & { limit: number }): Promise<ProductRankingRow[]>;
 
   getTopLosses(filters: ReportDateRange & { limit: number }): Promise<ProductLossRow[]>;
+
+  getExpensesByCategory(filters: ReportDateRange): Promise<ExpenseByCategoryRow[]>;
+
+  getFlows(filters: ReportDateRange): Promise<FlowsRow>;
+
+  getInventorySnapshot(storeId: string): Promise<InventorySnapshotRow>;
 }

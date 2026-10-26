@@ -3,9 +3,11 @@ import { VIEWS } from '../db/tables.js';
 import type {
   CashDifferencesRow,
   DailySalesRow,
+  ExpenseByCategoryRow,
+  FlowsRow,
   IReportRepository,
+  InventorySnapshotRow,
   ProductLossRow,
-  ProductRankingOrder,
   ProductRankingRow,
   ReportDateRange,
   ReportTotalsRow,
@@ -17,11 +19,15 @@ const BUSINESS_TIME_ZONE = 'America/Lima';
 
 const LOSS_REASONS = `('LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SHORTAGE', 'COUNT_SURPLUS')`;
 
-/** Columnas de orden permitidas (evita interpolar input del cliente). */
-const RANKING_ORDER: Record<ProductRankingOrder, string> = {
-  quantity: 'SUM(quantity)',
-  profit: 'SUM(profit)',
-};
+/**
+ * Los gastos se guardan por día de Lima: el rango [$2, $3) se convierte a días de Lima,
+ * igual que la serie diaria.
+ */
+const EXPENSE_IN_RANGE = `
+  e.store_id = $1
+  AND e.spent_on >= ($2::timestamptz AT TIME ZONE '${BUSINESS_TIME_ZONE}')::date
+  AND e.spent_on <= (($3::timestamptz - interval '1 millisecond') AT TIME ZONE '${BUSINESS_TIME_ZONE}')::date
+`;
 
 export default class ReportRepository implements IReportRepository {
   async getTotals(filters: ReportDateRange): Promise<ReportTotalsRow> {
@@ -54,21 +60,98 @@ export default class ReportRepository implements IReportRepository {
           AND m.created_at >= $2
           AND m.created_at <  $3
       ),
+      -- Dinero que faltó al cerrar caja: es una pérdida real, igual que la mercadería.
+      register AS (
+        SELECT
+          COALESCE(SUM(-(closing_summary->>'difference')::numeric)
+            FILTER (WHERE (closing_summary->>'difference')::numeric < 0), 0)       AS cash_shortage
+        FROM cash_register
+        WHERE store_id = $1
+          AND closed_at >= $2
+          AND closed_at <  $3
+      ),
+      -- Cobros de habitaciones del período (por fecha de pago). No tienen costo de mercadería.
+      rooms AS (
+        SELECT
+          COALESCE(SUM(p.amount), 0)                                                AS rooms_revenue,
+          COALESCE(SUM(p.amount) FILTER (WHERE p.payment_method = 'CASH'), 0)      AS cash_rooms,
+          COALESCE(SUM(p.amount) FILTER (WHERE p.payment_method = 'YAPE'), 0)      AS yape_rooms
+        FROM stay_payment p
+        JOIN stay st ON st.id = p.stay_id
+        WHERE st.store_id = $1
+          AND p.created_at >= $2
+          AND p.created_at <  $3
+      ),
+      -- Gastos: LODGING es costo del hospedaje; GENERAL resta de la ganancia neta.
+      expenses AS (
+        SELECT
+          COALESCE(SUM(e.amount) FILTER (WHERE c.expense_group = 'LODGING'), 0)     AS lodging_costs,
+          COALESCE(SUM(e.amount) FILTER (WHERE c.expense_group = 'GENERAL'), 0)     AS general_expenses
+        FROM expense e
+        JOIN expense_category c ON c.id = e.category_id
+        WHERE ${EXPENSE_IN_RANGE}
+      ),
+      stays AS (
+        SELECT COUNT(*)::int                                                        AS stays_count
+        FROM stay
+        WHERE store_id = $1
+          AND check_in_at >= $2
+          AND check_in_at <  $3
+      ),
+      -- Ocupación: horas ocupadas dentro del período sobre (habitaciones activas × horas transcurridas).
+      occupancy AS (
+        SELECT
+          COALESCE(SUM(EXTRACT(EPOCH FROM
+            LEAST(COALESCE(st.actual_check_out, now()), $3::timestamptz, now())
+            - GREATEST(st.check_in_at, $2::timestamptz)
+          )), 0)                                                                    AS occupied_seconds,
+          GREATEST(EXTRACT(EPOCH FROM LEAST($3::timestamptz, now()) - $2::timestamptz), 0)
+            * (SELECT COUNT(*) FROM room WHERE store_id = $1 AND is_active)         AS available_seconds
+        FROM stay st
+        WHERE st.store_id = $1
+          AND st.check_in_at < LEAST($3::timestamptz, now())
+          AND COALESCE(st.actual_check_out, now()) > $2
+      ),
       totals AS (
         SELECT
           sales.*,
           loss.*,
+          register.*,
+          rooms.*,
+          expenses.*,
+          stays.*,
+          occupancy.*,
           sales.revenue - sales.cogs                                                AS gross_profit,
-          loss.expired + loss.damaged + loss.count_shortage - loss.count_surplus   AS losses
-        FROM sales CROSS JOIN loss
+          -- Solo mercadería: mermas y faltantes de conteo menos sobrantes.
+          loss.expired + loss.damaged + loss.count_shortage - loss.count_surplus   AS store_losses,
+          -- Compatibilidad: losses sigue sumando el faltante de caja, como antes.
+          loss.expired + loss.damaged + loss.count_shortage - loss.count_surplus
+            + register.cash_shortage                                               AS losses
+        FROM sales CROSS JOIN loss CROSS JOIN register
+          CROSS JOIN rooms CROSS JOIN expenses CROSS JOIN stays CROSS JOIN occupancy
+      ),
+      results AS (
+        SELECT
+          totals.*,
+          gross_profit - store_losses                                               AS store_result,
+          rooms_revenue - lodging_costs                                             AS lodging_result,
+          -- Sin gastos es igual a la fórmula anterior: grossProfit − losses + habitaciones.
+          gross_profit - store_losses + rooms_revenue - lodging_costs
+            - cash_shortage - general_expenses                                      AS net
+        FROM totals
       )
       SELECT
         ROUND(revenue, 2)::text                                                     AS revenue,
         ROUND(cogs, 2)::text                                                        AS cogs,
         ROUND(gross_profit, 2)::text                                                AS gross_profit,
         ROUND(losses, 2)::text                                                      AS losses,
-        ROUND(gross_profit - losses, 2)::text                                       AS net_profit,
-        ROUND(COALESCE((gross_profit - losses) / NULLIF(revenue, 0) * 100, 0), 2)::text AS margin_pct,
+        ROUND(net, 2)::text                                                         AS net_profit,
+        ROUND(COALESCE(net / NULLIF(revenue + rooms_revenue, 0) * 100, 0), 2)::text AS margin_pct,
+        ROUND(store_losses, 2)::text                                                AS store_losses,
+        ROUND(store_result, 2)::text                                                AS store_result,
+        ROUND(lodging_costs, 2)::text                                               AS lodging_costs,
+        ROUND(lodging_result, 2)::text                                              AS lodging_result,
+        ROUND(general_expenses, 2)::text                                            AS general_expenses,
         sales_count,
         ROUND(COALESCE(revenue / NULLIF(sales_count, 0), 0), 2)::text               AS avg_ticket,
         ROUND(cash_sales, 2)::text                                                  AS cash_sales,
@@ -76,8 +159,14 @@ export default class ReportRepository implements IReportRepository {
         ROUND(expired, 2)::text                                                     AS expired,
         ROUND(damaged, 2)::text                                                     AS damaged,
         ROUND(count_shortage, 2)::text                                              AS count_shortage,
-        ROUND(count_surplus, 2)::text                                               AS count_surplus
-      FROM totals
+        ROUND(count_surplus, 2)::text                                               AS count_surplus,
+        ROUND(cash_shortage, 2)::text                                               AS cash_shortage,
+        ROUND(cash_sales + cash_rooms, 2)::text                                     AS cash_payments,
+        ROUND(yape_sales + yape_rooms, 2)::text                                     AS yape_payments,
+        ROUND(rooms_revenue, 2)::text                                               AS rooms_revenue,
+        stays_count,
+        ROUND(LEAST(COALESCE(occupied_seconds / NULLIF(available_seconds, 0) * 100, 0), 100), 2)::text AS occupancy_pct
+      FROM results
     `;
     const result = await query(text, [storeId, from, to]);
     return snakeToCamel(result.rows[0]);
@@ -103,7 +192,7 @@ export default class ReportRepository implements IReportRepository {
     return snakeToCamel(result.rows[0]);
   }
 
-  /** Un registro por día del rango (también los días sin ventas). */
+  /** Un registro por día del rango (también los días sin ventas); rooms son los cobros de habitaciones del día. */
   async getDailySales(filters: ReportDateRange): Promise<DailySalesRow[]> {
     const { storeId, from, to } = filters;
     const text = `
@@ -113,28 +202,46 @@ export default class ReportRepository implements IReportRepository {
           (($3::timestamptz - interval '1 millisecond') AT TIME ZONE '${BUSINESS_TIME_ZONE}')::date,
           interval '1 day'
         )::date AS day
+      ),
+      sales AS (
+        SELECT
+          (s.created_at AT TIME ZONE '${BUSINESS_TIME_ZONE}')::date AS day,
+          SUM(s.revenue)                                  AS revenue,
+          SUM(s.profit)                                   AS profit
+        FROM ${VIEWS.SALES_PROFIT} s
+        WHERE s.store_id = $1
+          AND s.created_at >= $2
+          AND s.created_at <  $3
+        GROUP BY 1
+      ),
+      rooms AS (
+        SELECT
+          (p.created_at AT TIME ZONE '${BUSINESS_TIME_ZONE}')::date AS day,
+          SUM(p.amount)                                   AS rooms
+        FROM stay_payment p
+        JOIN stay st ON st.id = p.stay_id
+        WHERE st.store_id = $1
+          AND p.created_at >= $2
+          AND p.created_at <  $3
+        GROUP BY 1
       )
       SELECT
         to_char(d.day, 'YYYY-MM-DD')                    AS date,
-        ROUND(COALESCE(SUM(s.revenue), 0), 2)::text     AS revenue,
-        ROUND(COALESCE(SUM(s.profit), 0), 2)::text      AS profit
+        ROUND(COALESCE(s.revenue, 0), 2)::text          AS revenue,
+        ROUND(COALESCE(s.profit, 0), 2)::text           AS profit,
+        ROUND(COALESCE(r.rooms, 0), 2)::text            AS rooms
       FROM days d
-      LEFT JOIN ${VIEWS.SALES_PROFIT} s
-        ON s.store_id = $1
-       AND s.created_at >= $2
-       AND s.created_at <  $3
-       AND (s.created_at AT TIME ZONE '${BUSINESS_TIME_ZONE}')::date = d.day
-      GROUP BY d.day
+      LEFT JOIN sales s ON s.day = d.day
+      LEFT JOIN rooms r ON r.day = d.day
       ORDER BY d.day
     `;
     const result = await query(text, [storeId, from, to]);
     return snakeToCamel(result.rows);
   }
 
-  async getProductRanking(
-    filters: ReportDateRange & { orderBy: ProductRankingOrder; limit: number }
-  ): Promise<ProductRankingRow[]> {
-    const { storeId, from, to, orderBy, limit } = filters;
+  /** Todos los productos vendidos en el rango (con tope de seguridad): el cliente los ordena. */
+  async getProducts(filters: ReportDateRange & { limit: number }): Promise<ProductRankingRow[]> {
+    const { storeId, from, to, limit } = filters;
     const text = `
       SELECT
         product_id,
@@ -147,7 +254,7 @@ export default class ReportRepository implements IReportRepository {
         AND created_at >= $2
         AND created_at <  $3
       GROUP BY product_id
-      ORDER BY ${RANKING_ORDER[orderBy]} DESC, MAX(product_name)
+      ORDER BY SUM(revenue) DESC, MAX(product_name)
       LIMIT $4
     `;
     const result = await query(text, [storeId, from, to, limit]);
@@ -181,5 +288,68 @@ export default class ReportRepository implements IReportRepository {
     `;
     const result = await query(text, [storeId, from, to, limit]);
     return snakeToCamel(result.rows);
+  }
+
+  /** Gastos del rango por categoría, de mayor a menor. */
+  async getExpensesByCategory(filters: ReportDateRange): Promise<ExpenseByCategoryRow[]> {
+    const { storeId, from, to } = filters;
+    const text = `
+      SELECT
+        c.id                                AS category_id,
+        c.name,
+        c.expense_group                     AS "group",
+        ROUND(SUM(e.amount), 2)::text       AS amount
+      FROM expense e
+      JOIN expense_category c ON c.id = e.category_id
+      WHERE ${EXPENSE_IN_RANGE}
+      GROUP BY c.id, c.name, c.expense_group
+      ORDER BY SUM(e.amount) DESC, c.name
+    `;
+    const result = await query(text, [storeId, from, to]);
+    return snakeToCamel(result.rows);
+  }
+
+  /** Salidas de dinero que no son gasto: reposición de mercadería y retiros del dueño. */
+  async getFlows(filters: ReportDateRange): Promise<FlowsRow> {
+    const { storeId, from, to } = filters;
+    const text = `
+      SELECT
+        (
+          SELECT ROUND(COALESCE(SUM(mi.unit_cost * mi.quantity), 0), 2)::text
+          FROM inventory_movement m
+          JOIN inventory_movement_item mi ON mi.movement_id = m.id
+          WHERE m.store_id = $1
+            AND m.reason = 'PURCHASE'
+            AND m.status = 'COMPLETED'
+            AND m.created_at >= $2
+            AND m.created_at <  $3
+        ) AS purchases,
+        (
+          SELECT ROUND(COALESCE(SUM(cm.amount), 0), 2)::text
+          FROM cash_register_movement cm
+          JOIN cash_register cr ON cr.id = cm.cash_register_id
+          WHERE cr.store_id = $1
+            AND cm.type = 'CASH_OUT'
+            -- Los gastos pagados con la caja ya restan como gasto: no se cuentan como retiro.
+            AND NOT EXISTS (SELECT 1 FROM expense e WHERE e.cash_movement_id = cm.id)
+            AND cm.created_at >= $2
+            AND cm.created_at <  $3
+        ) AS owner_withdrawals
+    `;
+    const result = await query(text, [storeId, from, to]);
+    return snakeToCamel(result.rows[0]);
+  }
+
+  /** Foto actual: no depende del rango consultado. */
+  async getInventorySnapshot(storeId: string): Promise<InventorySnapshotRow> {
+    const text = `
+      SELECT
+        ROUND(COALESCE(SUM(GREATEST(stock, 0) * COALESCE(unit_cost_avg, 0)), 0), 2)::text AS value,
+        COUNT(*) FILTER (WHERE is_active AND stock <= min_stock)::int                    AS low_stock_count
+      FROM ${VIEWS.PRODUCT_WITH_STOCK}
+      WHERE store_id = $1
+    `;
+    const result = await query(text, [storeId]);
+    return snakeToCamel(result.rows[0]);
   }
 }

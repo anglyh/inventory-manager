@@ -1,7 +1,7 @@
 import { reportOverviewQuerySchema, reportOverviewSchema } from '../../schemas/report.schema.js';
 import { jsonResponse } from '../content.js';
 import { bearerAuth, registry } from '../registry.js';
-import { errorRef } from '../responses.js';
+import { errorRef, adminOnly } from '../responses.js';
 
 const basePath = '/api/report';
 
@@ -25,11 +25,12 @@ registry.registerPath({
   method: 'get',
   path: `${basePath}/overview`,
   summary: 'Resumen del periodo',
-  description: 'Ventas, ganancia neta (bruta − mermas y faltantes de conteo), cobros por método, descuadres de caja, serie diaria (día Lima) y rankings de productos.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n',
+  description: 'Ventas, ganancia neta (bruta − mermas, faltantes de conteo y de caja), cobros por método, descuadres de caja, serie diaria (día Lima), productos vendidos, comparación con el período anterior, compras y retiros del rango, y una foto actual del inventario.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n',
   tags,
   security: bearerAuth,
   request: { query: reportOverviewQuerySchema },
   responses: {
+    ...adminOnly,
     200: jsonResponse('Resumen y rango efectivo del periodo.', reportOverviewSchema),
     ...errors,
   },

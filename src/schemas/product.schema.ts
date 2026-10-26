@@ -37,23 +37,30 @@ export const productIdParamSchema = z.object({
 // Documents a query parameter without changing its validation.
 const paramDoc = (description: string) => ({ param: { description } });
 
+// Filter value that asks for products without a category.
+const NO_CATEGORY = 'none';
+
 export const listProductPaginationSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1)
     .meta(paramDoc('Número de página para la paginación')),
   searchTerm: z.coerce.string().optional()
     .meta(paramDoc('Término opcional para buscar productos por nombre')),
-  category: z.coerce
+  categoryId: z.coerce
     .string()
     .optional()
-    .transform((value) => {
-      if (!value) return undefined;
-      const parts = value
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      return parts.length ? parts : undefined;
+    .transform((value, ctx) => {
+      const parts = (value ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!parts.length) return undefined;
+      if (parts.some((part) => part !== NO_CATEGORY && !z.uuid().safeParse(part).success)) {
+        ctx.addIssue({ code: 'custom', message: 'ID de categoría inválido' });
+        return z.NEVER;
+      }
+      return {
+        categoryIds: parts.filter((part) => part !== NO_CATEGORY),
+        withoutCategory: parts.includes(NO_CATEGORY),
+      };
     })
-    .meta(paramDoc('Filtra por nombre de categoría. Acepta uno o varios nombres separados por coma (ej. "Bebidas" o "Bebidas,Snacks"). Comparación insensible a mayúsculas/acentos. Si no se envía, retorna productos de todas las categorías.')),
+    .meta(paramDoc('Filtra por ID de categoría. Acepta uno o varios UUID separados por coma; "none" incluye los productos sin categoría (ej. "<uuid>,none"). Si no se envía, retorna productos de todas las categorías.')),
   limit: z.coerce.number().int().positive().max(100).optional().default(12)
     .meta(paramDoc('Cantidad de productos a devolver por página')),
 })
@@ -108,6 +115,7 @@ export const productOptionSchema = z.object({
   ...productSearchFields,
   barcode: z.string().nullable(),
   stock: z.number().int(),
+  categoryId: z.uuid().nullable(),
   categoryName: z.string().nullable(),
   hasMovements: z.boolean()
     .meta({ description: 'true si el producto ya tiene movimientos (incluso anulados); no admite carga inicial.' }),

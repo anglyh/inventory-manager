@@ -5,7 +5,8 @@ import type { CreateProductDTO, UpdateProductDTO } from '../../schemas/product.s
 export type ListProductQuery = {
   storeId: string;
   search?: string | undefined;
-  categoryNames?: string[] | undefined;
+  categoryIds?: string[] | undefined;
+  withoutCategory?: boolean | undefined;
   limit: number;
   offset: number
 }
@@ -15,7 +16,7 @@ export interface IProductRepository {
   findForStore(storeId: string, productId: string, client?: PoolClient): Promise<ProductWithStock | null>;
   categoryBelongsToStore(storeId: string, categoryId: string, client: PoolClient): Promise<boolean>;
   listAll(filters: ListProductQuery): Promise<ProductListItem[]>;
-  count(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryNames'>): Promise<number>;
+  count(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryIds' | 'withoutCategory'>): Promise<number>;
   create(storeId: string, productData: CreateProductDTO, client: PoolClient): Promise<Product>;
   update(storeId: string, id: string, productData: UpdateProductDTO, client: PoolClient): Promise<Product>;
   deactivate(storeId: string, id: string): Promise<void>;

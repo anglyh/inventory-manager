@@ -23,6 +23,7 @@ export type ProductListItem = Omit<ProductWithStock, 'storeId'> & {
 
 export type ProductSearchItem = Pick<Product, 'id' | 'name' | 'salePrice'>;
 export type ProductOption = ProductSearchItem & Pick<ProductWithStock, 'barcode' | 'stock'> & {
+  categoryId: string | null;
   categoryName: string | null;
   hasMovements: boolean;
 };

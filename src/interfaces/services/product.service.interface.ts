@@ -4,7 +4,8 @@ import type { CreateProductDTO, UpdateProductDTO } from '../../schemas/product.s
 export type ListProductFilters = {
   storeId: string;
   search?: string | undefined;
-  categoryNames?: string[] | undefined;
+  categoryIds?: string[] | undefined;
+  withoutCategory?: boolean | undefined;
   page: number;
   limit: number;
 }

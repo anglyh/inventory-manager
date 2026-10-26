@@ -152,6 +152,7 @@ export default class ProductRepository implements IProductRepository {
       p.sale_price,
       p.barcode,
       p.stock,
+      p.category_id,
       c.name AS category_name,
       -- Mismo criterio que la carga inicial: incluye movimientos anulados.
       EXISTS (
@@ -181,7 +182,7 @@ export default class ProductRepository implements IProductRepository {
     return snakeToCamel(result.rows)
   }
 
-  async count(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryNames'>): Promise<number> {
+  async count(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryIds' | 'withoutCategory'>): Promise<number> {
     const { conditions, params } = this.buildWhereClause(filters)
     const whereClause = conditions.length
       ? `WHERE ${conditions.join(' AND ')} AND p.is_active = true`
@@ -198,8 +199,8 @@ export default class ProductRepository implements IProductRepository {
     return parseInt(result.rows[0].count, 10)
   }
 
-  private buildWhereClause(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryNames'>) {
-    const { storeId, search, categoryNames } = filters;
+  private buildWhereClause(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryIds' | 'withoutCategory'>) {
+    const { storeId, search, categoryIds, withoutCategory } = filters;
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -211,14 +212,14 @@ export default class ProductRepository implements IProductRepository {
       conditions.push(`p.name ILIKE $${params.length}`)
     }
 
-    if (categoryNames?.length) {
-      const orParts: string[] = [];
-      for (const name of categoryNames) {
-        params.push(name);
-        orParts.push(`lower(unaccent(c.name)) = lower(unaccent($${params.length}))`);
-      }
-      conditions.push(`(${orParts.join(' OR ')})`);
+    // Categorías elegidas y/o productos sin categoría: basta con cumplir una.
+    const categoryParts: string[] = [];
+    if (categoryIds?.length) {
+      params.push(categoryIds);
+      categoryParts.push(`p.category_id = ANY($${params.length}::uuid[])`);
     }
+    if (withoutCategory) categoryParts.push('p.category_id IS NULL');
+    if (categoryParts.length) conditions.push(`(${categoryParts.join(' OR ')})`);
 
     return { conditions, params }
   }

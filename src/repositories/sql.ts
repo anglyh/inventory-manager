@@ -20,3 +20,17 @@ export function buildSet(
   }
   return { set: parts.join(', '), params };
 }
+
+/** Documentos de extranjeros: su estadía se reporta a Migraciones. */
+export const FOREIGN_DOCUMENTS = `('CE', 'PASSPORT', 'PTP')`;
+
+/** La estadía `stay` (alias SQL) tiene al menos un huésped extranjero, según la copia del ingreso. */
+export const hasForeignGuest = (stay = 'st') => `EXISTS (
+    SELECT 1
+    FROM stay_guest AS sg
+    WHERE sg.stay_id = ${stay}.id AND sg.document_type IN ${FOREIGN_DOCUMENTS}
+  )`;
+
+/** Estadía con extranjeros que todavía no se reportó a Migraciones. */
+export const pendingMigrations = (stay = 'st') =>
+  `${stay}.migrations_reported_at IS NULL AND ${hasForeignGuest(stay)}`;

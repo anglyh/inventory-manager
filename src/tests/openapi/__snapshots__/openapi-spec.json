@@ -2787,6 +2787,19 @@
             ],
             "type": "object"
           },
+          "migrations": {
+            "description": "Foto actual de lo pendiente con Migraciones: no depende del rango.",
+            "properties": {
+              "pendingCount": {
+                "description": "Estadías (abiertas o cerradas, de cualquier fecha) con al menos un huésped extranjero que aún no se reportaron a Migraciones.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "pendingCount"
+            ],
+            "type": "object"
+          },
           "payments": {
             "description": "Cobros por método: ventas de la tienda más habitaciones.",
             "properties": {
@@ -3090,7 +3103,8 @@
           "topLosses",
           "previous",
           "flows",
-          "inventory"
+          "inventory",
+          "migrations"
         ],
         "type": "object"
       },
@@ -7126,6 +7140,19 @@
             "required": false,
             "schema": {
               "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "pending: solo estadías con huéspedes extranjeros que aún no se reportaron a Migraciones.",
+            "in": "query",
+            "name": "migrations",
+            "required": false,
+            "schema": {
+              "description": "pending: solo estadías con huéspedes extranjeros que aún no se reportaron a Migraciones.",
+              "enum": [
+                "pending"
+              ],
               "type": "string"
             }
           },

@@ -129,6 +129,11 @@ export const reportOverviewSchema = z.object({
     lowStockCount: z.number().int().meta({ description: 'Productos activos con stock en o bajo el mínimo.' }),
     lowStockProducts: z.array(lowStockProductSchema).meta({ description: 'Hasta 5 de esos productos, los más urgentes primero (menor stock − mínimo).' }),
   }).meta({ description: 'Foto actual del inventario: no depende del rango.' }),
+  migrations: z.object({
+    pendingCount: z.number().int().meta({
+      description: 'Estadías (abiertas o cerradas, de cualquier fecha) con al menos un huésped extranjero que aún no se reportaron a Migraciones.',
+    }),
+  }).meta({ description: 'Foto actual de lo pendiente con Migraciones: no depende del rango.' }),
 }).meta({ id: 'ReportOverview' });
 
 export type ReportOverview = z.infer<typeof reportOverviewSchema>;

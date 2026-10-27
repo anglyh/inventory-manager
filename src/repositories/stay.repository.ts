@@ -19,10 +19,7 @@ import type {
   StayPaymentDTO,
 } from '../schemas/stay.schema.js';
 import { snakeToCamel } from '../utils/mapper.js';
-import { isoTimestamp } from './sql.js';
-
-/** Documentos de extranjeros: su estadía se reporta a Migraciones. */
-const FOREIGN_DOCUMENTS = `('CE', 'PASSPORT', 'PTP')`;
+import { hasForeignGuest, isoTimestamp, pendingMigrations } from './sql.js';
 
 /** Datos legales del huésped; en `stay_guest` (copia al ingresar) el id es `guest_id`. */
 const guestJson = (alias: string, idColumn = 'id') => `
@@ -51,11 +48,7 @@ const baseColumns = `
   st.travel_reason,
   st.notes,
   ${isoTimestamp('st.migrations_reported_at')} AS migrations_reported_at,
-  EXISTS (
-    SELECT 1
-    FROM stay_guest AS sg
-    WHERE sg.stay_id = st.id AND sg.document_type IN ${FOREIGN_DOCUMENTS}
-  ) AS has_foreign_guests,
+  ${hasForeignGuest('st')} AS has_foreign_guests,
   b.charges_total::text AS charges_total,
   b.payments_total::text AS payments_total,
   b.balance::text AS balance,
@@ -322,7 +315,10 @@ export default class StayRepository implements IStayRepository {
     }
     if (filters.roomId) {
       params.push(filters.roomId);
-      conditions.push(`st.room_id = $${params.length}`);
+      conditions.push(`st.room_id = ${params.length}`);
+    }
+    if (filters.migrations === 'pending') {
+      conditions.push(pendingMigrations('st'));
     }
     const whereClause = conditions.join('\n        AND ');
     const countParams = [...params];

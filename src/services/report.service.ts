@@ -26,7 +26,9 @@ export default class ReportService implements IReportService {
     const range = { storeId, ...this.resolveRange(params) };
     const previousRange = { storeId, ...this.resolveCompareRange(range, params) };
 
-    const [totals, previous, cash, daily, products, topLosses, flows, inventory, expensesByCategory] = await Promise.all([
+    const [
+      totals, previous, cash, daily, products, topLosses, flows, inventory, expensesByCategory, pendingMigrations,
+    ] = await Promise.all([
       this.reportRepo.getTotals(range),
       this.reportRepo.getTotals(previousRange),
       this.reportRepo.getCashDifferences(range),
@@ -36,6 +38,7 @@ export default class ReportService implements IReportService {
       this.reportRepo.getFlows(range),
       this.reportRepo.getInventorySnapshot(storeId),
       this.reportRepo.getExpensesByCategory(range),
+      this.reportRepo.getPendingMigrationsCount(storeId),
     ]);
 
     return {
@@ -94,6 +97,7 @@ export default class ReportService implements IReportService {
       },
       flows,
       inventory,
+      migrations: { pendingCount: pendingMigrations },
     };
   }
 

@@ -1,5 +1,6 @@
 import { query } from '../db/index.js';
 import { VIEWS } from '../db/tables.js';
+import { pendingMigrations } from './sql.js';
 import type {
   CashDifferencesRow,
   DailySalesRow,
@@ -361,5 +362,17 @@ export default class ReportRepository implements IReportRepository {
       query(lowStockText, [storeId]),
     ]);
     return { ...snakeToCamel(totals.rows[0]), lowStockProducts: snakeToCamel(lowStock.rows) };
+  }
+
+  /** Foto actual, abiertas o cerradas: no depende del rango consultado. */
+  async getPendingMigrationsCount(storeId: string): Promise<number> {
+    const text = `
+      SELECT COUNT(*)::int AS pending_count
+      FROM stay AS st
+      WHERE st.store_id = $1
+        AND ${pendingMigrations('st')}
+    `;
+    const result = await query(text, [storeId]);
+    return Number(result.rows[0]?.pending_count ?? 0);
   }
 }

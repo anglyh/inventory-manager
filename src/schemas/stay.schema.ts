@@ -106,6 +106,9 @@ export const stayListQuerySchema = z.object({
   from: z.coerce.date().optional().meta({ description: 'Ingresos desde esta fecha (inclusive).' }),
   to: z.coerce.date().optional().meta({ description: 'Ingresos antes de esta fecha (exclusivo).' }),
   roomId: z.uuid('ID de habitación inválido').optional(),
+  migrations: z.enum(['pending']).optional().meta({
+    description: 'pending: solo estadías con huéspedes extranjeros que aún no se reportaron a Migraciones.',
+  }),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 }).strict();

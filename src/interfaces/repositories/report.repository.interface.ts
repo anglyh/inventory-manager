@@ -62,4 +62,7 @@ export interface IReportRepository {
   getFlows(filters: ReportDateRange): Promise<FlowsRow>;
 
   getInventorySnapshot(storeId: string): Promise<InventorySnapshotRow>;
+
+  /** Foto actual: estadías con extranjeros sin reportar a Migraciones, de cualquier fecha. */
+  getPendingMigrationsCount(storeId: string): Promise<number>;
 }

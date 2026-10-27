@@ -24,6 +24,7 @@ describe('Cash register authenticated read views', () => {
 
   beforeAll(async () => {
     const app = express();
+    app.use(express.json());
     app.use((req, _res, next) => {
       req.user = { userId: 'user-1', storeId: 'store-1', name: 'Ana', email: 'ana@example.com', role };
       next();
@@ -150,6 +151,21 @@ describe('Cash register authenticated read views', () => {
     const response = await fetch(`${baseUrl}/00000000-0000-4000-8000-000000000001/movements?limit=101`);
     expect(response.status).toBe(422);
     expect(await response.json()).toMatchObject({ success: false, error: { code: 'VALIDATION_ERROR' } });
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('answers an invalid body with plain Spanish messages', async () => {
+    const response = await fetch(`${baseUrl}/00000000-0000-4000-8000-000000000001/movements`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'CASH_IN', amount: 0, reason: 'cambio', extra: true }),
+    });
+    expect(response.status).toBe(422);
+    const { error } = await response.json() as { error: { fields: { field: string; message: string }[] } };
+    expect(error.fields).toEqual([
+      { field: 'amount', message: 'Debe ser mayor que 0' },
+      { field: '_root', message: 'Se enviaron datos que no se esperaban' },
+    ]);
     expect(query).not.toHaveBeenCalled();
   });
 });

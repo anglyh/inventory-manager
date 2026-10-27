@@ -3,6 +3,8 @@ import { AppError, ValidationError } from '../errors/app.error.js';
 import { ZodError } from 'zod';
 import type { ApiErrorResponse } from '../types/api.types.js';
 import PG from 'pg';
+// Every validation error this handler returns is worded by Zod in plain Spanish (applied once on import).
+import '../lib/zod-locale.js';
 
 export function errorHandler(
   err: unknown,

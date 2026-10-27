@@ -349,7 +349,17 @@ export default class ReportRepository implements IReportRepository {
       FROM ${VIEWS.PRODUCT_WITH_STOCK}
       WHERE store_id = $1
     `;
-    const result = await query(text, [storeId]);
-    return snakeToCamel(result.rows[0]);
+    const lowStockText = `
+      SELECT id AS product_id, name AS product_name, stock::int, min_stock
+      FROM ${VIEWS.PRODUCT_WITH_STOCK}
+      WHERE store_id = $1 AND is_active AND stock <= min_stock
+      ORDER BY stock - min_stock, name
+      LIMIT 5
+    `;
+    const [totals, lowStock] = await Promise.all([
+      query(text, [storeId]),
+      query(lowStockText, [storeId]),
+    ]);
+    return { ...snakeToCamel(totals.rows[0]), lowStockProducts: snakeToCamel(lowStock.rows) };
   }
 }

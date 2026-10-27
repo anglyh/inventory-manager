@@ -24,6 +24,13 @@ const productRankingSchema = z.object({
   profit: moneySchema,
 });
 
+const lowStockProductSchema = z.object({
+  productId: z.uuid(),
+  productName: z.string(),
+  stock: z.number().int(),
+  minStock: z.number().int(),
+});
+
 const productLossSchema = z.object({
   productId: z.uuid(),
   productName: z.string(),
@@ -120,6 +127,7 @@ export const reportOverviewSchema = z.object({
   inventory: z.object({
     value: moneySchema.meta({ description: 'Stock actual × costo promedio.' }),
     lowStockCount: z.number().int().meta({ description: 'Productos activos con stock en o bajo el mínimo.' }),
+    lowStockProducts: z.array(lowStockProductSchema).meta({ description: 'Hasta 5 de esos productos, los más urgentes primero (menor stock − mínimo).' }),
   }).meta({ description: 'Foto actual del inventario: no depende del rango.' }),
 }).meta({ id: 'ReportOverview' });
 

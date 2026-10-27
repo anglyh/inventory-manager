@@ -63,6 +63,8 @@ export const listProductPaginationSchema = z.object({
     .meta(paramDoc('Filtra por ID de categoría. Acepta uno o varios UUID separados por coma; "none" incluye los productos sin categoría (ej. "<uuid>,none"). Si no se envía, retorna productos de todas las categorías.')),
   limit: z.coerce.number().int().positive().max(100).optional().default(12)
     .meta(paramDoc('Cantidad de productos a devolver por página')),
+  stock: z.enum(['low']).optional()
+    .meta(paramDoc('"low": solo productos con stock en o bajo el mínimo (por reponer), los más urgentes primero.')),
 })
 
 export type ListProductPagination = z.infer<typeof listProductPaginationSchema>

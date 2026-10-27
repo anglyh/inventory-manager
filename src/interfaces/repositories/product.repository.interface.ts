@@ -7,9 +7,13 @@ export type ListProductQuery = {
   search?: string | undefined;
   categoryIds?: string[] | undefined;
   withoutCategory?: boolean | undefined;
+  /** Solo productos con stock en o bajo el mínimo. */
+  lowStock?: boolean | undefined;
   limit: number;
   offset: number
 }
+
+export type ProductCountQuery = Omit<ListProductQuery, 'limit' | 'offset'>;
 
 export interface IProductRepository {
   findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null>;
@@ -17,7 +21,7 @@ export interface IProductRepository {
   findByBarcode(storeId: string, barcode: string): Promise<Pick<Product, 'id' | 'name'> | null>;
   categoryBelongsToStore(storeId: string, categoryId: string, client: PoolClient): Promise<boolean>;
   listAll(filters: ListProductQuery): Promise<ProductListItem[]>;
-  count(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryIds' | 'withoutCategory'>): Promise<number>;
+  count(filters: ProductCountQuery): Promise<number>;
   create(storeId: string, productData: CreateProductDTO, client: PoolClient): Promise<Product>;
   update(storeId: string, id: string, productData: UpdateProductDTO, client: PoolClient): Promise<Product>;
   deactivate(storeId: string, id: string): Promise<void>;

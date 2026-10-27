@@ -5,7 +5,7 @@ import type { Product, ProductWithStock, ProductListItem, ProductSearchItem, Pro
 import type { CreateProductDTO, UpdateProductDTO } from '../schemas/product.schema.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { NotFoundError } from '../errors/app.error.js';
-import type { IProductRepository, ListProductQuery } from '../interfaces/repositories/product.repository.interface.js';
+import type { IProductRepository, ListProductQuery, ProductCountQuery } from '../interfaces/repositories/product.repository.interface.js';
 
 export default class ProductRepository implements IProductRepository {
   async findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null> {
@@ -68,7 +68,7 @@ export default class ProductRepository implements IProductRepository {
       FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
       LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
       ${whereClause}
-      ORDER BY p.name ASC
+      ORDER BY ${rest.lowStock ? 'p.stock - p.min_stock ASC, ' : ''}p.name ASC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
 
@@ -191,7 +191,7 @@ export default class ProductRepository implements IProductRepository {
     return snakeToCamel(result.rows)
   }
 
-  async count(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryIds' | 'withoutCategory'>): Promise<number> {
+  async count(filters: ProductCountQuery): Promise<number> {
     const { conditions, params } = this.buildWhereClause(filters)
     const whereClause = conditions.length
       ? `WHERE ${conditions.join(' AND ')} AND p.is_active = true`
@@ -208,8 +208,8 @@ export default class ProductRepository implements IProductRepository {
     return parseInt(result.rows[0].count, 10)
   }
 
-  private buildWhereClause(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryIds' | 'withoutCategory'>) {
-    const { storeId, search, categoryIds, withoutCategory } = filters;
+  private buildWhereClause(filters: ProductCountQuery) {
+    const { storeId, search, categoryIds, withoutCategory, lowStock } = filters;
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -229,6 +229,9 @@ export default class ProductRepository implements IProductRepository {
     }
     if (withoutCategory) categoryParts.push('p.category_id IS NULL');
     if (categoryParts.length) conditions.push(`(${categoryParts.join(' OR ')})`);
+
+    // Por reponer: la misma regla que el aviso del reporte (activos, stock en o bajo el mínimo).
+    if (lowStock) conditions.push('p.stock <= p.min_stock');
 
     return { conditions, params }
   }

@@ -22,4 +22,15 @@ describe('Product list category filter', () => {
     expect(sql).toContain('(p.category_id = ANY($2::uuid[]) OR p.category_id IS NULL)');
     expect(vi.mocked(query).mock.calls[0]?.[1]).toEqual(['s1', [categoryId], 12, 0]);
   });
+
+  it('lists only products at or below their minimum stock when stock=low', async () => {
+    const { stock } = listProductPaginationSchema.parse({ stock: 'low' });
+    vi.mocked(query).mockResolvedValueOnce({ rows: [] } as never).mockResolvedValueOnce({ rows: [{ count: '0' }] } as never);
+    await repo.listAll({ storeId: 's1', lowStock: stock === 'low', limit: 12, offset: 0 });
+    await repo.count({ storeId: 's1', lowStock: stock === 'low' });
+
+    for (const [sql] of vi.mocked(query).mock.calls) {
+      expect(sql).toContain('p.stock <= p.min_stock');
+    }
+  });
 });

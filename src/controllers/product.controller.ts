@@ -15,12 +15,13 @@ export default class ProductController {
 
   static async listAllProducts(req: Request, res: Response, next: NextFunction) {
     try {
-      const { limit, page, categoryId, searchTerm } = listProductPaginationSchema.parse(req.query)
+      const { limit, page, categoryId, searchTerm, stock } = listProductPaginationSchema.parse(req.query)
 
       const result = await productService.listAll({
         storeId: req.user!.storeId,
         ...categoryId,
         search: searchTerm,
+        lowStock: stock === 'low',
         page,
         limit,
       })

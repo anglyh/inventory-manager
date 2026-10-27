@@ -6140,6 +6140,18 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "\"low\": solo productos con stock en o bajo el mínimo (por reponer), los más urgentes primero.",
+            "in": "query",
+            "name": "stock",
+            "required": false,
+            "schema": {
+              "enum": [
+                "low"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {

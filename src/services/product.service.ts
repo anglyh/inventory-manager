@@ -25,13 +25,13 @@ export default class ProductService implements IProductService {
   }
 
   async listAll(filters: ListProductFilters): Promise<PaginatedResult<ProductListItem>> {
-    const { storeId, categoryIds, withoutCategory, search, limit, page } = filters
+    const { storeId, categoryIds, withoutCategory, lowStock, search, limit, page } = filters
 
     const offset = (page - 1) * limit;
 
     const [products, totalProducts] = await Promise.all([
-      this.productRepo.listAll({ storeId, categoryIds, withoutCategory, search, limit, offset }),
-      this.productRepo.count({ storeId, categoryIds, withoutCategory, search })
+      this.productRepo.listAll({ storeId, categoryIds, withoutCategory, lowStock, search, limit, offset }),
+      this.productRepo.count({ storeId, categoryIds, withoutCategory, lowStock, search })
     ])
 
     const totalPages = Math.ceil(totalProducts / limit)

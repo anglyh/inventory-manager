@@ -6,6 +6,8 @@ export type ListProductFilters = {
   search?: string | undefined;
   categoryIds?: string[] | undefined;
   withoutCategory?: boolean | undefined;
+  /** Solo productos con stock en o bajo el mínimo. */
+  lowStock?: boolean | undefined;
   page: number;
   limit: number;
 }

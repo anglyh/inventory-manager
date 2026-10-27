@@ -168,4 +168,30 @@ describe('Inventory movements', () => {
     vi.spyOn(products, 'getStock').mockResolvedValue(3);
     await expect(service.registerLoss('store', { reason: 'LOSS_DAMAGED', items: [...costlessItems, ...costlessItems] })).rejects.toThrow('Stock insuficiente');
   });
+
+  // A sale never changes the average cost, so later movements don't block voiding it; a purchase restores
+  // the previous average, which is only valid while it is the product's latest movement.
+  it.each([
+    ['SALE', 'OUT', true],
+    ['PURCHASE', 'IN', false],
+  ] as const)('voids a %s (%s) with later movements of the product only if it is a sale', async (reason, movementType, allowed) => {
+    const movement = { id: 'm1', reason, movementType, status: 'COMPLETED', cashRegisterId: 'cr1', paymentMethod: 'YAPE' };
+    vi.spyOn(repo, 'getForVoid').mockResolvedValue(movement as never);
+    vi.spyOn(repo, 'getVoidItems').mockResolvedValue([{ productId, quantity: 2, unitCostBefore: '3.00' }] as never);
+    vi.spyOn(repo, 'hasLaterMovement').mockResolvedValue(true);
+    vi.spyOn(repo, 'void').mockResolvedValue(undefined as never);
+    vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store' } as never);
+    vi.spyOn(products, 'getStock').mockResolvedValue(10);
+    vi.spyOn(products, 'updateUnitCostAvg').mockResolvedValue(undefined as never);
+
+    const voiding = service.voidMovement('store', 'u1', 'm1', { reason: 'Error del cajero' });
+
+    if (allowed) {
+      await expect(voiding).resolves.toBeUndefined();
+      expect(repo.void).toHaveBeenCalled();
+    } else {
+      await expect(voiding).rejects.toThrow('Hay movimientos posteriores');
+      expect(repo.void).not.toHaveBeenCalled();
+    }
+  });
 });

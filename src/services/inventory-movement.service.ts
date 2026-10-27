@@ -200,7 +200,10 @@ export default class InventoryMovementService implements IInventoryMovementServi
       if (current?.status !== 'COMPLETED') throw new ConflictError('El movimiento ya está anulado');
 
       for (const item of items) {
-        if (await this.inventoryMovementRepo.hasLaterMovement(id, item.productId, client)) {
+        // Una venta no cambia el costo promedio: anularla solo devuelve stock y dinero, así que puede
+        // anularse aunque después haya otros movimientos del producto. Las demás restauran el costo
+        // anterior o dependen del stock de ese momento, y solo son válidas si son lo último del producto.
+        if (movement.reason !== 'SALE' && await this.inventoryMovementRepo.hasLaterMovement(id, item.productId, client)) {
           throw new ConflictError('Hay movimientos posteriores de estos productos; no se puede anular este movimiento');
         }
         if (movement.movementType === 'IN' && await this.productRepo.getStock(item.productId, client) < item.quantity) {

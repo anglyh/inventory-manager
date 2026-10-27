@@ -17,7 +17,7 @@ import type {
 import { snakeToCamel } from '../utils/mapper.js';
 
 // t siempre es vw_cash_register_totals. Los importes se calculan en PostgreSQL.
-const summaryJson = (difference: string, view: CashRegisterView = 'full') => `jsonb_build_object(
+const summaryJson = (difference: string) => `jsonb_build_object(
   'cashSales', t.cash_sales::text,
   'yapeSales', t.yape_sales::text,
   'totalSales', t.total_sales::text,
@@ -26,9 +26,17 @@ const summaryJson = (difference: string, view: CashRegisterView = 'full') => `js
   'yapeStays', t.yape_stays::text,
   'cashIn', t.cash_in::text,
   'cashOut', t.cash_out::text,
-  ${view === 'full' ? "'expectedCash', t.expected_cash::text," : ''}
+  'expectedCash', t.expected_cash::text,
   'difference', ${difference}
 )`;
+
+// Cierre ciego (GUEST): solo la cantidad de ventas. Ningún importe, porque fondo + ventas
+// en efectivo + habitaciones + aportes − retiros reconstruye el efectivo esperado.
+const openSummary = (view: CashRegisterView) =>
+  view === 'blind' ? "jsonb_build_object('salesCount', t.sales_count)" : summaryJson('NULL');
+const closedSummary = (view: CashRegisterView) => view === 'blind'
+  ? "CASE WHEN cr.closing_summary IS NULL THEN NULL ELSE jsonb_build_object('salesCount', cr.closing_summary -> 'salesCount') END"
+  : 'cr.closing_summary';
 
 const selectRegister = (view: CashRegisterView = 'full', includeTotal = false) => `
 SELECT
@@ -49,8 +57,8 @@ SELECT
     ELSE 'CLOSED'
   END AS status,
   CASE
-    WHEN cr.closed_at IS NULL THEN ${summaryJson('NULL', view)}
-    ELSE ${view === 'blind' ? "cr.closing_summary - 'expectedCash'" : 'cr.closing_summary'}
+    WHEN cr.closed_at IS NULL THEN ${openSummary(view)}
+    ELSE ${closedSummary(view)}
   END AS summary
 FROM cash_register AS cr
 JOIN vw_cash_register_totals AS t

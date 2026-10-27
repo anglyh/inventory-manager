@@ -81,7 +81,7 @@ describe('Cash register authenticated read views', () => {
     expect(JSON.stringify(json)).not.toContain('expectedCash');
     const sql = vi.mocked(query).mock.calls[0]?.[0] ?? '';
     expect(sql).not.toContain("'expectedCash', t.expected_cash::text");
-    expect(sql).toContain("cr.closing_summary - 'expectedCash'");
+    expect(sql).toContain("jsonb_build_object('salesCount', t.sales_count)");
   });
 
   it('rejects GUEST from register history before running queries', async () => {

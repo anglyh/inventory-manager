@@ -56,17 +56,22 @@ const pageMetaSchema = z.object({
   totalPages: z.number().int(),
 });
 
+// Cierre ciego: GUEST recibe solo salesCount. Cualquier importe le permitiría reconstruir el esperado.
+const adminOnly = 'Solo se envía a ADMIN; se omite para GUEST (cierre ciego).';
+const adminMoney = (description?: string) =>
+  moneySchema.optional().meta({ description: description ? `${description} ${adminOnly}` : adminOnly });
+
 const cashSummarySchema = z.object({
-  cashSales: moneySchema,
-  yapeSales: moneySchema,
-  totalSales: moneySchema,
+  cashSales: adminMoney(),
+  yapeSales: adminMoney(),
+  totalSales: adminMoney(),
   salesCount: z.number().int(),
-  cashStays: moneySchema.meta({ description: 'Cobros de estadías en efectivo; forman parte del efectivo esperado.' }),
-  yapeStays: moneySchema.meta({ description: 'Cobros de estadías por Yape.' }),
-  cashIn: moneySchema,
-  cashOut: moneySchema,
-  expectedCash: moneySchema.optional().meta({ description: 'Solo se envía a ADMIN; se omite por completo para GUEST.' }),
-  difference: moneySchema.nullable(),
+  cashStays: adminMoney('Cobros de estadías en efectivo; forman parte del efectivo esperado.'),
+  yapeStays: adminMoney('Cobros de estadías por Yape.'),
+  cashIn: adminMoney(),
+  cashOut: adminMoney(),
+  expectedCash: adminMoney(),
+  difference: moneySchema.nullable().optional().meta({ description: `Null mientras la caja está abierta. ${adminOnly}` }),
 }).nullable();
 
 export const cashRegisterSchema = z.object({

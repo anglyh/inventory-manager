@@ -12,15 +12,19 @@ const register = { id: 'r1', opening_amount: '100.00', opened_at: '2026-10-05T10
 describe('Cash register repository read contracts', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('projects all summary values in full and excludes expectedCash in blind SQL', async () => {
+  it('projects all summary values in full and only the sales count in blind SQL', async () => {
     vi.mocked(query).mockResolvedValueOnce({ rows: [] } as never).mockResolvedValueOnce({ rows: [] } as never);
     await repo.findCurrent('s1', 'full');
     await repo.findCurrent('s1', 'blind');
     const fullSql = vi.mocked(query).mock.calls[0]?.[0] ?? '';
     const blindSql = vi.mocked(query).mock.calls[1]?.[0] ?? '';
     expect(fullSql).toContain("'expectedCash', t.expected_cash::text");
-    expect(blindSql).not.toContain("'expectedCash', t.expected_cash::text");
-    expect(blindSql).toContain("cr.closing_summary - 'expectedCash'");
+    // GUEST gets neither the expected cash nor the amounts that add up to it.
+    for (const column of ['expected_cash', 'cash_sales', 'cash_stays', 'cash_in', 'cash_out', 'yape_sales', 'total_sales']) {
+      expect(blindSql).not.toContain(`t.${column}`);
+    }
+    expect(blindSql).toContain("'salesCount', t.sales_count");
+    expect(blindSql).not.toMatch(/ELSE cr\.closing_summary\s/);
     expect(blindSql).toContain('opened_user.name AS opened_by_name');
     expect(blindSql).toContain('closed_user.name AS closed_by_name');
     expect(blindSql.split('FROM cash_register AS cr')[0]).not.toContain('cr.store_id');

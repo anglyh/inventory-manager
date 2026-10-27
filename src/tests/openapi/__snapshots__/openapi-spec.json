@@ -858,29 +858,33 @@
             "nullable": true,
             "properties": {
               "cashIn": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "cashOut": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "cashSales": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "cashStays": {
-                "description": "Cobros de estadías en efectivo; forman parte del efectivo esperado.",
+                "description": "Cobros de estadías en efectivo; forman parte del efectivo esperado. Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "difference": {
+                "description": "Null mientras la caja está abierta. Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "nullable": true,
                 "type": "string"
               },
               "expectedCash": {
-                "description": "Solo se envía a ADMIN; se omite por completo para GUEST.",
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
@@ -888,29 +892,23 @@
                 "type": "integer"
               },
               "totalSales": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "yapeSales": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "yapeStays": {
-                "description": "Cobros de estadías por Yape.",
+                "description": "Cobros de estadías por Yape. Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               }
             },
             "required": [
-              "cashSales",
-              "yapeSales",
-              "totalSales",
-              "salesCount",
-              "cashStays",
-              "yapeStays",
-              "cashIn",
-              "cashOut",
-              "difference"
+              "salesCount"
             ],
             "type": "object"
           }
@@ -2156,29 +2154,33 @@
             "nullable": true,
             "properties": {
               "cashIn": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "cashOut": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "cashSales": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "cashStays": {
-                "description": "Cobros de estadías en efectivo; forman parte del efectivo esperado.",
+                "description": "Cobros de estadías en efectivo; forman parte del efectivo esperado. Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "difference": {
+                "description": "Null mientras la caja está abierta. Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "nullable": true,
                 "type": "string"
               },
               "expectedCash": {
-                "description": "Solo se envía a ADMIN; se omite por completo para GUEST.",
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
@@ -2186,29 +2188,23 @@
                 "type": "integer"
               },
               "totalSales": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "yapeSales": {
+                "description": "Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               },
               "yapeStays": {
-                "description": "Cobros de estadías por Yape.",
+                "description": "Cobros de estadías por Yape. Solo se envía a ADMIN; se omite para GUEST (cierre ciego).",
                 "example": "20.00",
                 "type": "string"
               }
             },
             "required": [
-              "cashSales",
-              "yapeSales",
-              "totalSales",
-              "salesCount",
-              "cashStays",
-              "yapeStays",
-              "cashIn",
-              "cashOut",
-              "difference"
+              "salesCount"
             ],
             "type": "object"
           }

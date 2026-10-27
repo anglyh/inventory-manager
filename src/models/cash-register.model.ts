@@ -2,17 +2,18 @@ export type CashRegisterStatus = 'OPEN' | 'CLOSED';
 export type CashMovementType = 'CASH_IN' | 'CASH_OUT';
 export type CashRegisterView = 'full' | 'blind';
 
+// Los importes solo llegan a ADMIN. GUEST (cierre ciego) recibe únicamente salesCount.
 export interface CashRegisterSummary {
-  cashSales: string;
-  yapeSales: string;
-  totalSales: string;
+  cashSales?: string;
+  yapeSales?: string;
+  totalSales?: string;
   salesCount: number;
-  cashStays: string;
-  yapeStays: string;
-  cashIn: string;
-  cashOut: string;
+  cashStays?: string;
+  yapeStays?: string;
+  cashIn?: string;
+  cashOut?: string;
   expectedCash?: string;
-  difference: string | null;
+  difference?: string | null;
 }
 
 export interface CashRegister {

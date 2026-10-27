@@ -120,3 +120,28 @@ export const productOptionSchema = z.object({
   hasMovements: z.boolean()
     .meta({ description: 'true si el producto ya tiene movimientos (incluso anulados); no admite carga inicial.' }),
 }).meta({ id: 'ProductOption' });
+
+export const barcodeLookupParamSchema = z.object({
+  code: z.string().meta({
+    param: { description: 'Código de barras GTIN (EAN-8, UPC-A, EAN-13 o GTIN-14) con dígito verificador válido', example: '7750182005814' },
+  }),
+});
+
+export const barcodeSuggestionSourceSchema = z.enum(['OPEN_FOOD_FACTS', 'OPEN_PRODUCTS_FACTS', 'OPEN_BEAUTY_FACTS']);
+
+export const barcodeLookupSchema = z.object({
+  code: z.string().meta({ example: '7750182005814' }),
+  existingProduct: z.object({ id: z.uuid(), name: z.string() }).nullable()
+    .meta({ description: 'Producto de la tienda (activo o desactivado) que ya usa este código; si existe no se consulta ninguna fuente externa.' }),
+  suggestion: z.object({
+    name: z.string().meta({ example: 'Gaseosa Inca Kola 1.5 lt.' }),
+    brand: z.string().nullable(),
+    quantity: z.string().nullable(),
+    imageUrl: z.string().nullable().meta({ description: 'Imagen de la fuente (solo para vista previa; no se guarda).' }),
+    source: barcodeSuggestionSourceSchema,
+  }).nullable().meta({ description: 'Datos sugeridos de una base abierta. null si no se encontró, si la fuente no respondió o si se alcanzó el límite de consultas.' }),
+}).meta({ id: 'BarcodeLookup' });
+
+export type BarcodeSuggestionSource = z.infer<typeof barcodeSuggestionSourceSchema>;
+export type BarcodeLookup = z.infer<typeof barcodeLookupSchema>;
+export type BarcodeSuggestion = NonNullable<BarcodeLookup['suggestion']>;

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { productService } from '../container.js';
+import { barcodeLookupService, productService } from '../container.js';
 import { BadRequestError } from '../errors/app.error.js';
 import { listProductPaginationSchema } from '../schemas/product.schema.js';
 
@@ -63,6 +63,14 @@ export default class ProductController {
   static async getById(req: Request, res: Response, next: NextFunction) {
     try {
       res.json(await productService.getById(req.user!.storeId, req.params.id as string));
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async lookupBarcode(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.status(200).json(await barcodeLookupService.lookup(req.user!.storeId, req.params.code as string));
     } catch (err) {
       next(err);
     }

@@ -24,6 +24,7 @@ import StayRepository from './repositories/stay.repository.js';
 import StayService from './services/stay.service.js';
 import ExpenseRepository from './repositories/expense.repository.js';
 import ExpenseService from './services/expense.service.js';
+import BarcodeLookupService from './services/barcode-lookup.service.js';
 
 // Instancias de repositorios
 const productRepo = new ProductRepository();
@@ -40,6 +41,7 @@ const expenseRepo = new ExpenseRepository();
 
 // Instancias de servicios con sus dependencias inyectadas
 export const productService = new ProductService(productRepo);
+export const barcodeLookupService = new BarcodeLookupService(productRepo);
 export const inventoryMovementService = new InventoryMovementService(
   inventoryMovementRepo,
   productRepo,

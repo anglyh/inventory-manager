@@ -10,6 +10,8 @@ const productRouter: Router = express.Router();
 productRouter.get("/", ProductController.listAllProducts)
 productRouter.get("/options", ProductController.listProductOptions)
 productRouter.get("/search/by-name", ProductController.getByName)
+// Same access as creating a product. Registered before '/:id'.
+productRouter.get("/barcode-lookup/:code", requireAdmin, ProductController.lookupBarcode)
 productRouter.get('/:id', validateParams(productIdParamSchema), ProductController.getById);
 
 productRouter.use(requireAdmin);

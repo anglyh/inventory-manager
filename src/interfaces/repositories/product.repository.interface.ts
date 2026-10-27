@@ -14,6 +14,7 @@ export type ListProductQuery = {
 export interface IProductRepository {
   findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null>;
   findForStore(storeId: string, productId: string, client?: PoolClient): Promise<ProductWithStock | null>;
+  findByBarcode(storeId: string, barcode: string): Promise<Pick<Product, 'id' | 'name'> | null>;
   categoryBelongsToStore(storeId: string, categoryId: string, client: PoolClient): Promise<boolean>;
   listAll(filters: ListProductQuery): Promise<ProductListItem[]>;
   count(filters: Pick<ListProductQuery, 'storeId' | 'search' | 'categoryIds' | 'withoutCategory'>): Promise<number>;

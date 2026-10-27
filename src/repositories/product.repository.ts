@@ -26,6 +26,15 @@ export default class ProductRepository implements IProductRepository {
     return result.rows[0] ? snakeToCamel(result.rows[0]) : null;
   }
 
+  async findByBarcode(storeId: string, barcode: string): Promise<Pick<Product, 'id' | 'name'> | null> {
+    // Includes deactivated products: the barcode stays unique per store for them too.
+    const { rows } = await query(
+      `SELECT id, name FROM ${TABLES.PRODUCT} WHERE store_id = $1 AND barcode = $2 LIMIT 1`,
+      [storeId, barcode],
+    );
+    return rows[0] ? snakeToCamel(rows[0]) : null;
+  }
+
   async categoryBelongsToStore(storeId: string, categoryId: string, client: PoolClient): Promise<boolean> {
     const result = await client.query(`
       SELECT id FROM category

@@ -1,5 +1,7 @@
 import z from 'zod';
 import {
+  barcodeLookupParamSchema,
+  barcodeLookupSchema,
   createProductSchema,
   listProductPaginationSchema,
   productIdParamSchema,
@@ -141,6 +143,21 @@ registry.registerPath({
   request: { query: searchByNameQuerySchema },
   responses: {
     200: jsonResponse('Productos encontrados.', productSearchItemSchema.array()),
+    ...commonErrors,
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: `${basePath}/barcode-lookup/{code}`,
+  summary: 'Buscar datos de un producto por código de barras',
+  description: 'Primero busca un producto de la tienda con ese código. Si no existe, consulta Open Food Facts, Open Products Facts y Open Beauty Facts (con caché en memoria y un máximo de 15 consultas externas por minuto) y devuelve datos sugeridos para registrar el producto. Un código con dígito verificador inválido devuelve 400.',
+  tags,
+  security: bearerAuth,
+  request: { params: barcodeLookupParamSchema },
+  responses: {
+    ...adminOnly,
+    200: jsonResponse('Producto existente, datos sugeridos o ninguno de los dos.', barcodeLookupSchema),
     ...commonErrors,
   },
 });

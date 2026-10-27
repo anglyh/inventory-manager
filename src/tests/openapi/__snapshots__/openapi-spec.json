@@ -641,6 +641,77 @@
         ],
         "type": "object"
       },
+      "BarcodeLookup": {
+        "properties": {
+          "code": {
+            "example": "7750182005814",
+            "type": "string"
+          },
+          "existingProduct": {
+            "description": "Producto de la tienda (activo o desactivado) que ya usa este código; si existe no se consulta ninguna fuente externa.",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "suggestion": {
+            "description": "Datos sugeridos de una base abierta. null si no se encontró, si la fuente no respondió o si se alcanzó el límite de consultas.",
+            "nullable": true,
+            "properties": {
+              "brand": {
+                "nullable": true,
+                "type": "string"
+              },
+              "imageUrl": {
+                "description": "Imagen de la fuente (solo para vista previa; no se guarda).",
+                "nullable": true,
+                "type": "string"
+              },
+              "name": {
+                "example": "Gaseosa Inca Kola 1.5 lt.",
+                "type": "string"
+              },
+              "quantity": {
+                "nullable": true,
+                "type": "string"
+              },
+              "source": {
+                "enum": [
+                  "OPEN_FOOD_FACTS",
+                  "OPEN_PRODUCTS_FACTS",
+                  "OPEN_BEAUTY_FACTS"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "brand",
+              "quantity",
+              "imageUrl",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "existingProduct",
+          "suggestion"
+        ],
+        "type": "object"
+      },
       "CashMovementPage": {
         "properties": {
           "data": {
@@ -2621,6 +2692,34 @@
                 "description": "Productos activos con stock en o bajo el mínimo.",
                 "type": "integer"
               },
+              "lowStockProducts": {
+                "description": "Hasta 5 de esos productos, los más urgentes primero (menor stock − mínimo).",
+                "items": {
+                  "properties": {
+                    "minStock": {
+                      "type": "integer"
+                    },
+                    "productId": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "productName": {
+                      "type": "string"
+                    },
+                    "stock": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "productId",
+                    "productName",
+                    "stock",
+                    "minStock"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "value": {
                 "description": "Stock actual × costo promedio.",
                 "example": "20.00",
@@ -2629,7 +2728,8 @@
             },
             "required": [
               "value",
-              "lowStockCount"
+              "lowStockCount",
+              "lowStockProducts"
             ],
             "type": "object"
           },
@@ -5514,7 +5614,7 @@
             }
           },
           {
-            "description": "sales incluye SALE; purchase incluye PURCHASE; loss incluye LOSS_EXPIRED, LOSS_DAMAGED y COUNT_SHORTAGE. Sin grupo incluye todos los motivos completados. voids incluye anulados de cualquier motivo.",
+            "description": "sales incluye SALE; purchase incluye PURCHASE; loss incluye LOSS_EXPIRED y LOSS_DAMAGED; count incluye COUNT_SURPLUS y COUNT_SHORTAGE; initial incluye INITIAL_LOAD. Sin grupo incluye todos los motivos completados. voids incluye anulados de cualquier motivo.",
             "in": "query",
             "name": "group",
             "required": false,
@@ -5523,6 +5623,8 @@
                 "sales",
                 "purchase",
                 "loss",
+                "count",
+                "initial",
                 "voids"
               ],
               "type": "string"
@@ -6117,6 +6219,59 @@
           }
         ],
         "summary": "Crear un nuevo producto",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/product/barcode-lookup/{code}": {
+      "get": {
+        "description": "Primero busca un producto de la tienda con ese código. Si no existe, consulta Open Food Facts, Open Products Facts y Open Beauty Facts (con caché en memoria y un máximo de 15 consultas externas por minuto) y devuelve datos sugeridos para registrar el producto. Un código con dígito verificador inválido devuelve 400.",
+        "parameters": [
+          {
+            "description": "Código de barras GTIN (EAN-8, UPC-A, EAN-13 o GTIN-14) con dígito verificador válido",
+            "example": "7750182005814",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarcodeLookup"
+                }
+              }
+            },
+            "description": "Producto existente, datos sugeridos o ninguno de los dos."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Buscar datos de un producto por código de barras",
         "tags": [
           "Products"
         ]

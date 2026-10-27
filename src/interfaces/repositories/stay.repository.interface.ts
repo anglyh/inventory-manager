@@ -21,6 +21,8 @@ export interface IStayRepository {
 
   lockRoomForCheckIn(storeId: string, roomId: string, client: PoolClient): Promise<RoomForCheckIn | null>;
   upsertGuest(storeId: string, guest: StayGuestDTO, client: PoolClient): Promise<string>;
+  /** Estadía abierta del huésped, si la tiene (una persona no ocupa dos habitaciones a la vez). */
+  findActiveStayOfGuest(guestId: string, client: PoolClient): Promise<{ fullName: string; roomNumber: string } | null>;
   create(data: StayInsert, client: PoolClient): Promise<string>;
   addGuests(stayId: string, guests: { guestId: string; isHolder: boolean }[], client: PoolClient): Promise<void>;
   addMinors(stayId: string, minors: StayMinorDTO[], client: PoolClient): Promise<void>;

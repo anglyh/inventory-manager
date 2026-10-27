@@ -176,6 +176,20 @@ export default class StayRepository implements IStayRepository {
     return result.rows[0]!.id;
   }
 
+  async findActiveStayOfGuest(guestId: string, client: PoolClient): Promise<{ fullName: string; roomNumber: string } | null> {
+    const result = await client.query(
+      `SELECT g.full_name, r.number AS room_number
+       FROM stay_guest AS sg
+       JOIN stay AS s ON s.id = sg.stay_id AND s.actual_check_out IS NULL
+       JOIN room AS r ON r.id = s.room_id
+       JOIN guest AS g ON g.id = sg.guest_id
+       WHERE sg.guest_id = $1
+       LIMIT 1`,
+      [guestId],
+    );
+    return result.rows[0] ? snakeToCamel(result.rows[0]) : null;
+  }
+
   async create(data: StayInsert, client: PoolClient): Promise<string> {
     const result = await client.query<{ id: string }>(
       `INSERT INTO stay (store_id, room_id, rate_kind, hours, expected_check_out, travel_reason, notes, extra_hour_price, created_by)

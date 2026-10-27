@@ -13,6 +13,7 @@ vi.mock('../../db/transactions.js', () => ({
 const stayRepo = {
   lock: vi.fn(), getBalance: vi.fn(), addCharge: vi.fn(), addPayment: vi.fn(), close: vi.fn(), findById: vi.fn(),
   lockRoomForCheckIn: vi.fn(), upsertGuest: vi.fn(), create: vi.fn(), addGuests: vi.fn(), addMinors: vi.fn(),
+  findActiveStayOfGuest: vi.fn(),
 } as unknown as IStayRepository;
 const cashRegisterRepo = { lockOpen: vi.fn() } as unknown as ICashRegisterRepository;
 const storeRepo = {
@@ -90,5 +91,29 @@ describe('Stay service money rules', () => {
     });
 
     expect(stayRepo.addPayment).toHaveBeenCalledWith('st1', 'cr1', 'u1', { paymentMethod: 'YAPE', amount: 45 }, {});
+  });
+
+  it('check-in rejects a guest who is already staying in another room', async () => {
+    vi.mocked(cashRegisterRepo.lockOpen).mockResolvedValue('cr1');
+    vi.mocked(stayRepo.lockRoomForCheckIn).mockResolvedValue({
+      id: 'r2', number: '202', isActive: true, needsCleaning: false, occupied: false, capacity: 2,
+      hourPrice: '10.00', nightPrice: '50.00', extraHourPrice: '10.00',
+    });
+    vi.mocked(stayRepo.upsertGuest).mockResolvedValue('g1');
+    vi.mocked(stayRepo.findActiveStayOfGuest).mockResolvedValue({ fullName: 'Juan Pérez', roomNumber: '201' });
+
+    const checkIn = service.checkIn('s1', 'u1', {
+      roomId: '00000000-0000-0000-0000-000000000002',
+      rateKind: 'NIGHT',
+      amount: 50,
+      paymentMethod: 'CASH',
+      guests: [{
+        documentType: 'DNI', documentNumber: '45781236', fullName: 'Juan Pérez', birthDate: '1990-05-14',
+        sex: 'M', nationality: 'Peruana', residence: 'Arequipa', isHolder: true,
+      }],
+    });
+
+    await expect(checkIn).rejects.toMatchObject({ message: 'Juan Pérez ya está hospedado en la habitación 201' });
+    expect(stayRepo.create).not.toHaveBeenCalled();
   });
 });

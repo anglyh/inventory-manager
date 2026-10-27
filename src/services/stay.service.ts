@@ -83,7 +83,14 @@ export default class StayService implements IStayService {
 
       const guests = [];
       for (const guest of data.guests) {
-        guests.push({ guestId: await this.stayRepo.upsertGuest(storeId, guest, client), isHolder: guest.isHolder });
+        const guestId = await this.stayRepo.upsertGuest(storeId, guest, client);
+        // El upsert deja bloqueada la fila del huésped hasta el commit: un check-in simultáneo
+        // del mismo huésped espera acá y, al seguir, ya ve esta estadía.
+        const activeStay = await this.stayRepo.findActiveStayOfGuest(guestId, client);
+        if (activeStay) {
+          throw new ConflictError(`${activeStay.fullName} ya está hospedado en la habitación ${activeStay.roomNumber}`);
+        }
+        guests.push({ guestId, isHolder: guest.isHolder });
       }
 
       const id = await this.stayRepo.create({

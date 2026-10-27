@@ -68,6 +68,7 @@ export default class ReportService implements IReportService {
         storeResult: totals.storeResult,
         lodgingResult: totals.lodgingResult,
         cashShortage: totals.cashShortage,
+        cashShortageCount: totals.cashShortageCount,
         generalExpenses: totals.generalExpenses,
         netProfit: totals.netProfit,
       },

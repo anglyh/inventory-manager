@@ -17,6 +17,8 @@ export interface ReportTotalsRow {
   countShortage: string;
   countSurplus: string;
   cashShortage: string;
+  /** Cajas cerradas en el rango con faltante (diferencia negativa). */
+  cashShortageCount: number;
   /** Cobros en efectivo / Yape: ventas de la tienda más habitaciones. */
   cashPayments: string;
   yapePayments: string;

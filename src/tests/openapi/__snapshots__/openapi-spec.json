@@ -3057,6 +3057,10 @@
                 "example": "20.00",
                 "type": "string"
               },
+              "cashShortageCount": {
+                "description": "Cajas cerradas en el período con faltante (diferencia negativa).",
+                "type": "integer"
+              },
               "generalExpenses": {
                 "description": "Gastos del grupo GENERAL del período.",
                 "example": "20.00",
@@ -3080,6 +3084,7 @@
               "storeResult",
               "lodgingResult",
               "cashShortage",
+              "cashShortageCount",
               "generalExpenses",
               "netProfit"
             ],

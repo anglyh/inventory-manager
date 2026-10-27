@@ -76,6 +76,7 @@ export const reportOverviewSchema = z.object({
     storeResult: moneySchema,
     lodgingResult: moneySchema,
     cashShortage: moneySchema.meta({ description: 'Faltantes de las cajas cerradas en el período.' }),
+    cashShortageCount: z.number().int().meta({ description: 'Cajas cerradas en el período con faltante (diferencia negativa).' }),
     generalExpenses: moneySchema.meta({ description: 'Gastos del grupo GENERAL del período.' }),
     netProfit: moneySchema.meta({ description: 'storeResult + lodgingResult − cashShortage − generalExpenses (igual a summary.netProfit).' }),
   }),

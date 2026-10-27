@@ -65,7 +65,8 @@ export default class ReportRepository implements IReportRepository {
       register AS (
         SELECT
           COALESCE(SUM(-(closing_summary->>'difference')::numeric)
-            FILTER (WHERE (closing_summary->>'difference')::numeric < 0), 0)       AS cash_shortage
+            FILTER (WHERE (closing_summary->>'difference')::numeric < 0), 0)       AS cash_shortage,
+          COUNT(*) FILTER (WHERE (closing_summary->>'difference')::numeric < 0)::int AS cash_shortage_count
         FROM cash_register
         WHERE store_id = $1
           AND closed_at >= $2
@@ -162,6 +163,7 @@ export default class ReportRepository implements IReportRepository {
         ROUND(count_shortage, 2)::text                                              AS count_shortage,
         ROUND(count_surplus, 2)::text                                               AS count_surplus,
         ROUND(cash_shortage, 2)::text                                               AS cash_shortage,
+        cash_shortage_count,
         ROUND(cash_sales + cash_rooms, 2)::text                                     AS cash_payments,
         ROUND(yape_sales + yape_rooms, 2)::text                                     AS yape_payments,
         ROUND(rooms_revenue, 2)::text                                               AS rooms_revenue,

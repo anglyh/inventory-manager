@@ -99,8 +99,8 @@ export const inventoryMovementsCursorQuerySchema = z
     cashRegisterId: z.uuid('ID de caja inválido').optional().meta(paramDoc(
       'Filtra movimientos vinculados a una caja de esta tienda. Se puede combinar con movementType y group.',
     )),
-    group: z.enum(['sales', 'purchase', 'loss', 'voids']).optional().meta(paramDoc(
-      'sales incluye SALE; purchase incluye PURCHASE; loss incluye LOSS_EXPIRED, LOSS_DAMAGED y COUNT_SHORTAGE. Sin grupo incluye todos los motivos completados. voids incluye anulados de cualquier motivo.',
+    group: z.enum(['sales', 'purchase', 'loss', 'count', 'initial', 'voids']).optional().meta(paramDoc(
+      'sales incluye SALE; purchase incluye PURCHASE; loss incluye LOSS_EXPIRED y LOSS_DAMAGED; count incluye COUNT_SURPLUS y COUNT_SHORTAGE; initial incluye INITIAL_LOAD. Sin grupo incluye todos los motivos completados. voids incluye anulados de cualquier motivo.',
     )),
     limit: z.coerce.number().int().positive().max(100).optional().default(12),
     cursorId: z.uuid('ID de cursor inválido').optional()

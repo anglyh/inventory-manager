@@ -11,10 +11,13 @@ export const movementDirections: Record<MovementReason, readonly MovementType[]>
   COUNT_SURPLUS: ['IN'], COUNT_SHORTAGE: ['OUT'], INITIAL_LOAD: ['IN'],
 };
 
+/** Same groups the history shows as a movement's type (icon + label), so a filter matches what is on screen. */
 export const movementGroupReasons = {
   sales: ['SALE'],
   purchase: ['PURCHASE'],
-  loss: ['LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SHORTAGE'],
+  loss: ['LOSS_EXPIRED', 'LOSS_DAMAGED'],
+  count: ['COUNT_SURPLUS', 'COUNT_SHORTAGE'],
+  initial: ['INITIAL_LOAD'],
 } as const satisfies Record<string, readonly MovementReason[]>;
 export type MovementGroup = keyof typeof movementGroupReasons | 'voids';
 

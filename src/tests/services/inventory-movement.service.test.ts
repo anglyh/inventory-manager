@@ -108,7 +108,9 @@ describe('Inventory movements', () => {
   it.each([
     ['sales', 'COMPLETED', ['SALE']],
     ['purchase', 'COMPLETED', ['PURCHASE']],
-    ['loss', 'COMPLETED', ['LOSS_EXPIRED', 'LOSS_DAMAGED', 'COUNT_SHORTAGE']],
+    ['loss', 'COMPLETED', ['LOSS_EXPIRED', 'LOSS_DAMAGED']],
+    ['count', 'COMPLETED', ['COUNT_SURPLUS', 'COUNT_SHORTAGE']],
+    ['initial', 'COMPLETED', ['INITIAL_LOAD']],
     ['voids', 'VOIDED', undefined],
   ] as const)('filters %s by status and reason within the store', async (group, status, reasons) => {
     vi.mocked(query).mockResolvedValue({ rows: [] } as never);

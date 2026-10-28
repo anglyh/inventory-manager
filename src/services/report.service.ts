@@ -7,7 +7,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_RANGE_DAYS = 30;
 /** Límite del rango: la serie diaria genera una fila por día. */
 const MAX_RANGE_DAYS = 366;
-const TOP_LIMIT = 5;
 /** Tope de seguridad de la lista de productos; un catálogo de tienda rara vez lo alcanza. */
 const PRODUCTS_LIMIT = 200;
 
@@ -26,18 +25,13 @@ export default class ReportService implements IReportService {
     const range = { storeId, ...this.resolveRange(params) };
     const previousRange = { storeId, ...this.resolveCompareRange(range, params) };
 
-    const [
-      totals, previous, cash, daily, products, topLosses, flows, inventory, expensesByCategory, pendingMigrations,
-    ] = await Promise.all([
+    const [totals, previous, daily, products, flows, inventory, pendingMigrations] = await Promise.all([
       this.reportRepo.getTotals(range),
       this.reportRepo.getTotals(previousRange),
-      this.reportRepo.getCashDifferences(range),
       this.reportRepo.getDailySales(range),
       this.reportRepo.getProducts({ ...range, limit: PRODUCTS_LIMIT }),
-      this.reportRepo.getTopLosses({ ...range, limit: TOP_LIMIT }),
       this.reportRepo.getFlows(range),
       this.reportRepo.getInventorySnapshot(storeId),
-      this.reportRepo.getExpensesByCategory(range),
       this.reportRepo.getPendingMigrationsCount(storeId),
     ]);
 
@@ -48,7 +42,6 @@ export default class ReportService implements IReportService {
         revenue: totals.revenue,
         cogs: totals.cogs,
         grossProfit: totals.grossProfit,
-        losses: totals.losses,
         netProfit: totals.netProfit,
         marginPct: totals.marginPct,
         salesCount: totals.salesCount,
@@ -61,6 +54,7 @@ export default class ReportService implements IReportService {
         cogs: totals.cogs,
         grossProfit: totals.grossProfit,
         losses: totals.storeLosses,
+        countSurplus: totals.countSurplus,
         result: totals.storeResult,
       },
       lodging: { revenue: totals.roomsRevenue, costs: totals.lodgingCosts, result: totals.lodgingResult },
@@ -69,21 +63,12 @@ export default class ReportService implements IReportService {
         lodgingResult: totals.lodgingResult,
         cashShortage: totals.cashShortage,
         cashShortageCount: totals.cashShortageCount,
+        cashSurplus: totals.cashSurplus,
         generalExpenses: totals.generalExpenses,
         netProfit: totals.netProfit,
       },
-      expensesByCategory,
-      cash,
-      losses: {
-        expired: totals.expired,
-        damaged: totals.damaged,
-        countShortage: totals.countShortage,
-        countSurplus: totals.countSurplus,
-        cashShortage: totals.cashShortage,
-      },
       daily,
       products,
-      topLosses,
       previous: {
         from: previousRange.from.toISOString(),
         to: previousRange.to.toISOString(),

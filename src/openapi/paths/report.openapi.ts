@@ -25,7 +25,7 @@ registry.registerPath({
   method: 'get',
   path: `${basePath}/overview`,
   summary: 'Resumen del periodo',
-  description: 'Ventas, ganancia neta (bruta − mermas, faltantes de conteo y de caja), cobros por método, descuadres de caja, serie diaria (día Lima), productos vendidos, comparación con el período anterior, compras y retiros del rango, y una foto actual del inventario.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n',
+  description: 'Ventas, resultado de la tienda y del hospedaje, ganancia neta (con la diferencia neta de caja y los gastos generales), cobros por método, serie diaria (día Lima), productos vendidos, comparación con el período anterior, compras del rango y una foto actual del inventario.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n',
   tags,
   security: bearerAuth,
   request: { query: reportOverviewQuerySchema },

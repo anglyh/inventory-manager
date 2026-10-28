@@ -5,25 +5,21 @@ export interface ReportTotalsRow {
   revenue: string;
   cogs: string;
   grossProfit: string;
-  losses: string;
   netProfit: string;
   marginPct: string;
   salesCount: number;
   avgTicket: string;
-  cashSales: string;
-  yapeSales: string;
-  expired: string;
-  damaged: string;
-  countShortage: string;
+  /** Sobrantes de conteo a costo: suman al resultado de la tienda. */
   countSurplus: string;
   cashShortage: string;
+  cashSurplus: string;
   /** Cajas cerradas en el rango con faltante (diferencia negativa). */
   cashShortageCount: number;
   /** Cobros en efectivo / Yape: ventas de la tienda más habitaciones. */
   cashPayments: string;
   yapePayments: string;
   roomsRevenue: string;
-  /** Mermas de mercadería sin el faltante de caja (losses sí lo incluye, por compatibilidad). */
+  /** Vencidos, dañados y faltantes de conteo a costo (sin sobrantes ni caja). */
   storeLosses: string;
   storeResult: string;
   lodgingCosts: string;
@@ -33,12 +29,9 @@ export interface ReportTotalsRow {
   occupancyPct: string;
 }
 
-export type CashDifferencesRow = ReportOverview['cash'];
 export type DailySalesRow = ReportOverview['daily'][number];
 export type ProductRankingRow = ReportOverview['products'][number];
-export type ProductLossRow = ReportOverview['topLosses'][number];
 export type FlowsRow = ReportOverview['flows'];
-export type ExpenseByCategoryRow = ReportOverview['expensesByCategory'][number];
 export type InventorySnapshotRow = ReportOverview['inventory'];
 
 /** Filtros comunes: rango de fechas ya resuelto por el service. */
@@ -51,15 +44,9 @@ export interface ReportDateRange {
 export interface IReportRepository {
   getTotals(filters: ReportDateRange): Promise<ReportTotalsRow>;
 
-  getCashDifferences(filters: ReportDateRange): Promise<CashDifferencesRow>;
-
   getDailySales(filters: ReportDateRange): Promise<DailySalesRow[]>;
 
   getProducts(filters: ReportDateRange & { limit: number }): Promise<ProductRankingRow[]>;
-
-  getTopLosses(filters: ReportDateRange & { limit: number }): Promise<ProductLossRow[]>;
-
-  getExpensesByCategory(filters: ReportDateRange): Promise<ExpenseByCategoryRow[]>;
 
   getFlows(filters: ReportDateRange): Promise<FlowsRow>;
 

@@ -2569,34 +2569,6 @@
       },
       "ReportOverview": {
         "properties": {
-          "cash": {
-            "properties": {
-              "closedCount": {
-                "type": "integer"
-              },
-              "difference": {
-                "example": "20.00",
-                "type": "string"
-              },
-              "shortage": {
-                "description": "Suma de faltantes de las cajas cerradas (positivo).",
-                "example": "20.00",
-                "type": "string"
-              },
-              "surplus": {
-                "description": "Suma de sobrantes de las cajas cerradas.",
-                "example": "20.00",
-                "type": "string"
-              }
-            },
-            "required": [
-              "closedCount",
-              "shortage",
-              "surplus",
-              "difference"
-            ],
-            "type": "object"
-          },
           "daily": {
             "items": {
               "properties": {
@@ -2604,7 +2576,13 @@
                   "format": "date",
                   "type": "string"
                 },
+                "lodgingResult": {
+                  "description": "Cobros de habitaciones del día − gastos del hospedaje del día.",
+                  "example": "20.00",
+                  "type": "string"
+                },
                 "profit": {
+                  "description": "Ganancia bruta de la tienda del día (ventas − costo).",
                   "example": "20.00",
                   "type": "string"
                 },
@@ -2623,36 +2601,8 @@
                 "date",
                 "revenue",
                 "profit",
-                "rooms"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "expensesByCategory": {
-            "description": "Gastos del período por categoría, de mayor a menor. Solo categorías con gastos.",
-            "items": {
-              "properties": {
-                "amount": {
-                  "example": "20.00",
-                  "type": "string"
-                },
-                "categoryId": {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                "group": {
-                  "$ref": "#/components/schemas/ExpenseGroup"
-                },
-                "name": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "categoryId",
-                "name",
-                "group",
-                "amount"
+                "rooms",
+                "lodgingResult"
               ],
               "type": "object"
             },
@@ -2660,20 +2610,14 @@
           },
           "flows": {
             "properties": {
-              "ownerWithdrawals": {
-                "description": "Retiros de caja en el rango. No restan ganancia. Excluye los gastos pagados con la caja (ya restan como gasto).",
-                "example": "20.00",
-                "type": "string"
-              },
               "purchases": {
-                "description": "Mercadería comprada en el rango (a costo). No resta ganancia.",
+                "description": "Mercadería comprada en el rango (a costo). No resta ganancia: pasa al stock.",
                 "example": "20.00",
                 "type": "string"
               }
             },
             "required": [
-              "purchases",
-              "ownerWithdrawals"
+              "purchases"
             ],
             "type": "object"
           },
@@ -2752,38 +2696,6 @@
               "revenue",
               "costs",
               "result"
-            ],
-            "type": "object"
-          },
-          "losses": {
-            "properties": {
-              "cashShortage": {
-                "example": "20.00",
-                "type": "string"
-              },
-              "countShortage": {
-                "example": "20.00",
-                "type": "string"
-              },
-              "countSurplus": {
-                "example": "20.00",
-                "type": "string"
-              },
-              "damaged": {
-                "example": "20.00",
-                "type": "string"
-              },
-              "expired": {
-                "example": "20.00",
-                "type": "string"
-              }
-            },
-            "required": [
-              "expired",
-              "damaged",
-              "countShortage",
-              "countSurplus",
-              "cashShortage"
             ],
             "type": "object"
           },
@@ -2940,17 +2852,22 @@
                 "example": "20.00",
                 "type": "string"
               },
+              "countSurplus": {
+                "description": "Sobrantes de conteo (a costo). Suman al resultado.",
+                "example": "20.00",
+                "type": "string"
+              },
               "grossProfit": {
                 "example": "20.00",
                 "type": "string"
               },
               "losses": {
-                "description": "Solo mercadería: mermas + faltantes de conteo − sobrantes (a costo).",
+                "description": "Vencidos, dañados y faltantes de conteo (a costo).",
                 "example": "20.00",
                 "type": "string"
               },
               "result": {
-                "description": "grossProfit − losses.",
+                "description": "grossProfit − losses + countSurplus.",
                 "example": "20.00",
                 "type": "string"
               },
@@ -2964,6 +2881,7 @@
               "cogs",
               "grossProfit",
               "losses",
+              "countSurplus",
               "result"
             ],
             "type": "object"
@@ -2982,18 +2900,13 @@
                 "example": "20.00",
                 "type": "string"
               },
-              "losses": {
-                "description": "Mermas y faltantes de conteo menos sobrantes (a costo), más faltantes de caja. Se mantiene por compatibilidad; store.losses no incluye la caja.",
-                "example": "20.00",
-                "type": "string"
-              },
               "marginPct": {
                 "description": "netProfit / (revenue + rooms.revenue) × 100.",
                 "example": "20.00",
                 "type": "string"
               },
               "netProfit": {
-                "description": "store.result + lodging.result − total.cashShortage − total.generalExpenses. Sin gastos equivale a grossProfit − losses + rooms.revenue.",
+                "description": "store.result + lodging.result − total.cashShortage + total.cashSurplus − total.generalExpenses.",
                 "example": "20.00",
                 "type": "string"
               },
@@ -3010,7 +2923,6 @@
               "revenue",
               "cogs",
               "grossProfit",
-              "losses",
               "netProfit",
               "marginPct",
               "salesCount",
@@ -3021,34 +2933,6 @@
           "to": {
             "format": "date-time",
             "type": "string"
-          },
-          "topLosses": {
-            "items": {
-              "properties": {
-                "amount": {
-                  "example": "20.00",
-                  "type": "string"
-                },
-                "productId": {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                "productName": {
-                  "type": "string"
-                },
-                "quantity": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "productId",
-                "productName",
-                "quantity",
-                "amount"
-              ],
-              "type": "object"
-            },
-            "type": "array"
           },
           "total": {
             "properties": {
@@ -3061,6 +2945,11 @@
                 "description": "Cajas cerradas en el período con faltante (diferencia negativa).",
                 "type": "integer"
               },
+              "cashSurplus": {
+                "description": "Sobrantes de las cajas cerradas en el período.",
+                "example": "20.00",
+                "type": "string"
+              },
               "generalExpenses": {
                 "description": "Gastos del grupo GENERAL del período.",
                 "example": "20.00",
@@ -3071,7 +2960,7 @@
                 "type": "string"
               },
               "netProfit": {
-                "description": "storeResult + lodgingResult − cashShortage − generalExpenses (igual a summary.netProfit).",
+                "description": "storeResult + lodgingResult − cashShortage + cashSurplus − generalExpenses (igual a summary.netProfit).",
                 "example": "20.00",
                 "type": "string"
               },
@@ -3085,6 +2974,7 @@
               "lodgingResult",
               "cashShortage",
               "cashShortageCount",
+              "cashSurplus",
               "generalExpenses",
               "netProfit"
             ],
@@ -3100,12 +2990,8 @@
           "store",
           "lodging",
           "total",
-          "expensesByCategory",
-          "cash",
-          "losses",
           "daily",
           "products",
-          "topLosses",
           "previous",
           "flows",
           "inventory",
@@ -6585,7 +6471,7 @@
     },
     "/api/report/overview": {
       "get": {
-        "description": "Ventas, ganancia neta (bruta − mermas, faltantes de conteo y de caja), cobros por método, descuadres de caja, serie diaria (día Lima), productos vendidos, comparación con el período anterior, compras y retiros del rango, y una foto actual del inventario.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n",
+        "description": "Ventas, resultado de la tienda y del hospedaje, ganancia neta (con la diferencia neta de caja y los gastos generales), cobros por método, serie diaria (día Lima), productos vendidos, comparación con el período anterior, compras del rango y una foto actual del inventario.\nSi no se envían `from` y `to`, se asumen los últimos 30 días. Máximo 366 días.\n",
         "parameters": [
           {
             "in": "query",

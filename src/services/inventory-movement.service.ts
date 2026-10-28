@@ -274,7 +274,13 @@ export default class InventoryMovementService implements IInventoryMovementServi
         throw new ConflictError(`"${product.name}" ya tiene movimientos; utilice una compra o un conteo físico`);
       }
 
-      costAvgSnapshotByProductId.set(productId, parseFloat(product.unitCostAvg ?? '0') || 0);
+      const unitCostAvg = parseFloat(product.unitCostAvg ?? '0') || 0;
+      // A surplus enters stock at the current average cost; without one it would enter at 0
+      // and drag down the next purchase's average, understating the cost of sales.
+      if (reason === 'COUNT_SURPLUS' && unitCostAvg <= 0) {
+        throw new ConflictError(`«${product.name}» no tiene costo. Registrá primero una carga inicial o una compra.`);
+      }
+      costAvgSnapshotByProductId.set(productId, unitCostAvg);
 
       // Costo total (quantity * unitPrice) para calcular un costo unitario ponderado.
       const totalCost = items

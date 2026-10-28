@@ -6,6 +6,7 @@ import CashRegisterRepository from '../../repositories/cash-register.repository.
 import SupplierRepository from '../../repositories/supplier.repository.js';
 import { saleSchema, purchaseSchema, lossSchema } from '../../schemas/inventory-movement.schema.js';
 import { query } from '../../db/index.js';
+import { ConflictError } from '../../errors/app.error.js';
 
 vi.mock('../../db/index.js', () => ({ query: vi.fn() }));
 vi.mock('../../db/transactions.js', () => ({ withTransaction: (fn: (client: unknown) => unknown) => fn({}) }));
@@ -167,6 +168,19 @@ describe('Inventory movements', () => {
     vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, unitCostAvg: '3.00' } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
     vi.spyOn(products, 'getStock').mockResolvedValue(3);
     await expect(service.registerLoss('store', { reason: 'LOSS_DAMAGED', items: [...costlessItems, ...costlessItems] })).rejects.toThrow('Stock insuficiente');
+  });
+
+  // A surplus without a known cost would enter stock at 0 and drag down the next purchase's average.
+  it('rejects a count surplus for a product without cost and inserts nothing', async () => {
+    vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, name: 'Agua', unitCostAvg: null } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
+    vi.spyOn(products, 'getStock').mockResolvedValue(1);
+    const create = vi.spyOn(repo, 'create').mockResolvedValue({ id: 'movement' } as never);
+    const insert = vi.spyOn(repo, 'createMovementItems').mockResolvedValue([]);
+    const counting = service.registerStockCount('store', 'u1', { notes: 'Conteo mensual', items: [{ productId, countedQuantity: 3 }] });
+    await expect(counting).rejects.toBeInstanceOf(ConflictError);
+    await expect(counting).rejects.toThrow('«Agua» no tiene costo. Registrá primero una carga inicial o una compra.');
+    expect(create).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
   });
 
   // A sale never changes the average cost, so later movements don't block voiding it; a purchase restores

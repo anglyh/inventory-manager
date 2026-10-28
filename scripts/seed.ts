@@ -323,6 +323,8 @@ interface PendingStay {
   expectedAt: Date;
   actualAt: Date;
   extraHourPrice: number;
+  /** Huéspedes alojados: no pueden entrar a otra habitación hasta su salida. */
+  guests: SeedGuest[];
 }
 
 async function main() {
@@ -460,8 +462,12 @@ async function main() {
       const room = stayPick(free);
       const type = room.type;
 
-      const holder = stayChance(0.18) ? stayPick(guestPool.slice(60)) : stayPick(guestPool.slice(0, 60));
-      const companion = stayChance(0.4) ? stayPick(guestPool.filter(guest => guest !== holder)) : null;
+      const hosted = new Set(pendingStays.flatMap(stay => stay.guests));
+      const regulars = guestPool.slice(0, 60).filter(guest => !hosted.has(guest));
+      const occasional = guestPool.slice(60).filter(guest => !hosted.has(guest));
+      const holder = stayChance(0.18) && occasional.length ? stayPick(occasional) : stayPick(regulars);
+      const companions = [...regulars, ...occasional].filter(guest => guest !== holder);
+      const companion = stayChance(0.4) && companions.length ? stayPick(companions) : null;
       const withMinor = rateKind === 'NIGHT' && (stayChance(0.03) || (!minorRegistered && day >= dayStart(DAYS - 20)));
       const expectedAt = suggestExpectedCheckOut({ checkIn: time, rateKind, hours, checkoutTime: CHECKOUT_TIME });
       const late = stayChance(0.25);
@@ -512,6 +518,7 @@ async function main() {
         expectedAt,
         actualAt,
         extraHourPrice: type.extraHourPrice,
+        guests: companion ? [holder, companion] : [holder],
       });
       roomFreeAt.set(room.id, actualAt.getTime() + 30 * 60_000);
     }

@@ -360,7 +360,7 @@ export default class StayRepository implements IStayRepository {
     }
     if (filters.roomId) {
       params.push(filters.roomId);
-      conditions.push(`st.room_id = ${params.length}`);
+      conditions.push(`st.room_id = $${params.length}`);
     }
     if (filters.migrations === 'pending') {
       conditions.push(pendingMigrations('st'));

@@ -80,6 +80,7 @@ export default class ReportRepository implements IReportRepository {
         FROM stay_payment p
         JOIN stay st ON st.id = p.stay_id
         WHERE st.store_id = $1
+          AND p.status = 'COMPLETED'
           AND p.created_at >= $2
           AND p.created_at <  $3
       ),
@@ -198,6 +199,7 @@ export default class ReportRepository implements IReportRepository {
         FROM stay_payment p
         JOIN stay st ON st.id = p.stay_id
         WHERE st.store_id = $1
+          AND p.status = 'COMPLETED'
           AND p.created_at >= $2
           AND p.created_at <  $3
         GROUP BY 1

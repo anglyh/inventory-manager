@@ -102,6 +102,12 @@ export const stayMigrationsSchema = z.object({
 
 export const stayIdSchema = z.object({ id: z.uuid('ID de estadía inválido') });
 
+export const stayPaymentIdSchema = stayIdSchema.extend({ paymentId: z.uuid('ID de pago inválido') });
+
+export const voidStayPaymentSchema = z.object({
+  reason: z.string().trim().min(1, 'El motivo es obligatorio').max(500).meta({ example: 'Se digitó 500 en vez de 50' }),
+}).strict().meta({ id: 'VoidStayPayment' });
+
 export const stayListQuerySchema = z.object({
   from: z.coerce.date().optional().meta({ description: 'Ingresos desde esta fecha (inclusive).' }),
   to: z.coerce.date().optional().meta({ description: 'Ingresos antes de esta fecha (exclusivo).' }),
@@ -119,6 +125,7 @@ export type StayMinorDTO = z.infer<typeof stayMinorSchema>;
 export type StayChargeDTO = z.infer<typeof stayChargeSchema>;
 export type StayPaymentDTO = z.infer<typeof stayPaymentSchema>;
 export type CheckOutDTO = z.infer<typeof checkOutSchema>;
+export type VoidStayPaymentDTO = z.infer<typeof voidStayPaymentSchema>;
 export type StayListQueryDTO = z.infer<typeof stayListQuerySchema>;
 export type GuestLookupDTO = z.infer<typeof guestLookupSchema>;
 
@@ -171,6 +178,11 @@ const stayPaymentResponseSchema = z.object({
   createdBy: z.uuid().nullable(),
   createdByName: z.string().nullable(),
   createdAt: z.iso.datetime(),
+  status: z.enum(['COMPLETED', 'VOIDED']).meta({ description: 'VOIDED: anulado; no suma al saldo, a la caja ni a los reportes.' }),
+  voidedBy: z.uuid().nullable(),
+  voidedByName: z.string().nullable(),
+  voidedAt: z.iso.datetime().nullable(),
+  voidReason: z.string().nullable(),
 });
 
 const stayBaseFields = {

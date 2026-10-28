@@ -16,6 +16,16 @@ import type {
   StayPaymentDTO,
 } from '../../schemas/stay.schema.js';
 
+/** Stay payment as read to void it; `stayClosed` is true once the stay checked out. */
+export interface StayPaymentForVoid {
+  id: string;
+  cashRegisterId: string;
+  paymentMethod: 'CASH' | 'YAPE';
+  amount: string;
+  status: 'COMPLETED' | 'VOIDED';
+  stayClosed: boolean;
+}
+
 export interface IStayRepository {
   findGuest(storeId: string, filters: GuestLookupDTO): Promise<Guest | null>;
 
@@ -34,6 +44,16 @@ export interface IStayRepository {
     payment: StayPaymentDTO,
     client: PoolClient,
   ): Promise<void>;
+  getPaymentForVoid(
+    storeId: string,
+    stayId: string,
+    paymentId: string,
+    client: PoolClient,
+    lock?: boolean,
+  ): Promise<StayPaymentForVoid | null>;
+  /** True when the payment's register still holds enough expected cash to give the amount back. */
+  canReverseCashPayment(paymentId: string, client: PoolClient): Promise<boolean>;
+  voidPayment(paymentId: string, userId: string, reason: string, client: PoolClient): Promise<void>;
 
   lock(storeId: string, id: string, client: PoolClient): Promise<LockedStay | null>;
   getBalance(id: string, client: PoolClient): Promise<number>;

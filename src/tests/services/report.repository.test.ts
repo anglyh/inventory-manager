@@ -21,4 +21,15 @@ describe('Report repository totals', () => {
     expect(sql).toContain('loss.expired + loss.damaged + loss.count_shortage AS store_losses');
     expect(sql).not.toMatch(/count_surplus\s*\+\s*register\.cash_shortage/);
   });
+
+  it('leaves voided stay payments out of room revenue in the totals and the daily series', async () => {
+    vi.mocked(query).mockResolvedValueOnce({ rows: [{}] } as never).mockResolvedValueOnce({ rows: [] } as never);
+    await repo.getTotals(range);
+    await repo.getDailySales(range);
+
+    for (const call of vi.mocked(query).mock.calls) {
+      const sql = (call[0] ?? '').replace(/\s+/g, ' ');
+      expect(sql).toContain("FROM stay_payment p JOIN stay st ON st.id = p.stay_id WHERE st.store_id = $1 AND p.status = 'COMPLETED'");
+    }
+  });
 });

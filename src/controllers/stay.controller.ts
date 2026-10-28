@@ -62,6 +62,21 @@ export default class StayController {
     }
   }
 
+  static async voidPayment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { storeId, userId } = req.user!;
+      res.status(200).json(await stayService.voidPayment(
+        storeId,
+        userId,
+        req.params.id as string,
+        req.params.paymentId as string,
+        req.body,
+      ));
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async setMigrationsReported(req: Request, res: Response, next: NextFunction) {
     try {
       res.status(200).json(await stayService.setMigrationsReported(

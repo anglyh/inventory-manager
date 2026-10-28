@@ -13,6 +13,7 @@ import type {
   StayChargeDTO,
   StayListQueryDTO,
   StayPaymentDTO,
+  VoidStayPaymentDTO,
 } from '../schemas/stay.schema.js';
 import { suggestExpectedCheckOut, suggestExtra } from '../utils/stay-pricing.js';
 
@@ -206,6 +207,39 @@ export default class StayService implements IStayService {
       }
 
       await this.stayRepo.close(id, userId, client);
+    });
+    return this.getById(storeId, id);
+  }
+
+  /**
+   * Anula un cobro mal registrado con su motivo, con las mismas reglas que anular una venta: su caja
+   * original debe seguir abierta y, si fue en efectivo, tener efectivo para devolverlo. Solo en estadías
+   * activas: tras el check-out el saldo quedó en 0 y la estadía es registro legal.
+   */
+  async voidPayment(
+    storeId: string,
+    userId: string,
+    id: string,
+    paymentId: string,
+    { reason }: VoidStayPaymentDTO,
+  ): Promise<StayDetail> {
+    await withTransaction(async client => {
+      const payment = await this.stayRepo.getPaymentForVoid(storeId, id, paymentId, client);
+      if (!payment) throw new NotFoundError('El pago no existe');
+      if (payment.stayClosed) {
+        throw new ConflictError('La estadía ya hizo check-out; sus pagos no se pueden anular');
+      }
+
+      // Mismo orden que al cobrar: caja, estadía y finalmente el pago.
+      await this.cashRegisterRepo.lockOpen(storeId, payment.cashRegisterId, client);
+      await this.lockActive(storeId, id, client);
+      const current = await this.stayRepo.getPaymentForVoid(storeId, id, paymentId, client, true);
+      if (current?.status !== 'COMPLETED') throw new ConflictError('El pago ya está anulado');
+
+      if (payment.paymentMethod === 'CASH' && !await this.stayRepo.canReverseCashPayment(paymentId, client)) {
+        throw new ConflictError('Efectivo insuficiente en la caja para revertir este pago');
+      }
+      await this.stayRepo.voidPayment(paymentId, userId, reason, client);
     });
     return this.getById(storeId, id);
   }

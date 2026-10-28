@@ -281,6 +281,7 @@ CREATE TABLE IF NOT EXISTS stay_charge (
 );
 
 -- Los cobros de habitaciones entran a la caja abierta, igual que las ventas.
+-- Un cobro mal digitado no se edita: se anula con motivo, igual que una venta, y deja de sumar.
 CREATE TABLE IF NOT EXISTS stay_payment (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     stay_id uuid NOT NULL REFERENCES stay(id) ON DELETE CASCADE,
@@ -288,7 +289,14 @@ CREATE TABLE IF NOT EXISTS stay_payment (
     payment_method payment_method NOT NULL,
     amount numeric(10, 2) NOT NULL CHECK (amount > 0),
     created_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
-    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+    voided_by uuid REFERENCES app_user(id) ON DELETE SET NULL,
+    status movement_status NOT NULL DEFAULT 'COMPLETED',
+    voided_at timestamptz,
+    void_reason TEXT,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+
+    CONSTRAINT chk_stay_payment_void_has_reason
+        CHECK (status = 'COMPLETED' OR (voided_at IS NOT NULL AND void_reason IS NOT NULL))
 );
 
 -- Gasto del negocio. Si se pagó con la caja abierta, se enlaza a la salida (CASH_OUT) que lo descuenta.
@@ -487,6 +495,7 @@ CROSS JOIN LATERAL (
         COALESCE(SUM(amount) FILTER (WHERE payment_method = 'YAPE'), 0.00) AS yape_stays
     FROM stay_payment
     WHERE cash_register_id = cr.id
+        AND status = 'COMPLETED'
 ) sp;
 
 -- Vista: cuenta de cada estadía (cargos, pagos y saldo pendiente).
@@ -507,6 +516,7 @@ CROSS JOIN LATERAL (
     SELECT COALESCE(SUM(amount), 0.00) AS payments_total
     FROM stay_payment
     WHERE stay_id = st.id
+        AND status = 'COMPLETED'
 ) p;
 
 -- Vista: efectivo esperado de la caja abierta y arqueo guardado al cerrar.

@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { query } from '../db/index.js';
 import { VIEWS } from '../db/tables.js';
-import type { IStayRepository } from '../interfaces/repositories/stay.repository.interface.js';
+import type { IStayRepository, StayPaymentForVoid } from '../interfaces/repositories/stay.repository.interface.js';
 import type {
   Guest,
   LockedStay,
@@ -102,10 +102,16 @@ const detailColumns = `
       'amount', p.amount::text,
       'createdBy', p.created_by,
       'createdByName', u.name,
-      'createdAt', ${isoTimestamp('p.created_at')}
+      'createdAt', ${isoTimestamp('p.created_at')},
+      'status', p.status,
+      'voidedBy', p.voided_by,
+      'voidedByName', voider.name,
+      'voidedAt', ${isoTimestamp('p.voided_at')},
+      'voidReason', p.void_reason
     ) ORDER BY p.created_at, p.id)
     FROM stay_payment AS p
     LEFT JOIN app_user AS u ON u.id = p.created_by
+    LEFT JOIN app_user AS voider ON voider.id = p.voided_by
     WHERE p.stay_id = st.id
   ), '[]'::json) AS payments`;
 
@@ -243,6 +249,45 @@ export default class StayRepository implements IStayRepository {
       `INSERT INTO stay_payment (stay_id, cash_register_id, payment_method, amount, created_by)
        VALUES ($1, $2, $3, $4, $5)`,
       [stayId, cashRegisterId, payment.paymentMethod, payment.amount, userId],
+    );
+  }
+
+  async getPaymentForVoid(
+    storeId: string,
+    stayId: string,
+    paymentId: string,
+    client: PoolClient,
+    lock = false,
+  ): Promise<StayPaymentForVoid | null> {
+    const result = await client.query(
+      `SELECT p.id, p.cash_register_id, p.payment_method, p.amount::text AS amount, p.status,
+         st.actual_check_out IS NOT NULL AS stay_closed
+       FROM stay_payment AS p
+       JOIN stay AS st ON st.id = p.stay_id
+       WHERE st.store_id = $1 AND p.stay_id = $2 AND p.id = $3
+       ${lock ? 'FOR UPDATE OF p' : ''}`,
+      [storeId, stayId, paymentId],
+    );
+    return result.rows[0] ? snakeToCamel(result.rows[0]) : null;
+  }
+
+  async canReverseCashPayment(paymentId: string, client: PoolClient): Promise<boolean> {
+    const result = await client.query(
+      `SELECT totals.expected_cash >= p.amount AS allowed
+       FROM stay_payment AS p
+       JOIN vw_cash_register_totals AS totals ON totals.cash_register_id = p.cash_register_id
+       WHERE p.id = $1`,
+      [paymentId],
+    );
+    return result.rows[0]?.allowed === true;
+  }
+
+  async voidPayment(paymentId: string, userId: string, reason: string, client: PoolClient): Promise<void> {
+    await client.query(
+      `UPDATE stay_payment
+       SET status = 'VOIDED', voided_at = clock_timestamp(), void_reason = $3, voided_by = $2
+       WHERE id = $1 AND status = 'COMPLETED'`,
+      [paymentId, userId, reason],
     );
   }
 

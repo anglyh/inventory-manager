@@ -6,6 +6,7 @@ import type {
   StayChargeDTO,
   StayListQueryDTO,
   StayPaymentDTO,
+  VoidStayPaymentDTO,
 } from '../../schemas/stay.schema.js';
 
 export interface StayPage {
@@ -21,5 +22,6 @@ export interface IStayService {
   addCharge(storeId: string, userId: string, id: string, data: StayChargeDTO): Promise<StayDetail>;
   addPayment(storeId: string, userId: string, id: string, data: StayPaymentDTO): Promise<StayDetail>;
   checkOut(storeId: string, userId: string, id: string, data: CheckOutDTO): Promise<StayDetail>;
+  voidPayment(storeId: string, userId: string, id: string, paymentId: string, data: VoidStayPaymentDTO): Promise<StayDetail>;
   setMigrationsReported(storeId: string, id: string, reported: boolean): Promise<StayDetail>;
 }

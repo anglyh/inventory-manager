@@ -9,11 +9,13 @@ import {
   stayListQuerySchema,
   stayMigrationsSchema,
   stayPageSchema,
+  stayPaymentIdSchema,
   stayPaymentSchema,
+  voidStayPaymentSchema,
 } from '../../schemas/stay.schema.js';
 import { jsonBody, jsonResponse } from '../content.js';
 import { registry } from '../registry.js';
-import { errorRef, standardErrors } from '../responses.js';
+import { adminOnly, errorRef, standardErrors } from '../responses.js';
 
 export const stayTag = {
   name: 'Stays',
@@ -106,6 +108,20 @@ registry.registerPath({
   request: { params: stayIdSchema, body: jsonBody(stayPaymentSchema) },
   responses: {
     201: jsonResponse('Estadía actualizada.', stayDetailSchema),
+    ...errors,
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/stay/{id}/payment/{paymentId}/void',
+  summary: 'Anular un pago registrado por error',
+  description: 'Solo ADMIN, igual que anular una venta. Exige motivo; el pago no se edita ni se borra: queda anulado con quién, cuándo y por qué, y deja de sumar al saldo, a la caja y a los reportes. Solo en estadías activas. Requiere la caja original del pago abierta; si fue en efectivo, efectivo suficiente para revertirlo. Rechaza pagos ya anulados.',
+  tags,
+  request: { params: stayPaymentIdSchema, body: jsonBody(voidStayPaymentSchema) },
+  responses: {
+    ...adminOnly,
+    200: jsonResponse('Estadía actualizada.', stayDetailSchema),
     ...errors,
   },
 });

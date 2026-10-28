@@ -13,7 +13,7 @@ vi.mock('../../db/transactions.js', () => ({
 const stayRepo = {
   lock: vi.fn(), getBalance: vi.fn(), addCharge: vi.fn(), addPayment: vi.fn(), close: vi.fn(), findById: vi.fn(),
   lockRoomForCheckIn: vi.fn(), upsertGuest: vi.fn(), create: vi.fn(), addGuests: vi.fn(), addMinors: vi.fn(),
-  findActiveStayOfGuest: vi.fn(),
+  findActiveStayOfGuest: vi.fn(), getPaymentForVoid: vi.fn(), canReverseCashPayment: vi.fn(), voidPayment: vi.fn(),
 } as unknown as IStayRepository;
 const cashRegisterRepo = { lockOpen: vi.fn() } as unknown as ICashRegisterRepository;
 const storeRepo = {
@@ -115,5 +115,17 @@ describe('Stay service money rules', () => {
 
     await expect(checkIn).rejects.toMatchObject({ message: 'Juan Pérez ya está hospedado en la habitación 201' });
     expect(stayRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects voiding a payment once the stay is checked out and keeps the payment', async () => {
+    vi.mocked(stayRepo.getPaymentForVoid).mockResolvedValue({
+      id: 'p1', cashRegisterId: 'cr1', paymentMethod: 'CASH', amount: '500.00', status: 'COMPLETED', stayClosed: true,
+    });
+
+    const voiding = service.voidPayment('s1', 'u1', 'st1', 'p1', { reason: 'Monto mal digitado' });
+
+    await expect(voiding).rejects.toBeInstanceOf(ConflictError);
+    expect(cashRegisterRepo.lockOpen).not.toHaveBeenCalled();
+    expect(stayRepo.voidPayment).not.toHaveBeenCalled();
   });
 });

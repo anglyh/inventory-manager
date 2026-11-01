@@ -1,8 +1,25 @@
 import type { NextFunction, Request, Response } from 'express';
 import { userService } from '../container.js';
-import type { AuthResponse } from '../schemas/user.schema.js';
 
 export default class UserController {
+  static async listStoreUsers(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await userService.listStoreUsers(req.user!.storeId));
+    } catch (err) { next(err); }
+  }
+
+  static async createStoreUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.status(201).json(await userService.createStoreUser(req.user!.storeId, req.body));
+    } catch (err) { next(err); }
+  }
+
+  static async setStoreUserActive(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await userService.setStoreUserActive(req.user!.storeId, req.params.id as string, req.body.active));
+    } catch (err) { next(err); }
+  }
+
   static async signUp(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await userService.register(req.body);
@@ -23,10 +40,8 @@ export default class UserController {
 
   static async checkStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      return res.status(200).json({
-        token: req.headers.authorization?.split(" ")[1],
-        user: req.user!,
-      });
+      const token = req.headers.authorization?.split(" ")[1] ?? '';
+      return res.status(200).json(userService.getSession(req.user!, token));
     } catch (err) {
       next(err);
     }

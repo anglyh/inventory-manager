@@ -9,11 +9,20 @@ import { initDb } from './db/index.js';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.middleware.js';
 import userRouter from './routes/user.routes.js';
 import productRouter from './routes/product.routes.js';
-import { requireAuth } from './middlewares/auth.middleware.js';
+import { requireAdmin, requireAuth } from './middlewares/auth.middleware.js';
 import categoryRouter from './routes/category.routes.js';
 import inventoryMovementRouter from './routes/inventory-movement.routes.js';
 import reportRouter from './routes/report.routes.js';
-import seedRouter from './routes/seed.routes.js';
+import cashRegisterRouter from './routes/cash-register.routes.js';
+import supplierRouter from './routes/supplier.routes.js';
+import storeUserRouter from './routes/store-user.routes.js';
+import roomTypeRouter from './routes/room-type.routes.js';
+import roomRouter from './routes/room.routes.js';
+import storeRouter from './routes/store.routes.js';
+import guestRouter from './routes/guest.routes.js';
+import stayRouter from './routes/stay.routes.js';
+import expenseCategoryRouter from './routes/expense-category.routes.js';
+import expenseRouter from './routes/expense.routes.js';
 import { setupSwagger } from './config/swagger.js';
 import { env } from './config.js';
 
@@ -56,7 +65,7 @@ app.use(async (req, res, next) => {
   } catch (err) {
     console.error("Error connecting to database", err);
     // Respuesta JSON consistente (y con CORS, porque el middleware cors ya corrió)
-    return res.status(503).json({ message: "Database unavailable" });
+    return res.status(503).json({ success: false, error: { code: 'DB_ERROR', message: 'Base de datos no disponible' } });
   }
 });
 
@@ -72,8 +81,17 @@ app.use("/api/auth", userRouter);
 app.use("/api/product", requireAuth, productRouter);
 app.use("/api/category", requireAuth, categoryRouter);
 app.use("/api/inventory-movement", requireAuth, inventoryMovementRouter);
-app.use("/api/report", requireAuth, reportRouter);
-app.use("/api/seed", seedRouter);
+app.use("/api/cash-register", requireAuth, cashRegisterRouter);
+app.use('/api/supplier', requireAuth, requireAdmin, supplierRouter);
+app.use('/api/store-user', requireAuth, requireAdmin, storeUserRouter);
+app.use("/api/report", requireAuth, requireAdmin, reportRouter);
+app.use('/api/room-type', requireAuth, roomTypeRouter);
+app.use('/api/room', requireAuth, roomRouter);
+app.use('/api/store', requireAuth, storeRouter);
+app.use('/api/guest', requireAuth, guestRouter);
+app.use('/api/stay', requireAuth, stayRouter);
+app.use('/api/expense-category', requireAuth, requireAdmin, expenseCategoryRouter);
+app.use('/api/expense', requireAuth, requireAdmin, expenseRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

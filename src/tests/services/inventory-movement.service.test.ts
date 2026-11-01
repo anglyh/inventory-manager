@@ -1,0 +1,211 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import InventoryMovementService from '../../services/inventory-movement.service.js';
+import InventoryMovementRepository from '../../repositories/inventory-movement.repository.js';
+import ProductRepository from '../../repositories/product.repository.js';
+import CashRegisterRepository from '../../repositories/cash-register.repository.js';
+import SupplierRepository from '../../repositories/supplier.repository.js';
+import { saleSchema, purchaseSchema, lossSchema } from '../../schemas/inventory-movement.schema.js';
+import { query } from '../../db/index.js';
+import { ConflictError } from '../../errors/app.error.js';
+
+vi.mock('../../db/index.js', () => ({ query: vi.fn() }));
+vi.mock('../../db/transactions.js', () => ({ withTransaction: (fn: (client: unknown) => unknown) => fn({}) }));
+
+const productId = '00000000-0000-4000-8000-000000000001';
+const items = [{ productId, quantity: 2, unitPrice: 10 }];
+const costlessItems = [{ productId, quantity: 2 }];
+const saleItems = [{ productId, quantity: 2, salePrice: 10 }];
+const purchaseItems = [{ productId, quantity: 2, unitCost: 10 }];
+
+describe('Inventory movements', () => {
+  const repo = new InventoryMovementRepository();
+  const products = new ProductRepository();
+  const cashRegisters = new CashRegisterRepository();
+  const suppliers = new SupplierRepository();
+  const service = new InventoryMovementService(repo, products, cashRegisters, suppliers);
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(cashRegisters, 'lockOpen').mockResolvedValue(productId);
+    vi.spyOn(suppliers, 'findById').mockResolvedValue({ id: productId } as never);
+    vi.spyOn(repo, 'hasProductMovements').mockResolvedValue(false);
+  });
+
+  it('requires payment for sales and rejects fields belonging to other operations', () => {
+    expect(saleSchema.safeParse({ items: saleItems }).success).toBe(false);
+    expect(saleSchema.safeParse({ paymentMethod: 'CASH', supplierId: productId, items: saleItems }).success).toBe(false);
+    expect(purchaseSchema.safeParse({ cashRegisterId: productId, items: purchaseItems }).success).toBe(false);
+    expect(lossSchema.safeParse({ reason: 'LOSS_THEFT', paymentMethod: 'CASH', items }).success).toBe(false);
+    expect(lossSchema.safeParse({ reason: 'SALE', items }).success).toBe(false);
+    expect(saleSchema.safeParse({ reason: 'PURCHASE', paymentMethod: 'CASH', items: saleItems }).success).toBe(false);
+    expect(purchaseSchema.safeParse({ items: [] }).success).toBe(false);
+  });
+
+  it('accepts sales and purchases without reason, rejecting client-assigned reason or direction', () => {
+    expect(saleSchema.safeParse({ paymentMethod: 'CASH', items: saleItems }).success).toBe(true);
+    expect(purchaseSchema.safeParse({ items: purchaseItems }).success).toBe(true);
+    expect(saleSchema.safeParse({ reason: 'SALE', paymentMethod: 'CASH', items: saleItems }).success).toBe(false);
+    expect(purchaseSchema.safeParse({ reason: 'PURCHASE', items: purchaseItems }).success).toBe(false);
+    expect(saleSchema.safeParse({ movementType: 'IN', paymentMethod: 'CASH', items: saleItems }).success).toBe(false);
+    expect(purchaseSchema.safeParse({ movementType: 'OUT', items: purchaseItems }).success).toBe(false);
+    expect(lossSchema.safeParse({ items }).success).toBe(false);
+  });
+
+  it('rejects ambiguous or operation-inappropriate price fields', () => {
+    for (const invalidItems of [items, purchaseItems, [{ ...saleItems[0], unitPrice: 5 }], [{ ...saleItems[0], unitCost: 5 }]]) {
+      expect(saleSchema.safeParse({ paymentMethod: 'CASH', items: invalidItems }).success).toBe(false);
+    }
+    for (const invalidItems of [items, saleItems, [{ ...purchaseItems[0], unitPrice: 5 }], [{ ...purchaseItems[0], salePrice: 5 }]]) {
+      expect(purchaseSchema.safeParse({ items: invalidItems }).success).toBe(false);
+    }
+  });
+
+  it('registers INITIAL_LOAD in direction IN with the declared cost', async () => {
+    vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, unitCostAvg: '3.00' } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
+    vi.spyOn(products, 'getStock').mockResolvedValue(10);
+    const update = vi.spyOn(products, 'updateUnitCostAvg').mockResolvedValue();
+    const create = vi.spyOn(repo, 'create').mockImplementation(async data => ({
+      ...data, id: 'movement', status: 'COMPLETED', voidedAt: null, voidedBy: null, voidReason: null, createdAt: new Date(),
+    }));
+    const insert = vi.spyOn(repo, 'createMovementItems').mockImplementation(async (_id, rows) => rows.map(row => ({ ...row, unitPrice: row.unitPrice.toFixed(2), unitCost: row.unitCost.toFixed(2) })));
+    await service.registerInitialLoad('store', { items });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      storeId: 'store', reason: 'INITIAL_LOAD', movementType: 'IN',
+      supplierId: null,
+    }), {});
+    expect(insert).toHaveBeenCalledWith('movement', [expect.objectContaining({ ...costlessItems[0], unitPrice: 10, unitCost: 10 })], {});
+    expect(update).toHaveBeenCalledWith(productId, 4.17, {});
+  });
+
+  it.each(['sale', 'purchase', 'loss'] as const)('registers a %s with the correct direction and cost', async operation => {
+    vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, unitCostAvg: '3.00' } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
+    vi.spyOn(products, 'getStock').mockResolvedValue(10);
+    const update = vi.spyOn(products, 'updateUnitCostAvg').mockResolvedValue();
+    const create = vi.spyOn(repo, 'create').mockImplementation(async data => ({
+      ...data, id: 'movement', status: 'COMPLETED', voidedAt: null, voidedBy: null, voidReason: null, createdAt: new Date(),
+    }));
+    const insert = vi.spyOn(repo, 'createMovementItems').mockImplementation(async (_id, rows) => rows.map(row => ({ ...row, unitPrice: row.unitPrice.toFixed(2), unitCost: row.unitCost.toFixed(2) })));
+    const result = operation === 'sale'
+      ? await service.registerSale('store', { paymentMethod: 'CASH', cashRegisterId: productId, items: saleItems })
+      : operation === 'purchase'
+        ? await service.registerPurchase('store', { supplierId: productId, items: purchaseItems })
+        : await service.registerLoss('store', { reason: 'LOSS_DAMAGED', items: costlessItems });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      storeId: 'store',
+      reason: operation === 'sale' ? 'SALE' : operation === 'purchase' ? 'PURCHASE' : 'LOSS_DAMAGED',
+      movementType: operation === 'purchase' ? 'IN' : 'OUT',
+      paymentMethod: operation === 'sale' ? 'CASH' : null,
+      supplierId: operation === 'purchase' ? productId : null,
+      cashRegisterId: operation === 'sale' ? productId : null,
+    }), {});
+    expect(insert).toHaveBeenCalledWith('movement', [expect.objectContaining({ ...costlessItems[0], unitPrice: operation === 'loss' ? 3 : 10, unitCost: operation === 'purchase' ? 10 : 3 })], {});
+    expect(result.totalAmount).toBe(operation === 'loss' ? '6.00' : '20.00');
+    expect(result.items[0]).toMatchObject({ unitPrice: operation === 'loss' ? '3.00' : '10.00', unitCost: operation === 'purchase' ? '10.00' : '3.00' });
+    expect(result.reason).toBe(operation === 'sale' ? 'SALE' : operation === 'purchase' ? 'PURCHASE' : 'LOSS_DAMAGED');
+    if (operation === 'purchase') expect(update).toHaveBeenCalledWith(productId, 4.17, {});
+    else expect(update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['sales', 'COMPLETED', ['SALE']],
+    ['purchase', 'COMPLETED', ['PURCHASE']],
+    ['loss', 'COMPLETED', ['LOSS_EXPIRED', 'LOSS_DAMAGED']],
+    ['count', 'COMPLETED', ['COUNT_SURPLUS', 'COUNT_SHORTAGE']],
+    ['initial', 'COMPLETED', ['INITIAL_LOAD']],
+    ['voids', 'VOIDED', undefined],
+  ] as const)('filters %s by status and reason within the store', async (group, status, reasons) => {
+    vi.mocked(query).mockResolvedValue({ rows: [] } as never);
+    await repo.listMovementsByCursor({ storeId: 'store', group, limit: 2 });
+    const [sql, params] = vi.mocked(query).mock.calls.at(-1)!;
+    expect(sql).toContain('m.store_id = $1');
+    expect(sql).toContain('m.status = $2');
+    expect(params).toEqual(reasons ? ['store', status, reasons, 3] : ['store', status, 3]);
+    if (reasons) expect(sql).toContain('m.reason = ANY(');
+    else expect(sql).not.toContain('m.reason = ANY(');
+  });
+
+  it.each([
+    ['IN', undefined, 'COMPLETED', undefined],
+    ['OUT', undefined, 'COMPLETED', undefined],
+    ['OUT', 'sales', 'COMPLETED', ['SALE']],
+    ['IN', 'voids', 'VOIDED', undefined],
+  ] as const)('combines direction %s and group %s with the store and cursor in SQL', async (movementType, group, status, reasons) => {
+    const cursorDate = '2026-09-10T12:00:00.000Z';
+    vi.mocked(query).mockResolvedValue({ rows: [] } as never);
+    await repo.listMovementsByCursor({ storeId: 'store', movementType, group, cursorDate, cursorId: productId, limit: 2 });
+    const [sql, params] = vi.mocked(query).mock.calls.at(-1)!;
+    expect(sql).toContain('m.store_id = $1');
+    expect(sql).toContain('m.created_at < $2');
+    expect(sql).toContain('m.id < $3');
+    expect(sql).toContain('m.movement_type = $4');
+    expect(sql).toContain('m.status = $5');
+    expect(params).toEqual(['store', cursorDate, productId, movementType, status, ...(reasons ? [reasons] : []), 3]);
+    if (reasons) expect(sql).toContain('m.reason = ANY($6::movement_reason[])');
+    else expect(sql).not.toContain('m.reason = ANY(');
+  });
+
+  it('uses the last returned row as cursor, preserving the extra row for the next page', async () => {
+    const date = '2026-01-01T00:00:00.123456Z';
+    vi.spyOn(repo, 'listMovementsByCursor').mockResolvedValue([
+      { id: '3', createdAt: date }, { id: '2', createdAt: date }, { id: '1', createdAt: date },
+    ] as Awaited<ReturnType<typeof repo.listMovementsByCursor>>);
+    const page = await service.listMovementsByCursor({ storeId: 'store', limit: 2, group: 'sales' });
+    expect(page.data.map(row => row.id)).toEqual(['3', '2']);
+    expect(page.nextCursor?.cursorId).toBe('2');
+  });
+
+  // it('keeps average cost on customer returns instead of using the sale price', async () => {
+  //   vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, unitCostAvg: '3.00' } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
+  //   const update = vi.spyOn(products, 'updateUnitCostAvg');
+  //   vi.spyOn(repo, 'create').mockResolvedValue({ id: 'movement', movementType: 'IN', reason: 'CUSTOMER_RETURN', status: 'COMPLETED', notes: null } as Awaited<ReturnType<typeof repo.create>>);
+  //   const insert = vi.spyOn(repo, 'createMovementItems').mockResolvedValue([]);
+  //   await service.registerCustomerReturn('store', { items });
+  //   expect(update).not.toHaveBeenCalled();
+  //   expect(insert).toHaveBeenCalledWith('movement', [{ ...items[0], unitCost: 3 }], {});
+  // });
+
+  it('checks total quantity across duplicate products for stock shortages', async () => {
+    vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, unitCostAvg: '3.00' } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
+    vi.spyOn(products, 'getStock').mockResolvedValue(3);
+    await expect(service.registerLoss('store', { reason: 'LOSS_DAMAGED', items: [...costlessItems, ...costlessItems] })).rejects.toThrow('Stock insuficiente');
+  });
+
+  // A surplus without a known cost would enter stock at 0 and drag down the next purchase's average.
+  it('rejects a count surplus for a product without cost and inserts nothing', async () => {
+    vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store', isActive: true, name: 'Agua', unitCostAvg: null } as Awaited<ReturnType<typeof products.findByIdForUpdate>>);
+    vi.spyOn(products, 'getStock').mockResolvedValue(1);
+    const create = vi.spyOn(repo, 'create').mockResolvedValue({ id: 'movement' } as never);
+    const insert = vi.spyOn(repo, 'createMovementItems').mockResolvedValue([]);
+    const counting = service.registerStockCount('store', 'u1', { notes: 'Conteo mensual', items: [{ productId, countedQuantity: 3 }] });
+    await expect(counting).rejects.toBeInstanceOf(ConflictError);
+    await expect(counting).rejects.toThrow('«Agua» no tiene costo. Registrá primero una carga inicial o una compra.');
+    expect(create).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  // A sale never changes the average cost, so later movements don't block voiding it; a purchase restores
+  // the previous average, which is only valid while it is the product's latest movement.
+  it.each([
+    ['SALE', 'OUT', true],
+    ['PURCHASE', 'IN', false],
+  ] as const)('voids a %s (%s) with later movements of the product only if it is a sale', async (reason, movementType, allowed) => {
+    const movement = { id: 'm1', reason, movementType, status: 'COMPLETED', cashRegisterId: 'cr1', paymentMethod: 'YAPE' };
+    vi.spyOn(repo, 'getForVoid').mockResolvedValue(movement as never);
+    vi.spyOn(repo, 'getVoidItems').mockResolvedValue([{ productId, quantity: 2, unitCostBefore: '3.00' }] as never);
+    vi.spyOn(repo, 'hasLaterMovement').mockResolvedValue(true);
+    vi.spyOn(repo, 'void').mockResolvedValue(undefined as never);
+    vi.spyOn(products, 'findByIdForUpdate').mockResolvedValue({ id: productId, storeId: 'store' } as never);
+    vi.spyOn(products, 'getStock').mockResolvedValue(10);
+    vi.spyOn(products, 'updateUnitCostAvg').mockResolvedValue(undefined as never);
+
+    const voiding = service.voidMovement('store', 'u1', 'm1', { reason: 'Error del cajero' });
+
+    if (allowed) {
+      await expect(voiding).resolves.toBeUndefined();
+      expect(repo.void).toHaveBeenCalled();
+    } else {
+      await expect(voiding).rejects.toThrow('Hay movimientos posteriores');
+      expect(repo.void).not.toHaveBeenCalled();
+    }
+  });
+});

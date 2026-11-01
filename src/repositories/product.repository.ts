@@ -1,10 +1,11 @@
 import type { PoolClient } from 'pg';
 import { query } from '../db/index.js';
 import { TABLES, VIEWS } from '../db/tables.js';
-import type { Product, ProductWithStock, ProductListItem, ProductSearchItem, ListProductQuery } from '../models/product.model.js';
+import type { Product, ProductWithStock, ProductListItem, ProductSearchItem, ProductOption } from '../models/product.model.js';
+import type { CreateProductDTO, UpdateProductDTO } from '../schemas/product.schema.js';
 import { snakeToCamel } from '../utils/mapper.js';
 import { NotFoundError } from '../errors/app.error.js';
-import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
+import type { IProductRepository, ListProductQuery, ProductCountQuery } from '../interfaces/repositories/product.repository.interface.js';
 
 export default class ProductRepository implements IProductRepository {
   async findById(productId: string, client?: PoolClient): Promise<ProductWithStock | null> {
@@ -14,7 +15,33 @@ export default class ProductRepository implements IProductRepository {
       ? await client.query(text, params)
       : await query(text, params);
     
-    return snakeToCamel(rows[0])
+    return rows[0] ? snakeToCamel(rows[0]) : null;
+  }
+
+  async findForStore(storeId: string, productId: string, client?: PoolClient): Promise<ProductWithStock | null> {
+    const sql = `SELECT * FROM ${VIEWS.PRODUCT_WITH_STOCK} WHERE store_id = $1 AND id = $2`;
+    const result = client
+      ? await client.query(sql, [storeId, productId])
+      : await query(sql, [storeId, productId]);
+    return result.rows[0] ? snakeToCamel(result.rows[0]) : null;
+  }
+
+  async findByBarcode(storeId: string, barcode: string): Promise<Pick<Product, 'id' | 'name'> | null> {
+    // Includes deactivated products: the barcode stays unique per store for them too.
+    const { rows } = await query(
+      `SELECT id, name FROM ${TABLES.PRODUCT} WHERE store_id = $1 AND barcode = $2 LIMIT 1`,
+      [storeId, barcode],
+    );
+    return rows[0] ? snakeToCamel(rows[0]) : null;
+  }
+
+  async categoryBelongsToStore(storeId: string, categoryId: string, client: PoolClient): Promise<boolean> {
+    const result = await client.query(`
+      SELECT id FROM category
+      WHERE store_id = $1 AND id = $2
+      FOR KEY SHARE
+    `, [storeId, categoryId]);
+    return result.rows.length > 0;
   }
 
   async listAll(filters: ListProductQuery): Promise<ProductListItem[]> {
@@ -41,7 +68,7 @@ export default class ProductRepository implements IProductRepository {
       FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
       LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
       ${whereClause}
-      ORDER BY p.name ASC
+      ORDER BY ${rest.lowStock ? 'p.stock - p.min_stock ASC, ' : ''}p.name ASC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
 
@@ -49,42 +76,45 @@ export default class ProductRepository implements IProductRepository {
     return snakeToCamel(result.rows)
   }
 
-  async create(userId: string, productData: Product): Promise<Product> {
+  async create(storeId: string, productData: CreateProductDTO, client: PoolClient): Promise<Product> {
     const { name, salePrice, minStock, barcode, categoryId } = productData;
-    const result = await query(`
-      INSERT INTO ${TABLES.PRODUCT} (user_id, name, sale_price, barcode, min_stock, category_id)
+    const result = await client.query(`
+      INSERT INTO ${TABLES.PRODUCT} (store_id, name, sale_price, barcode, min_stock, category_id)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-      `, [userId, name, salePrice, barcode ?? null, minStock, categoryId ?? null]
+      `, [storeId, name.trim(), salePrice, barcode?.trim() || null, minStock, categoryId ?? null]
     );
 
     return snakeToCamel(result.rows[0])
   }
 
-  async update(productData: Product, client?: PoolClient): Promise<Product> {
-    const { id, name, salePrice, barcode, minStock, categoryId } = productData;
-    const params = [name, salePrice, barcode, minStock, categoryId, id]
+  async update(storeId: string, id: string, productData: UpdateProductDTO, client: PoolClient): Promise<Product> {
+    const { name, salePrice, barcode, minStock, categoryId } = productData;
+    const params = [name.trim(), salePrice, barcode?.trim() || null, minStock ?? null, categoryId ?? null, id, storeId, barcode !== undefined, categoryId !== undefined];
     const text = `
       UPDATE ${TABLES.PRODUCT}
         SET name = $1,
         sale_price = $2,
-        barcode = $3,
-        min_stock = $4,
-        category_id = $5
-      WHERE id = $6
+        barcode = CASE WHEN $8 THEN $3 ELSE barcode END,
+        min_stock = COALESCE($4, min_stock),
+        category_id = CASE WHEN $9 THEN $5::uuid ELSE category_id END
+      WHERE id = $6 AND store_id = $7
       RETURNING *
     `;
 
-    const { rows } = client
-      ? await client.query(text, params)
-      : await query(text, params)
-
-    return snakeToCamel(rows[0])
+    const { rows } = await client.query(text, params);
+    if (!rows[0]) throw new NotFoundError('El producto no existe');
+    return snakeToCamel(rows[0]);
   }
 
-  async deactivate(id: string) {
-    const result = await query(`UPDATE ${TABLES.PRODUCT} SET is_active = false  WHERE id = $1 RETURNING *`, [id])
-    return snakeToCamel(result.rows[0]);
+  async deactivate(storeId: string, id: string): Promise<void> {
+    const result = await query(`
+      UPDATE ${TABLES.PRODUCT}
+      SET is_active = false
+      WHERE store_id = $1 AND id = $2
+      RETURNING id
+    `, [storeId, id]);
+    if (!result.rows[0]) throw new NotFoundError('El producto no existe');
   }
 
   async getStock(productId: string, client?: PoolClient): Promise<number> {
@@ -122,41 +152,49 @@ export default class ProductRepository implements IProductRepository {
     )
   }
 
-  async listProductOptions(userId: string): Promise<ProductSearchItem[]> {
-    const params = [userId]
+  async listProductOptions(storeId: string): Promise<ProductOption[]> {
+    const params = [storeId]
     const text = `
     SELECT
       p.id,
       p.name,
       p.sale_price,
-      p.barcode
-    FROM ${TABLES.PRODUCT} AS p
-    WHERE p.user_id = $1 AND p.is_active = true
+      p.barcode,
+      p.stock,
+      p.category_id,
+      c.name AS category_name,
+      -- Mismo criterio que la carga inicial: incluye movimientos anulados.
+      EXISTS (
+        SELECT 1 FROM ${TABLES.INVENTORY_MOVEMENT_ITEM} AS mi WHERE mi.product_id = p.id
+      ) AS has_movements
+    FROM ${VIEWS.PRODUCT_WITH_STOCK} AS p
+    LEFT JOIN ${TABLES.CATEGORY} AS c ON p.category_id = c.id
+    WHERE p.store_id = $1 AND p.is_active = true
     ORDER BY p.name ASC
     `
     const result = await query(text, params)
     return snakeToCamel(result.rows)
   }
 
-  async getByName(userId: string, searchTerm: string): Promise<ProductSearchItem[]> {
-    const params = [userId, `%${searchTerm}%`]
+  async getByName(storeId: string, searchTerm: string): Promise<ProductSearchItem[]> {
+    const params = [storeId, `%${searchTerm}%`]
     const text =`
     SELECT 
       p.id,
       p.name,
       p.sale_price
     FROM ${TABLES.PRODUCT} AS p
-    WHERE p.user_id = $1 AND p.is_active = true AND unaccent(p.name) ILIKE unaccent($2)
+    WHERE p.store_id = $1 AND p.is_active = true AND unaccent(p.name) ILIKE unaccent($2)
     `
 
     const result = await query(text, params)
     return snakeToCamel(result.rows)
   }
 
-  async count(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryNames'>): Promise<number> {
+  async count(filters: ProductCountQuery): Promise<number> {
     const { conditions, params } = this.buildWhereClause(filters)
     const whereClause = conditions.length
-      ? `WHERE ${conditions.join(' AND ')}`
+      ? `WHERE ${conditions.join(' AND ')} AND p.is_active = true`
       : ''
 
     const result = await query(`
@@ -170,27 +208,30 @@ export default class ProductRepository implements IProductRepository {
     return parseInt(result.rows[0].count, 10)
   }
 
-  private buildWhereClause(filters: Pick<ListProductQuery, 'userId' | 'search' | 'categoryNames'>) {
-    const { userId, search, categoryNames } = filters;
+  private buildWhereClause(filters: ProductCountQuery) {
+    const { storeId, search, categoryIds, withoutCategory, lowStock } = filters;
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    params.push(userId)
-    conditions.push(`p.user_id = $${params.length}`)
+    params.push(storeId)
+    conditions.push(`p.store_id = $${params.length}`)
 
     if (search) {
       params.push(`%${search}%`)
       conditions.push(`p.name ILIKE $${params.length}`)
     }
 
-    if (categoryNames?.length) {
-      const orParts: string[] = [];
-      for (const name of categoryNames) {
-        params.push(name);
-        orParts.push(`lower(unaccent(c.name)) = lower(unaccent($${params.length}))`);
-      }
-      conditions.push(`(${orParts.join(' OR ')})`);
+    // Categorías elegidas y/o productos sin categoría: basta con cumplir una.
+    const categoryParts: string[] = [];
+    if (categoryIds?.length) {
+      params.push(categoryIds);
+      categoryParts.push(`p.category_id = ANY($${params.length}::uuid[])`);
     }
+    if (withoutCategory) categoryParts.push('p.category_id IS NULL');
+    if (categoryParts.length) conditions.push(`(${categoryParts.join(' OR ')})`);
+
+    // Por reponer: la misma regla que el aviso del reporte (activos, stock en o bajo el mínimo).
+    if (lowStock) conditions.push('p.stock <= p.min_stock');
 
     return { conditions, params }
   }

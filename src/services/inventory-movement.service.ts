@@ -1,62 +1,112 @@
 import type { PoolClient } from 'pg';
 import { withTransaction } from '../db/transactions.js';
-import { ConflictError, NotFoundError } from '../errors/app.error.js';
+import { BadRequestError, ConflictError, NotFoundError } from '../errors/app.error.js';
 import type { IInventoryMovementRepository } from '../interfaces/repositories/inventory-movement.repository.interface.js';
 import type { IProductRepository } from '../interfaces/repositories/product.repository.interface.js';
+import type { ICashRegisterRepository } from '../interfaces/repositories/cash-register.repository.interface.js';
+import type { ISupplierRepository } from '../interfaces/repositories/supplier.repository.interface.js';
 import type {
   IInventoryMovementService,
   RegisterInventoryMovementResult,
 } from '../interfaces/services/inventory-movement.service.interface.js';
-import type { InventoryMovementItemInsert } from '../models/inventory-movement-item.model.js';
 import type {
   InventoryMovementInsert,
+  InventoryMovementItemInsert,
   InventoryMovementsByCursorParams,
-  MovementType,
-} from '../models/inventory-movement.model.js';
+} from '../interfaces/repositories/inventory-movement.repository.interface.js';
+import { movementDirections, type MovementType, type MovementReason, type PaymentMethod } from '../models/inventory-movement.model.js';
 import type { Product } from '../models/product.model.js';
-import type { CreateInventoryMovementPayloadDTO } from '../schemas/inventory-movement.schema.js';
+import {
+  type MovementItemDTO, type CostlessMovementItemDTO,
+  type InitialLoadDTO,
+  type SaleDTO, type PurchaseDTO, type LossDTO,
+  type StockCountDTO,
+} from '../schemas/inventory-movement.schema.js';
 import { calculateUnitCostAverage } from '../utils/calculations.js';
+import { buildCursorPage } from '../utils/cursor-pagination.js';
 
-type IncomingItem = CreateInventoryMovementPayloadDTO['items'][number];
+// Pérdidas y conteos llegan sin precio: se valorizan al costo promedio vigente.
+type RegisterMovementItem = MovementItemDTO | CostlessMovementItemDTO;
+
+// Motivos cuyo precio por unidad lo declara el cliente.
+const clientPricedReasons: readonly MovementReason[] = ['PURCHASE', 'SALE', 'INITIAL_LOAD'];
+
+// Datos internos: el servicio agrega el motivo a las ventas y compras validadas.
+type RegisterMovementInput = {
+  reason: MovementReason;
+  items: RegisterMovementItem[];
+  notes?: string | undefined;
+  paymentMethod?: PaymentMethod | undefined;
+  supplierId?: string | undefined;
+  cashRegisterId?: string | undefined;
+};
 
 export default class InventoryMovementService implements IInventoryMovementService {
   constructor(
     private inventoryMovementRepo: IInventoryMovementRepository,
-    private productRepo: IProductRepository
+    private productRepo: IProductRepository,
+    private cashRegisterRepo: ICashRegisterRepository,
+    private supplierRepo: ISupplierRepository,
   ) {}
 
-  async registerEntry(
-    userId: string,
-    body: CreateInventoryMovementPayloadDTO
-  ): Promise<RegisterInventoryMovementResult> {
-    return this.registerMovement(userId, body, 'IN');
+  async registerSale(storeId: string, sale: SaleDTO, userId?: string): Promise<RegisterInventoryMovementResult> {
+    return this.registerMovement(storeId, {
+      ...sale,
+      reason: 'SALE',
+      items: sale.items.map(({ salePrice, ...item }) => ({ ...item, unitPrice: salePrice })),
+    }, 'OUT', userId);
   }
 
-  async registerExit(
-    userId: string,
-    body: CreateInventoryMovementPayloadDTO
-  ): Promise<RegisterInventoryMovementResult> {
-    return this.registerMovement(userId, body, 'OUT');
+  async registerPurchase(storeId: string, purchase: PurchaseDTO, userId?: string): Promise<RegisterInventoryMovementResult> {
+    return this.registerMovement(storeId, {
+      ...purchase,
+      reason: 'PURCHASE',
+      items: purchase.items.map(({ unitCost, ...item }) => ({ ...item, unitPrice: unitCost })),
+    }, 'IN', userId);
+  }
+
+  async registerLoss(storeId: string, data: LossDTO, userId?: string): Promise<RegisterInventoryMovementResult> {
+    return this.registerMovement(storeId, data, 'OUT', userId);
+  }
+
+  async registerInitialLoad(storeId: string, data: InitialLoadDTO, userId?: string): Promise<RegisterInventoryMovementResult> {
+    return this.registerMovement(storeId, { ...data, reason: 'INITIAL_LOAD' }, 'IN', userId);
   }
 
   private async registerMovement(
-    userId: string,
-    body: CreateInventoryMovementPayloadDTO,
-    movementType: MovementType
+    storeId: string,
+    body: RegisterMovementInput,
+    movementType: MovementType,
+    userId?: string,
   ): Promise<RegisterInventoryMovementResult> {
-    const { entityName, notes, items } = body;
+    const { notes, items, reason, paymentMethod, supplierId, cashRegisterId } = body;
+    if (!movementDirections[reason].includes(movementType)) {
+      throw new BadRequestError('El motivo no corresponde a la dirección del movimiento', 'reason');
+    }
     const data: InventoryMovementInsert = {
-      userId,
+      storeId,
       movementType,
-      entityName: entityName ?? null,
+      reason,
+      paymentMethod: paymentMethod ?? null,
+      supplierId: supplierId ?? null,
+      cashRegisterId: cashRegisterId ?? null,
       notes: notes ?? null,
+      createdBy: userId ?? null,
     };
 
     return withTransaction(async client => {
+      if (supplierId && !await this.supplierRepo.findById(storeId, supplierId, client)) {
+        throw new NotFoundError('El proveedor no existe');
+      }
+      // Siempre bloquear la caja antes que los productos; el cierre usa el mismo lock.
+      if (reason === 'SALE') {
+        data.cashRegisterId = await this.cashRegisterRepo.lockOpen(storeId, cashRegisterId, client);
+      }
       const { itemsToInsert, totalAmount } = await this.processItems(
         items,
         movementType,
-        userId,
+        reason,
+        storeId,
         client
       );
 
@@ -70,65 +120,124 @@ export default class InventoryMovementService implements IInventoryMovementServi
       return {
         id: movement.id,
         movementType: movement.movementType,
-        entityName: movement.entityName,
+        reason: movement.reason,
+        status: movement.status,
         notes: movement.notes,
-        totalAmount,
+        totalAmount: totalAmount.toFixed(2),
         items: movementItems,
       };
     });
   }
 
   async listMovementsByCursor(filters: InventoryMovementsByCursorParams) {
-    const movements = await this.inventoryMovementRepo.listMovementsByCursor(filters)
-    const hasMore = movements.length > filters.limit
-    let nextCursor = null
-    let movementsResult = movements
+    if (filters.productId && !await this.productRepo.findForStore(filters.storeId, filters.productId)) {
+      throw new NotFoundError('El producto no existe');
+    }
+    if (filters.cashRegisterId && !await this.cashRegisterRepo.findById(filters.storeId, filters.cashRegisterId)) {
+      throw new NotFoundError('La caja no existe');
+    }
+    const movements = await this.inventoryMovementRepo.listMovementsByCursor(filters);
 
-    if (hasMore) {
-      const lastItem = movements[movements.length - 1]!
-      const createdAt =
-        lastItem.createdAt instanceof Date
-          ? lastItem.createdAt.toISOString()
-          : String(lastItem.createdAt)
-      nextCursor = {
-        cursorDate: createdAt,
-        cursorId: lastItem.id,
+    return buildCursorPage(movements, filters.limit, movement => movement.createdAt);
+  }
+
+  async getById(storeId: string, id: string) {
+    const [movement] = await this.inventoryMovementRepo.listMovementsByCursor({ storeId, id, limit: 1 });
+    if (!movement) throw new NotFoundError('El movimiento no existe');
+    return movement;
+  }
+
+  async registerStockCount(storeId: string, userId: string, data: StockCountDTO): Promise<void> {
+    await withTransaction(async client => {
+      const increases: CostlessMovementItemDTO[] = [];
+      const decreases: CostlessMovementItemDTO[] = [];
+
+      // Bloquear todos los productos antes de calcular diferencias con el stock real.
+      const orderedItems = [...data.items].sort((a, b) => a.productId.localeCompare(b.productId));
+      for (const item of orderedItems) {
+        const product = await this.productRepo.findByIdForUpdate(item.productId, client);
+        if (product.storeId !== storeId) throw new NotFoundError('El producto no existe');
+        if (!product.isActive) throw new ConflictError(`El producto "${product.name}" está desactivado`);
+        const stock = await this.productRepo.getStock(item.productId, client);
+        const difference = item.countedQuantity - stock;
+        if (difference === 0) continue;
+        const target = difference > 0 ? increases : decreases;
+        target.push({ productId: item.productId, quantity: Math.abs(difference) });
       }
-      movementsResult = movements.slice(0, filters.limit)
-    }
 
-    return {
-      data: movementsResult,
-      nextCursor,
-    }
+      if (!increases.length && !decreases.length) throw new ConflictError('El conteo coincide con el stock; no hay diferencias que registrar');
+      for (const [items, reason, movementType] of [
+        [increases, 'COUNT_SURPLUS', 'IN'],
+        [decreases, 'COUNT_SHORTAGE', 'OUT'],
+      ] as const) {
+        if (!items.length) continue;
+        const { itemsToInsert } = await this.processItems(items, movementType, reason, storeId, client);
+        const movement = await this.inventoryMovementRepo.create({
+          storeId, movementType, reason, createdBy: userId,
+          cashRegisterId: null, supplierId: null, paymentMethod: null, notes: data.notes,
+        }, client);
+        await this.inventoryMovementRepo.createMovementItems(movement.id, itemsToInsert, client);
+      }
+    });
+  }
+
+  async voidMovement(storeId: string, userId: string, id: string, { reason }: { reason: string }): Promise<void> {
+    await withTransaction(async client => {
+      const movement = await this.inventoryMovementRepo.getForVoid(storeId, id, client);
+      if (!movement) throw new NotFoundError('El movimiento no existe');
+
+      // Mismo orden que una venta: caja, productos ordenados y finalmente movimiento.
+      if (movement.reason === 'SALE') {
+        if (!movement.cashRegisterId) throw new ConflictError('La venta no tiene una caja asociada');
+        await this.cashRegisterRepo.lockOpen(storeId, movement.cashRegisterId, client);
+      }
+      const items = await this.inventoryMovementRepo.getVoidItems(id, client);
+      for (const item of items) {
+        const product = await this.productRepo.findByIdForUpdate(item.productId, client);
+        if (product.storeId !== storeId) throw new NotFoundError('El producto no existe');
+      }
+      const current = await this.inventoryMovementRepo.getForVoid(storeId, id, client, true);
+      if (current?.status !== 'COMPLETED') throw new ConflictError('El movimiento ya está anulado');
+
+      for (const item of items) {
+        // Una venta no cambia el costo promedio: anularla solo devuelve stock y dinero, así que puede
+        // anularse aunque después haya otros movimientos del producto. Las demás restauran el costo
+        // anterior o dependen del stock de ese momento, y solo son válidas si son lo último del producto.
+        if (movement.reason !== 'SALE' && await this.inventoryMovementRepo.hasLaterMovement(id, item.productId, client)) {
+          throw new ConflictError('Hay movimientos posteriores de estos productos; no se puede anular este movimiento');
+        }
+        if (movement.movementType === 'IN' && await this.productRepo.getStock(item.productId, client) < item.quantity) {
+          throw new ConflictError('La anulación dejaría stock negativo');
+        }
+        if (movement.reason === 'PURCHASE' || movement.reason === 'INITIAL_LOAD') {
+          if (item.unitCostBefore === null) throw new ConflictError('No se conservó el costo anterior de esta entrada; no se puede anular');
+          await this.productRepo.updateUnitCostAvg(item.productId, Number(item.unitCostBefore), client);
+        }
+      }
+      if (movement.reason === 'SALE' && movement.paymentMethod === 'CASH' && !await this.inventoryMovementRepo.canReverseCashSale(id, client)) {
+        throw new ConflictError('Efectivo insuficiente para revertir esta venta');
+      }
+      await this.inventoryMovementRepo.void(storeId, id, userId, reason, client);
+    });
   }
 
   private async processItems(
-    items: IncomingItem[],
+    items: RegisterMovementItem[],
     movementType: MovementType,
-    userId: string,
+    reason: MovementReason,
+    storeId: string,
     client: PoolClient
   ): Promise<{ itemsToInsert: InventoryMovementItemInsert[]; totalAmount: number }> {
-    // Consolidamos por productId: sumamos cantidades y acumulamos el costo total
-    // (quantity * unitPrice) para poder calcular un costo unitario ponderado
-    // correcto cuando el mismo producto aparece repetido en el payload.
-    const aggregatedByProductId = new Map<
-      string,
-      { quantity: number; totalCost: number }
-    >();
+    // Consolidamos cantidades por productId para lockear y validar stock una sola
+    // vez cuando el mismo producto aparece repetido en el payload.
+    const quantityByProductId = new Map<string, number>();
     for (const item of items) {
-      const current = aggregatedByProductId.get(item.productId) ?? {
-        quantity: 0,
-        totalCost: 0,
-      };
-      current.quantity += item.quantity;
-      current.totalCost += item.quantity * item.unitPrice;
-      aggregatedByProductId.set(item.productId, current);
+      quantityByProductId.set(item.productId, (quantityByProductId.get(item.productId) ?? 0) + item.quantity);
     }
 
     // Orden determinístico de los locks para evitar deadlocks entre transacciones
     // concurrentes que tocan los mismos productos en distinto orden.
-    const orderedProductIds = [...aggregatedByProductId.keys()].sort();
+    const orderedProductIds = [...quantityByProductId.keys()].sort();
 
     let totalAmount = 0;
 
@@ -136,15 +245,22 @@ export default class InventoryMovementService implements IInventoryMovementServi
     // snapshot en items OUT al final (sin reconsultar la BD).
     const costAvgSnapshotByProductId = new Map<string, number>();
 
+    // Precio por unidad: el declarado por el cliente o, en motivos sin precio
+    // (pérdidas y conteos), el costo promedio leído con el producto lockeado.
+    const usesClientPrice = clientPricedReasons.includes(reason);
+    const unitPriceOf = (item: RegisterMovementItem) =>
+      usesClientPrice && 'unitPrice' in item
+        ? item.unitPrice
+        : costAvgSnapshotByProductId.get(item.productId) ?? 0;
+
     for (const productId of orderedProductIds) {
-      const aggregated = aggregatedByProductId.get(productId)!;
-      const { quantity: totalQuantity, totalCost } = aggregated;
+      const totalQuantity = quantityByProductId.get(productId)!;
 
       // Lockeamos el producto dentro de la transacción para serializar salidas
       // concurrentes del mismo producto y evitar stock negativo por carrera.
       const product = await this.productRepo.findByIdForUpdate(productId, client);
 
-      if (product.userId !== userId) {
+      if (product.storeId !== storeId) {
         throw new NotFoundError('El producto no existe');
       }
 
@@ -154,7 +270,22 @@ export default class InventoryMovementService implements IInventoryMovementServi
         );
       }
 
-      costAvgSnapshotByProductId.set(productId, parseFloat(product.unitCostAvg) || 0);
+      if (reason === 'INITIAL_LOAD' && await this.inventoryMovementRepo.hasProductMovements(productId, client)) {
+        throw new ConflictError(`"${product.name}" ya tiene movimientos; utilice una compra o un conteo físico`);
+      }
+
+      const unitCostAvg = parseFloat(product.unitCostAvg ?? '0') || 0;
+      // A surplus enters stock at the current average cost; without one it would enter at 0
+      // and drag down the next purchase's average, understating the cost of sales.
+      if (reason === 'COUNT_SURPLUS' && unitCostAvg <= 0) {
+        throw new ConflictError(`«${product.name}» no tiene costo. Registrá primero una carga inicial o una compra.`);
+      }
+      costAvgSnapshotByProductId.set(productId, unitCostAvg);
+
+      // Costo total (quantity * unitPrice) para calcular un costo unitario ponderado.
+      const totalCost = items
+        .filter(item => item.productId === productId)
+        .reduce((sum, item) => sum + item.quantity * unitPriceOf(item), 0);
 
       if (movementType === 'OUT') {
         const currentStock = await this.productRepo.getStock(productId, client);
@@ -163,7 +294,7 @@ export default class InventoryMovementService implements IInventoryMovementServi
         }
       }
 
-      if (movementType === 'IN') {
+      if (reason === 'PURCHASE' || reason === 'INITIAL_LOAD') {
         const weightedUnitCost = totalCost / totalQuantity;
         await this.updateProductCost(product, totalQuantity, weightedUnitCost, client);
       }
@@ -173,19 +304,22 @@ export default class InventoryMovementService implements IInventoryMovementServi
 
     // Persistimos los items tal como los envió el cliente (preservamos el detalle
     // para el historial) pero enriquecidos con el unitCost snapshot:
-    //  - IN  -> el unitCost es el mismo unitPrice de la línea (lo que se pagó).
-    //  - OUT -> el unitCost es el unitCostAvg vigente del producto al momento
-    //           de la venta (leído antes de cualquier update en esta transacción).
+    // Compras/carga inicial usan el costo declarado; otros motivos conservan
+    // el costo promedio vigente, sin usar precios de venta como costos.
     const itemsToInsert: InventoryMovementItemInsert[] = items.map(item => {
+      const unitPrice = unitPriceOf(item);
       const unitCost =
-        movementType === 'IN'
-          ? item.unitPrice
+        reason === 'PURCHASE' || reason === 'INITIAL_LOAD'
+          ? unitPrice
           : costAvgSnapshotByProductId.get(item.productId) ?? 0;
       return {
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
+        unitPrice,
         unitCost: Math.round(unitCost * 100) / 100,
+        ...((reason === 'PURCHASE' || reason === 'INITIAL_LOAD')
+          ? { unitCostBefore: costAvgSnapshotByProductId.get(item.productId) ?? 0 }
+          : {}),
       };
     });
 
@@ -199,7 +333,7 @@ export default class InventoryMovementService implements IInventoryMovementServi
     client: PoolClient
   ): Promise<void> {
     const currentStock = await this.productRepo.getStock(product.id, client);
-    const currentAvg = parseFloat(product.unitCostAvg) || 0;
+    const currentAvg = parseFloat(product.unitCostAvg ?? '0') || 0;
 
     const newAvg = calculateUnitCostAverage({
       currentStock,

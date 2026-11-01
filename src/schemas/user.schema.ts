@@ -1,15 +1,28 @@
 import { z } from "zod";
 
 export const createUserSchema = z.object({
-  name: z.string('Nombre requerido').min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres'),
-  email: z.email('Email inválido'),
-  password: z.string('Contraseña requerida').min(8, 'La contraseña debe tener al menos 8 caracteres'),
-});
+  name: z.string('Nombre requerido').trim().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres')
+    .meta({ example: 'Juan Pérez' }),
+  email: z.email('Email inválido').max(100).meta({ example: 'juan@example.com' }),
+  password: z.string('Contraseña requerida')
+  .min(12, 'La contraseña debe tener al menos 12 caracteres')
+  .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
+  .meta({ writeOnly: true, example: 'Secret1234567' }),
+}).meta({ id: 'RegisterUser' });
+
+/** Body for adding a worker to the current store; unknown fields are rejected. */
+export const createStoreUserSchema = createUserSchema.strict().meta({ id: 'CreateStoreUser' });
+
+export const storeUserIdSchema = z.object({ id: z.uuid('ID inválido') });
+
+export const updateStoreUserSchema = z.object({
+  active: z.boolean('Indica si el empleado está activo'),
+}).strict().meta({ id: 'UpdateStoreUser' });
 
 export const loginSchema = z.object({
-  email: z.email('Email inválido'),
-  password: z.string('Contraseña requerida').min(1, 'Contraseña requerida'),
-});
+  email: z.email('Email inválido').meta({ example: 'juan@example.com' }),
+  password: z.string('Contraseña requerida').min(1, 'Contraseña requerida').meta({ example: 'Secret1234567' }),
+}).meta({ id: 'Login' });
 
 export const updateUserSchema = z.object({
   name: z.string().min(1, 'Nombre requerido').max(50, 'Máximo 50 caracteres').optional(),
@@ -28,18 +41,32 @@ export const changePasswordSchema = z.object({
   }
 );
 
-export type CreateUserInput = z.infer<typeof createUserSchema>;z
+export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
-export interface UserResponse {
-  id: string;
-  name: string;
-  email: string;
-}
+// Response schemas; .strict() documents additionalProperties: false.
+export const storeUserSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  email: z.email(),
+  role: z.enum(['ADMIN', 'GUEST']),
+  active: z.boolean(),
+}).strict().meta({ id: 'StoreUser' });
 
-export interface AuthResponse {
-  token: string;
-  user: UserResponse;
-}
+/** User of the current session, shared by login, register and check-status. */
+export const sessionUserSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  email: z.email(),
+  role: z.enum(['ADMIN', 'GUEST']),
+}).strict().meta({ id: 'SessionUser' });
+
+export const authResponseSchema = z.object({
+  token: z.string(),
+  user: sessionUserSchema,
+}).meta({ id: 'AuthResponse' });
+
+export type SessionUser = z.infer<typeof sessionUserSchema>;
+export type AuthResponse = z.infer<typeof authResponseSchema>;

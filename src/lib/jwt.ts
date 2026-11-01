@@ -1,10 +1,13 @@
 import jwt from "jsonwebtoken";
 import { env } from '../config.js';
+import type { UserRole } from '../models/user.model.js';
 
 export interface TokenPayload {
   userId: string;
+  storeId: string;
   name: string;
   email: string;
+  role: UserRole;
 }
 
 export default class JWT {

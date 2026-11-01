@@ -5,6 +5,14 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+export interface CursorPage<T> {
+  data: T[];
+  nextCursor: {
+    cursorDate: string;
+    cursorId: string;
+  } | null;
+}
+
 // El envoltorio base que siempre llega
 export interface ApiErrorResponse {
   success: false;
@@ -23,6 +31,7 @@ export type ApiError =
 
 export type ErrorCode =
   | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'BAD_REQUEST'

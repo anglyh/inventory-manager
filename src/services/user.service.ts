@@ -5,7 +5,7 @@ import type {
   AuthResponse,
   SessionUser
 } from '../schemas/user.schema.js';
-import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/app.error.js';
+import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from '../errors/app.error.js';
 import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 import JWT, { type TokenPayload } from '../lib/jwt.js';
 import type { IUserService } from '../interfaces/services/user.service.interface.js';
@@ -33,6 +33,9 @@ export default class UserService implements IUserService {
   }
 
   async register(input: CreateUserInput): Promise<AuthResponse> {
+    // Only the first account signs up on its own: staff are added by the admin.
+    if (await this.userRepo.hasAnyUser()) throw new ForbiddenError('El registro está cerrado');
+
     const existingUser = await this.userRepo.findByEmail(input.email);
     if (existingUser) throw new ConflictError("El email ya está registrado");
 

@@ -3,6 +3,7 @@ import type { IUserRepository } from '../../interfaces/repositories/user.reposit
 import type { User } from '../../models/user.model.js';
 import type { TokenPayload } from '../../lib/jwt.js';
 import { sessionUserSchema } from '../../schemas/user.schema.js';
+import { ForbiddenError } from '../../errors/app.error.js';
 import UserService from '../../services/user.service.js';
 
 // Keep tests fast and independent of JWT_SECRET / bcrypt cost.
@@ -34,7 +35,7 @@ const expectedUser = {
 
 const repository = {
   listStoreUsers: vi.fn(), createStoreUser: vi.fn(), setStoreUserActive: vi.fn(),
-  create: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(),
+  create: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(), hasAnyUser: vi.fn(),
 } as unknown as IUserRepository;
 const service = new UserService(repository);
 
@@ -62,6 +63,15 @@ describe('UserService session user shape', () => {
 
     expect(result).toEqual({ token: 'signed-token', user: expectedUser });
     expect(sessionUserSchema.strict().safeParse(result.user).success).toBe(true);
+  });
+
+  it('register is closed once a user exists', async () => {
+    vi.mocked(repository.hasAnyUser).mockResolvedValueOnce(true);
+
+    await expect(service.register({
+      name: 'Intruso', email: 'otro@example.com', password: 'Secret1234567',
+    })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(repository.create).not.toHaveBeenCalled();
   });
 
   it('getSession maps the JWT payload to the same session user', () => {

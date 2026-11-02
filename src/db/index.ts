@@ -8,6 +8,11 @@ const pool = new Pool({
     : undefined,
 });
 
+// Without a listener, a dropped idle connection (e.g. Postgres restarting) kills the process.
+pool.on('error', err => {
+  console.error('Idle database connection error', err);
+});
+
 export async function initDb() {
   try {
     await query("SELECT 1");
@@ -23,4 +28,8 @@ export function query(text: string, params?: any[]) {
 
 export function getClient() {
   return pool.connect();
+}
+
+export function closeDb() {
+  return pool.end();
 }

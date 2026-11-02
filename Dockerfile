@@ -10,4 +10,4 @@ RUN bun run build
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["sh", "-c", "bun scripts/migrate.ts && bun dist/index.js"]
+CMD ["sh", "-c", "bun scripts/migrate.ts && exec bun dist/index.js"]

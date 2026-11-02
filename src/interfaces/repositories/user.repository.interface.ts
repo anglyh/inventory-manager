@@ -6,5 +6,6 @@ export interface IUserRepository {
   setStoreUserActive(storeId: string, id: string, active: boolean): Promise<StoreUser | null>;
   create(storeName: string, name: string, email: string, password: string): Promise<User>;
   findByEmail(email: string): Promise<User | null>;
+  hasAnyUser(): Promise<boolean>;
   findById(id: string): Promise<User | null>;
 }

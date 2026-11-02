@@ -5,7 +5,7 @@
  */
 import express from "express";
 import cors from "cors";
-import { initDb } from './db/index.js';
+import { closeDb, initDb } from './db/index.js';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.middleware.js';
 import userRouter from './routes/user.routes.js';
 import productRouter from './routes/product.routes.js';
@@ -28,13 +28,12 @@ import { env } from './config.js';
 
 const app = express();
 
+// Traefik sits in front: without this every client looks like the same IP to the rate limiter.
+app.set('trust proxy', 1);
+
 const corsOptions: cors.CorsOptions = {
-  origin: [
-    "https://inventory-manager-angular.vercel.app",
-    "https://inventory-manager-angular.pages.dev",
-    "http://localhost:3000",
-    "http://localhost:4200",
-  ],
+  // In production the frontend shares the API's domain, so no other origin is allowed.
+  origin: env.NODE_ENV === "production" ? false : ["http://localhost:3000", "http://localhost:4200"],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: false,
@@ -77,6 +76,16 @@ app.get('/health', (req, res) => {
   res.json({ message: "Server working" });
 });
 
+// Reachable from outside (only /api is routed to this app) and checks the database too.
+app.get('/api/health', async (req, res) => {
+  try {
+    await initDb();
+    res.json({ message: "Server working" });
+  } catch {
+    res.status(503).json({ success: false, error: { code: 'DB_ERROR', message: 'Base de datos no disponible' } });
+  }
+});
+
 app.use("/api/auth", userRouter);
 app.use("/api/product", requireAuth, productRouter);
 app.use("/api/category", requireAuth, categoryRouter);
@@ -98,6 +107,17 @@ app.use(errorHandler);
 
 const PORT = env.PORT || 3000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 })
+
+// A deploy sends SIGTERM: finish the requests in flight, then release the database.
+function shutdown() {
+  server.close(() => {
+    closeDb().finally(() => process.exit(0));
+  });
+  setTimeout(() => process.exit(1), 8000).unref();
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

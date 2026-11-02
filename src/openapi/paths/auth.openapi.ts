@@ -33,6 +33,7 @@ registry.registerPath({
   responses: {
     201: jsonResponse('Usuario creado; retorna token y usuario.', authResponseSchema),
     ...commonErrors,
+    403: errorRef('Forbidden'),
     409: errorRef('Conflict'),
     422: errorRef('ValidationError'),
   },

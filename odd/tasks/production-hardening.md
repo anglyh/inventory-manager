@@ -25,3 +25,7 @@ Evidence: RED seen for the limiter and closed registration. `tsc --noEmit` passe
 Smoke run without `.env` and with an unreachable database: `/api/health` gives 503; a foreign origin gets no CORS header.
 
 Not proven: SIGTERM handling (Windows kills the process, exit 143), image build (Docker not running), `trust proxy 1` behind the real Traefik.
+
+Reviews: 76a221b approved; 0a5505c (only 401 counts toward the limit, after a resilience finding) approved; frontend d30daad..d3fbed3 approved.
+Open advisories, not fixed: 429 missing from OpenAPI; real login route not covered by the limiter test; first-user check is not atomic.
+Next: user pushes both repos, merges to main, redeploys, runs the pending checks and sets up backups.

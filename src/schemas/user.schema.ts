@@ -63,10 +63,16 @@ export const sessionUserSchema = z.object({
   role: z.enum(['ADMIN', 'GUEST']),
 }).strict().meta({ id: 'SessionUser' });
 
+/**
+ * Body of login, register, refresh and check-status. The refresh token never appears
+ * here: it travels only in the HttpOnly `refreshToken` cookie.
+ */
 export const authResponseSchema = z.object({
-  token: z.string(),
+  accessToken: z.string().meta({ description: 'JWT de acceso de corta duración (15 minutos). Enviar como `Authorization: Bearer`.' }),
   user: sessionUserSchema,
 }).meta({ id: 'AuthResponse' });
 
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+/** What the service hands to the controller: the response body plus the cookie value. */
+export type AuthSession = AuthResponse & { refreshToken: string };

@@ -13,4 +13,10 @@ userRouter.post("/login", authLimiter, validateBody(loginSchema), UserController
 
 userRouter.get("/check-status", requireAuth, UserController.checkStatus)
 
+// No authLimiter on refresh/logout: an expired session answers 401 and would use up the
+// login quota the staff share behind one IP. The cookie holds 256 random bits; it cannot be guessed.
+userRouter.post("/refresh", UserController.refresh)
+
+userRouter.post("/logout", UserController.logout)
+
 export default userRouter;

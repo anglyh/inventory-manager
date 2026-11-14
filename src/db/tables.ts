@@ -13,6 +13,7 @@ export const TABLES = {
   STAY_MINOR: "stay_minor",
   STAY_CHARGE: "stay_charge",
   STAY_PAYMENT: "stay_payment",
+  REFRESH_TOKEN: "refresh_token",
 } as const;
 
 export const VIEWS = {

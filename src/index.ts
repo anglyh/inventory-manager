@@ -5,6 +5,7 @@
  */
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { closeDb, initDb } from './db/index.js';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.middleware.js';
 import userRouter from './routes/user.routes.js';
@@ -36,13 +37,14 @@ const corsOptions: cors.CorsOptions = {
   origin: env.NODE_ENV === "production" ? false : ["http://localhost:3000", "http://localhost:4200"],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false,
+  credentials: true,
 };
 
 app.use(cors(corsOptions));
 // Express 5 no acepta `*` como path en route matching.
 // El middleware `cors()` ya responde preflights por defecto.
 app.use(express.json());
+app.use(cookieParser());
 
 let dbInitPromise: Promise<void> | undefined;
 function ensureDb() {

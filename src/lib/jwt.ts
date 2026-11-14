@@ -12,7 +12,7 @@ export interface TokenPayload {
 
 export default class JWT {
   private static readonly JWT_SECRET = env.JWT_SECRET;
-  private static readonly JWT_EXPIRES = "7d";
+  private static readonly JWT_EXPIRES = "15m";
 
   static signAccessToken(payload: TokenPayload): string {
     if (!this.JWT_SECRET) throw new Error("JWT_SECRET no esta definido");

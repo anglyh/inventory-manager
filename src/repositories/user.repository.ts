@@ -59,6 +59,11 @@ export default class UserRepository implements IUserRepository {
     return snakeToCamel(result.rows[0]);
   }
 
+  async hasAnyUser(): Promise<boolean> {
+    const result = await query(`SELECT EXISTS (SELECT 1 FROM ${TABLES.USER}) AS exists`);
+    return result.rows[0].exists;
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     const result = await query(
       `SELECT * FROM ${TABLES.USER} WHERE email = $1`,

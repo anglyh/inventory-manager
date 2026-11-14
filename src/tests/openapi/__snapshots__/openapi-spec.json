@@ -628,7 +628,8 @@
       },
       "AuthResponse": {
         "properties": {
-          "token": {
+          "accessToken": {
+            "description": "JWT de acceso de corta duración (15 minutos). Enviar como `Authorization: Bearer`.",
             "type": "string"
           },
           "user": {
@@ -636,7 +637,7 @@
           }
         },
         "required": [
-          "token",
+          "accessToken",
           "user"
         ],
         "type": "object"
@@ -4206,6 +4207,12 @@
         "bearerFormat": "JWT",
         "scheme": "bearer",
         "type": "http"
+      },
+      "refreshCookie": {
+        "description": "Refresh token opaco en una cookie HttpOnly, SameSite=Strict, con path /api/auth. La fijan login, register y refresh; el navegador la envía sola.",
+        "in": "cookie",
+        "name": "refreshToken",
+        "type": "apiKey"
       }
     }
   },
@@ -4227,7 +4234,7 @@
                 }
               }
             },
-            "description": "Sesión vigente; retorna token y usuario."
+            "description": "Sesión vigente; retorna el access token enviado y el usuario."
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -4274,7 +4281,15 @@
                 }
               }
             },
-            "description": "Autenticación exitosa; retorna token y usuario."
+            "description": "Autenticación exitosa; retorna access token y usuario, y abre la sesión con la cookie del refresh token.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Cookie HttpOnly `refreshToken` con el refresh token nuevo (vence a los 7 días, nunca después del límite de 30 días de la sesión).",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -4293,7 +4308,83 @@
           }
         },
         "security": [],
-        "summary": "Autenticar usuario y obtener token JWT",
+        "summary": "Autenticar usuario y obtener access token JWT",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "Revoca la sesión de la cookie `refreshToken` (todos sus tokens rotados) y borra la cookie. Es idempotente: responde 204 aunque no haya cookie o la sesión ya no exista.",
+        "responses": {
+          "204": {
+            "description": "Sesión cerrada, sin cuerpo.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Borra la cookie `refreshToken`.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "refreshCookie": []
+          }
+        ],
+        "summary": "Cerrar la sesión actual",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "description": "Rota el refresh token de la cookie: lo marca como usado, fija uno nuevo y devuelve un access token. Si la sesión no existe, venció, se cerró, el usuario está desactivado o se reutiliza un token ya rotado, responde 401 y borra la cookie; el reuso además cierra la sesión completa. Dos renovaciones simultáneas (varias pestañas) dentro de 10 segundos se aceptan.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "Sesión renovada; retorna un access token nuevo y el usuario.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Cookie HttpOnly `refreshToken` con el refresh token nuevo (vence a los 7 días, nunca después del límite de 30 días de la sesión).",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/DatabaseUnavailable"
+          }
+        },
+        "security": [
+          {
+            "refreshCookie": []
+          }
+        ],
+        "summary": "Renovar el access token con la cookie del refresh token",
         "tags": [
           "Users"
         ]
@@ -4320,7 +4411,15 @@
                 }
               }
             },
-            "description": "Usuario creado; retorna token y usuario."
+            "description": "Usuario creado; retorna access token y usuario, y abre la sesión con la cookie del refresh token.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Cookie HttpOnly `refreshToken` con el refresh token nuevo (vence a los 7 días, nunca después del límite de 30 días de la sesión).",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"

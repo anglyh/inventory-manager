@@ -25,6 +25,8 @@ import StayService from './services/stay.service.js';
 import ExpenseRepository from './repositories/expense.repository.js';
 import ExpenseService from './services/expense.service.js';
 import BarcodeLookupService from './services/barcode-lookup.service.js';
+import RefreshTokenRepository from './repositories/refresh-token.repository.js';
+import RefreshTokenService from './services/refresh-token.service.js';
 
 // Instancias de repositorios
 const productRepo = new ProductRepository();
@@ -38,8 +40,10 @@ const roomRepo = new RoomRepository();
 const storeRepo = new StoreRepository();
 const stayRepo = new StayRepository();
 const expenseRepo = new ExpenseRepository();
+const refreshTokenRepo = new RefreshTokenRepository();
 
 // Instancias de servicios con sus dependencias inyectadas
+export const refreshTokenService = new RefreshTokenService(refreshTokenRepo, userRepo);
 export const productService = new ProductService(productRepo);
 export const barcodeLookupService = new BarcodeLookupService(productRepo);
 export const inventoryMovementService = new InventoryMovementService(
@@ -48,7 +52,7 @@ export const inventoryMovementService = new InventoryMovementService(
   cashRegisterRepo,
   supplierRepo
 );
-export const userService = new UserService(userRepo);
+export const userService = new UserService(userRepo, refreshTokenService);
 export const categoryService = new CategoryService(categoryRepo);
 export const reportService = new ReportService(reportRepo);
 export const cashRegisterService = new CashRegisterService(cashRegisterRepo);

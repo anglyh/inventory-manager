@@ -4,7 +4,7 @@ import type { IRefreshTokenService } from '../../interfaces/services/refresh-tok
 import type { User } from '../../models/user.model.js';
 import type { TokenPayload } from '../../lib/jwt.js';
 import { sessionUserSchema } from '../../schemas/user.schema.js';
-import { ForbiddenError, NotFoundError, UnauthorizedError } from '../../errors/app.error.js';
+import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from '../../errors/app.error.js';
 import UserService from '../../services/user.service.js';
 
 // Keep tests fast and independent of bcrypt cost.
@@ -82,6 +82,32 @@ describe('UserService session user shape', () => {
     await expect(service.register({
       name: 'Intruso', email: 'otro@example.com', password: 'Secret1234567',
     })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(sessions.issue).not.toHaveBeenCalled();
+  });
+
+  it('register with ALLOW_REGISTRATION on creates a new store even when users exist', async () => {
+    const openService = new UserService(repository, sessions, { allowRegistration: true });
+    vi.mocked(repository.hasAnyUser).mockResolvedValueOnce(true);
+    vi.mocked(repository.findByEmail).mockResolvedValue(null);
+    vi.mocked(repository.create).mockResolvedValue(storedUser);
+
+    const result = await openService.register({
+      name: storedUser.name, email: storedUser.email, password: 'Secret1234567',
+    });
+
+    expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'cookie-token', user: expectedUser });
+    expect(repository.create).toHaveBeenCalledWith('Mi tienda', storedUser.name, storedUser.email, expect.any(String));
+  });
+
+  it('register with ALLOW_REGISTRATION on still rejects an email already in use', async () => {
+    const openService = new UserService(repository, sessions, { allowRegistration: true });
+    vi.mocked(repository.hasAnyUser).mockResolvedValueOnce(true);
+    vi.mocked(repository.findByEmail).mockResolvedValue(storedUser);
+
+    await expect(openService.register({
+      name: 'Otro', email: storedUser.email, password: 'Secret1234567',
+    })).rejects.toBeInstanceOf(ConflictError);
     expect(repository.create).not.toHaveBeenCalled();
     expect(sessions.issue).not.toHaveBeenCalled();
   });

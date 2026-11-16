@@ -13,12 +13,18 @@ import type { TokenPayload } from '../lib/jwt.js';
 import type { IUserService } from '../interfaces/services/user.service.interface.js';
 import type { IRefreshTokenService } from '../interfaces/services/refresh-token.service.interface.js';
 
+export interface UserServiceOptions {
+  /** When true anyone can sign up and gets a new store of their own; otherwise only the first account can. */
+  allowRegistration?: boolean;
+}
+
 export default class UserService implements IUserService {
   private static readonly COST = 12;
 
   constructor(
     private userRepo: IUserRepository,
-    private sessionService: IRefreshTokenService
+    private sessionService: IRefreshTokenService,
+    private options: UserServiceOptions = {}
   ) {}
 
   listStoreUsers(storeId: string) {
@@ -42,7 +48,10 @@ export default class UserService implements IUserService {
 
   async register(input: CreateUserInput): Promise<AuthSession> {
     // Only the first account signs up on its own: staff are added by the admin.
-    if (await this.userRepo.hasAnyUser()) throw new ForbiddenError('El registro está cerrado');
+    // ALLOW_REGISTRATION opens it temporarily so another admin can create a separate store.
+    if (!this.options.allowRegistration && await this.userRepo.hasAnyUser()) {
+      throw new ForbiddenError('El registro está cerrado');
+    }
 
     const existingUser = await this.userRepo.findByEmail(input.email);
     if (existingUser) throw new ConflictError("El email ya está registrado");

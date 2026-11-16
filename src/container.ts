@@ -27,6 +27,7 @@ import ExpenseService from './services/expense.service.js';
 import BarcodeLookupService from './services/barcode-lookup.service.js';
 import RefreshTokenRepository from './repositories/refresh-token.repository.js';
 import RefreshTokenService from './services/refresh-token.service.js';
+import { env } from './config.js';
 
 // Instancias de repositorios
 const productRepo = new ProductRepository();
@@ -52,7 +53,7 @@ export const inventoryMovementService = new InventoryMovementService(
   cashRegisterRepo,
   supplierRepo
 );
-export const userService = new UserService(userRepo, refreshTokenService);
+export const userService = new UserService(userRepo, refreshTokenService, { allowRegistration: env.ALLOW_REGISTRATION });
 export const categoryService = new CategoryService(categoryRepo);
 export const reportService = new ReportService(reportRepo);
 export const cashRegisterService = new CashRegisterService(cashRegisterRepo);

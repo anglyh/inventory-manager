@@ -15,5 +15,7 @@ export const env = {
   PORT: process.env.PORT || 3000,
   DATABASE_URL: requireEnv('DATABASE_URL'),
   DB_SSL: process.env.DB_SSL === 'true',
-  JWT_SECRET: requireEnv('JWT_SECRET')
+  JWT_SECRET: requireEnv('JWT_SECRET'),
+  // Off by default: only the first account can sign up. Set to true to let someone register a new store.
+  ALLOW_REGISTRATION: process.env.ALLOW_REGISTRATION === 'true',
 }
